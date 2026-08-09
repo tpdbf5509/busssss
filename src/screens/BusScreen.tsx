@@ -1,9 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Search, X, Star, ArrowLeft, Bus as BusIcon, RadioTower, Navigation, Clock, Calendar, ChevronDown } from "lucide-react";
 import { useAsync } from "@/hooks/useAsync";
 import { useBusLocations } from "@/hooks/useBusLocations";
 import { useApp } from "@/store/AppContext";
 import { fetchAllRoutes, fetchStopsForRoute } from "@/services/routeService";
+import { fetchBisTimeInfo, type BisTimeInfo } from "@/api/jeonjuBis";
 import type { Route } from "@/types/route";
 import type { Favorite } from "@/types";
 import { LoadingSkeleton, ErrorState, EmptyState } from "@/components/ui";
@@ -531,6 +532,29 @@ function DispatchScheduleModal({
   );
   const intervalInfo = parseInterval(route.interval);
 
+  const [realSchedule, setRealSchedule] = useState<BisTimeInfo | null>(null);
+  const [realStatus, setRealStatus] = useState<"loading" | "success" | "unavailable">("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    setRealStatus("loading");
+    setRealSchedule(null);
+
+    fetchBisTimeInfo(route.id).then((data) => {
+      if (cancelled) return;
+      if (data) {
+        setRealSchedule(data);
+        setRealStatus("success");
+      } else {
+        setRealStatus("unavailable");
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [route.id]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
@@ -581,45 +605,101 @@ function DispatchScheduleModal({
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-1.5">
-            <Navigation className="w-4 h-4 text-blue-500" />
-            예상 출발 시간표
-          </h3>
-          {timetable.length > 0 ? (
+          {realStatus === "loading" && (
             <div className="grid grid-cols-4 gap-2">
-              {timetable.map((time, i) => {
-                const now = new Date();
-                const nowMin = now.getHours() * 60 + now.getMinutes();
-                const parts = time.split(":");
-                const depMin = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-                const isPast = depMin < nowMin;
-                const isNext = depMin >= nowMin && depMin <= nowMin + (intervalInfo?.min ?? 15);
-                const cls = isNext
-                  ? "bg-blue-600 text-white font-bold"
-                  : isPast
-                  ? "bg-slate-50 text-slate-300"
-                  : "bg-slate-50 text-slate-600";
-                return (
-                  <div
-                    key={time + "-" + i}
-                    className={"py-2 rounded-lg text-center text-sm font-medium transition-colors " + cls}
-                  >
-                    {time}
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-8">
-              <Clock className="w-8 h-8 text-slate-300 mb-2" />
-              <p className="text-sm text-slate-400">배차간격 정보가 없어</p>
-              <p className="text-sm text-slate-400">시간표를 생성할 수 없어요</p>
+              {Array.from({ length: 8 }).map((_, i) => (
+                <LoadingSkeleton key={i} className="h-9 w-full" />
+              ))}
             </div>
           )}
-          {timetable.length > 0 && (
-            <p className="text-[11px] text-slate-400 mt-4 text-center">
-              배차간격을 기준으로 한 예상 시간표로, 실제와 다를 수 있어요
-            </p>
+
+          {realStatus === "success" && realSchedule && (
+            <>
+              <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-1.5">
+                <Navigation className="w-4 h-4 text-blue-500" />
+                실제 배차시간표
+                <span className="text-[10px] font-normal text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded-full ml-1">
+                  공식 데이터
+                </span>
+              </h3>
+              <div className="grid grid-cols-4 gap-2">
+                {realSchedule.times.map((time, i) => {
+                  const now = new Date();
+                  const nowMin = now.getHours() * 60 + now.getMinutes();
+                  const parts = time.split(":");
+                  const depMin = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+                  const isPast = depMin < nowMin;
+                  const isNext = depMin >= nowMin && depMin <= nowMin + (intervalInfo?.min ?? 15);
+                  const cls = isNext
+                    ? "bg-blue-600 text-white font-bold"
+                    : isPast
+                    ? "bg-slate-50 text-slate-300"
+                    : "bg-slate-50 text-slate-600";
+                  return (
+                    <div
+                      key={time + "-" + i}
+                      className={"py-2 rounded-lg text-center text-sm font-medium transition-colors " + cls}
+                    >
+                      {time}
+                    </div>
+                  );
+                })}
+              </div>
+              {realSchedule.note && (
+                <p className="text-[11px] text-slate-400 mt-4 whitespace-pre-line">{realSchedule.note}</p>
+              )}
+              {realSchedule.satSkip && (
+                <p className="text-[11px] text-slate-400 mt-2">토요일 미운행: {realSchedule.satSkip}</p>
+              )}
+              {realSchedule.holidaySkip && (
+                <p className="text-[11px] text-slate-400 mt-1">일요일(공휴일) 미운행: {realSchedule.holidaySkip}</p>
+              )}
+            </>
+          )}
+
+          {realStatus === "unavailable" && (
+            <>
+              <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-1.5">
+                <Navigation className="w-4 h-4 text-blue-500" />
+                예상 출발 시간표
+              </h3>
+              {timetable.length > 0 ? (
+                <div className="grid grid-cols-4 gap-2">
+                  {timetable.map((time, i) => {
+                    const now = new Date();
+                    const nowMin = now.getHours() * 60 + now.getMinutes();
+                    const parts = time.split(":");
+                    const depMin = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+                    const isPast = depMin < nowMin;
+                    const isNext = depMin >= nowMin && depMin <= nowMin + (intervalInfo?.min ?? 15);
+                    const cls = isNext
+                      ? "bg-blue-600 text-white font-bold"
+                      : isPast
+                      ? "bg-slate-50 text-slate-300"
+                      : "bg-slate-50 text-slate-600";
+                    return (
+                      <div
+                        key={time + "-" + i}
+                        className={"py-2 rounded-lg text-center text-sm font-medium transition-colors " + cls}
+                      >
+                        {time}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <Clock className="w-8 h-8 text-slate-300 mb-2" />
+                  <p className="text-sm text-slate-400">배차간격 정보가 없어</p>
+                  <p className="text-sm text-slate-400">시간표를 생성할 수 없어요</p>
+                </div>
+              )}
+              {timetable.length > 0 && (
+                <p className="text-[11px] text-slate-400 mt-4 text-center">
+                  배차간격을 기준으로 한 예상 시간표로, 실제와 다를 수 있어요
+                </p>
+              )}
+            </>
           )}
         </div>
       </div>
