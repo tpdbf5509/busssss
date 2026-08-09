@@ -1,7 +1,6 @@
 // 전주시 교통정보센터(its.jeonju.go.kr)의 공식 배차시간표 API.
-// 주의: 이 API는 its.jeonju.go.kr 자체 페이지에서 쓰라고 만든 것이라
-// 다른 도메인(우리 앱)에서 호출하면 CORS로 막힐 수 있습니다.
-// 막히면 실패로 처리되고, 화면에서는 자동으로 배차간격 추정 방식으로 대체됩니다.
+// its.jeonju.go.kr은 CORS를 허용하지 않으므로 Supabase Edge Function 프록시를
+// 통해 서버 사이드에서 호출합니다.
 
 export interface BisTimeInfo {
   times: string[];      // 실제 출발시각 목록 (예: ["05:50", "06:10", ...])
@@ -14,28 +13,33 @@ export async function fetchBisTimeInfo(routeId: string): Promise<BisTimeInfo | n
   if (!routeId) return null;
 
   try {
-    const res = await fetch("https://its.jeonju.go.kr/bis/selectBisRouteTimeInfo.do", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
-      body: `locale=ko-kr&routeId=${encodeURIComponent(routeId)}`
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !anonKey) return null;
+
+    const url = `${supabaseUrl}/functions/v1/bis-proxy?routeId=${encodeURIComponent(routeId)}`;
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${anonKey}`,
+        "Content-Type": "application/json",
+      },
     });
 
     if (!res.ok) return null;
 
     const json = await res.json();
-    const times: string[] = (json.timeList || []).map((t: string) => t.trim()).filter(Boolean);
+    const times: string[] = (json.times || []).map((t: string) => t.trim()).filter(Boolean);
 
     if (times.length === 0) return null;
 
-    const d = json.result || {};
     return {
       times,
-      note: d.BRT_TEXT || "",
-      satSkip: d.SAT_NLIST || "",
-      holidaySkip: d.HOLI_NLIST || "",
+      note: json.note || "",
+      satSkip: json.satSkip || "",
+      holidaySkip: json.holidaySkip || "",
     };
   } catch {
-    // CORS 차단, 네트워크 오류 등 — 조용히 실패 처리 (호출부에서 fallback 처리)
+    // 네트워크 오류 등 — 조용히 실패 처리 (호출부에서 fallback 처리)
     return null;
   }
 }
