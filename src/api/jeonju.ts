@@ -86,6 +86,7 @@ async function mapSequentially<T, R>(
 
 export async function getRoutes(): Promise<RawRouteField[]> {
   const idList = await getRouteIdList();
+  console.log("ID LIST SAMPLE:", idList[0]);
 
   const uniquePairs = Array.from(
     new Map(

@@ -26,6 +26,7 @@ function formatRouteNumber(raw: RawRouteField): string {
 }
 
 function mapToRoute(raw: RawRouteField): Route {
+  console.log("RAW ROUTE FIELDS:", raw);
   const displayNumber = formatRouteNumber(raw);
 
   return {
