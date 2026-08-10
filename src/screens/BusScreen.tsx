@@ -150,21 +150,39 @@ function normalizeName(s: string) {
 function getRouteTypeLabel(number: string, start: string, end: string) {
   const ns = normalizeName(start);
   const ne = normalizeName(end);
-  const matched = MAIN_LINES.some(
-    (m) =>
-      m.number === number &&
-      normalizeName(m.start) === ns &&
-      normalizeName(m.end) === ne
-  );
+  const matched = MAIN_LINES.some((m) => {
+    if (m.number !== number) return false;
+    const ms = normalizeName(m.start);
+    const me = normalizeName(m.end);
+    // 정방향(기점→종점) 또는 역방향(종점→기점) 둘 다 본선으로 인정
+    const sameDirection = ms === ns && me === ne;
+    const reversedDirection = ms === ne && me === ns;
+    return sameDirection || reversedDirection;
+  });
   return matched ? "본선" : "분선";
 }
 
-export function BusScreen() {
+export function BusScreen({
+  initialRouteId,
+  onConsumeInitialRoute,
+}: {
+  initialRouteId?: string;
+  onConsumeInitialRoute?: () => void;
+} = {}) {
   const [query, setQuery] = useState("");
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
   const { state, dispatch } = useApp();
 
   const { data: routes, status, retry } = useAsync(() => fetchAllRoutes(), []);
+
+  useEffect(() => {
+    if (!initialRouteId || !routes) return;
+    const target = routes.find((r) => r.id === initialRouteId);
+    if (target) {
+      setSelectedRoute(target);
+    }
+    onConsumeInitialRoute?.();
+  }, [initialRouteId, routes]);
 
   const filtered = routes?.filter(
     (r) =>
@@ -348,7 +366,10 @@ function RouteDetail({ route, onBack }: { route: Route; onBack: () => void }) {
             <ArrowLeft className="w-5 h-5 text-slate-700" />
           </button>
           <div className="flex-1">
-            <h1 className="text-lg font-bold text-slate-900">{route.name}</h1>
+            <h1 className="text-lg font-bold text-slate-900">
+              {getRouteTypeLabel(route.number, route.start, route.end)}
+              {route.number}
+            </h1>
             <p className="text-xs text-slate-400 mt-0.5">
               {route.start || "기점 정보 없음"} → {route.end || "종점 정보 없음"}
             </p>

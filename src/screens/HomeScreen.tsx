@@ -157,8 +157,11 @@ function getRouteTypeLabel(number: string, start: string, end: string) {
   return matched ? "본선" : "분선";
 }
 
-export function HomeScreen({ onNavigate }: { onNavigate: (tab: TabId) => void }) {
-  const { state, dispatch } = useApp();
+export function HomeScreen({
+  onNavigate,
+}: {
+  onNavigate: (tab: TabId, routeId?: string) => void;
+}) {  const { state, dispatch } = useApp();
   const [regionOpen, setRegionOpen] = useState(false);
 
   const { data: routes, status, retry } = useAsync(() => fetchAllRoutes(), []);
@@ -297,7 +300,9 @@ export function HomeScreen({ onNavigate }: { onNavigate: (tab: TabId) => void })
             {state.favorites.map((fav) => (
               <button
                 key={fav.id}
-                onClick={() => onNavigate(fav.type === "route" ? "bus" : "home")}
+                onClick={() =>
+                  onNavigate(fav.type === "route" ? "bus" : "home", fav.refId)
+                }
                 className="bg-white rounded-2xl p-3.5 border border-slate-100 text-left hover:border-blue-200 hover:shadow-sm transition-all"
               >
                 <div className="flex items-center gap-2 mb-1">

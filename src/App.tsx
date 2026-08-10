@@ -10,12 +10,23 @@ import { MyScreen } from "@/screens/MyScreen";
 
 function App() {
   const [tab, setTab] = useState<TabId>("home");
+  const [pendingRouteId, setPendingRouteId] = useState<string | null>(null);
+
+  const handleNavigate = (nextTab: TabId, routeId?: string) => {
+    if (routeId) setPendingRouteId(routeId);
+    setTab(nextTab);
+  };
 
   return (
     <AppProvider>
       <div className="max-w-md mx-auto bg-slate-50 min-h-screen relative">
-        {tab === "home" && <HomeScreen onNavigate={setTab} />}
-        {tab === "bus" && <BusScreen />}
+        {tab === "home" && <HomeScreen onNavigate={handleNavigate} />}
+        {tab === "bus" && (
+          <BusScreen
+            initialRouteId={pendingRouteId ?? undefined}
+            onConsumeInitialRoute={() => setPendingRouteId(null)}
+          />
+        )}
         {tab === "card" && <CardScreen />}
         {tab === "alert" && <AlertScreen />}
         {tab === "my" && <MyScreen />}
