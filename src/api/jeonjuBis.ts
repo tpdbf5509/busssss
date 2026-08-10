@@ -39,7 +39,6 @@ export async function fetchBisTimeInfo(routeId: string): Promise<BisTimeInfo | n
       holidaySkip: json.holidaySkip || "",
     };
   } catch {
-    // 네트워크 오류 등 — 조용히 실패 처리 (호출부에서 fallback 처리)
     return null;
   }
 }
