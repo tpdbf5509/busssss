@@ -96,3 +96,17 @@ export async function getRouteAcctoBusLcList(
     pageNo: "1",
   });
 }
+
+/** 정류소명으로 전주 정류장 검색 (cityCode 35010) */
+export async function getSttnNoList(
+  nodeNm: string,
+  cityCode: string = JEONJU_CITY_CODE
+): Promise<RawTagoField[]> {
+  if (!nodeNm.trim()) return [];
+  return callTagoApi("/BusSttnInfoInqireService/getSttnNoList", {
+    cityCode,
+    nodeNm: nodeNm.trim(),
+    numOfRows: "30",
+    pageNo: "1",
+  });
+}

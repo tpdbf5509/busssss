@@ -36,3 +36,12 @@ export interface BusLocation {
   routeId: string;
   direction: string; // "start → end" 표시용
 }
+
+/** 정류장 (TAGO / 검색용) */
+export interface Station {
+  id: string;        // nodeid
+  name: string;      // nodenm
+  arsId: string;     // nodeno (정류장 번호)
+  lat: number | null;
+  lng: number | null;
+}

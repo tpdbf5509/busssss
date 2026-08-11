@@ -9,6 +9,9 @@ import type { Route } from "@/types/route";
 import type { Favorite } from "@/types";
 import { LoadingSkeleton, ErrorState, EmptyState } from "@/components/ui";
 import { showToast } from "@/components/Toast";
+import { searchStations } from "@/services/stationService";
+import type { Station } from "@/types/route";
+import { MapPin } from "lucide-react";
 const MAIN_LINES: { number: string; start: string; end: string }[] = [
   { number: "2", start: "평화동종점", end: "평화동종점" },
   { number: "3-1", start: "전주대학교", end: "전주대학교" },
@@ -172,6 +175,11 @@ export function BusScreen({
   const [query, setQuery] = useState("");
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
   const { state, dispatch } = useApp();
+  
+
+  const [stations, setStations] = useState<Station[]>([]);
+  const [stationStatus, setStationStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [searchTab, setSearchTab] = useState<"route" | "station">("route");
 
   const { data: routes, status, retry } = useAsync(() => fetchAllRoutes(), []);
 
@@ -183,6 +191,34 @@ export function BusScreen({
     }
     onConsumeInitialRoute?.();
   }, [initialRouteId, routes]);
+    // 검색어로 정류장 검색
+    useEffect(() => {
+      const q = query.trim();
+      if (!q) {
+        setStations([]);
+        setStationStatus("idle");
+        return;
+      }
+      let cancelled = false;
+      setStationStatus("loading");
+      const t = setTimeout(() => {
+        searchStations(q)
+          .then((list) => {
+            if (cancelled) return;
+            setStations(list);
+            setStationStatus("success");
+          })
+          .catch(() => {
+            if (cancelled) return;
+            setStations([]);
+            setStationStatus("error");
+          });
+      }, 300);
+      return () => {
+        cancelled = true;
+        clearTimeout(t);
+      };
+    }, [query]);
 
   const filtered = routes?.filter(
     (r) =>
@@ -214,6 +250,29 @@ export function BusScreen({
       showToast("즐겨찾기에 추가했어요");
     }
   };
+  const isStationFavorited = (stationId: string) =>
+  state.favorites.some((f) => f.type === "station" && f.refId === stationId);
+
+const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
+  e.stopPropagation();
+  const existing = state.favorites.find(
+    (f) => f.type === "station" && f.refId === station.id
+  );
+  if (existing) {
+    dispatch({ type: "REMOVE_FAVORITE", id: existing.id });
+    showToast("즐겨찾기에서 삭제했어요");
+  } else {
+    const favorite: Favorite = {
+      id: `fav-station-${station.id}`,
+      type: "station",
+      name: station.name,
+      label: station.arsId || "정류장",
+      refId: station.id,
+    };
+    dispatch({ type: "ADD_FAVORITE", favorite });
+    showToast("즐겨찾기에 추가했어요");
+  }
+};
 
   if (selectedRoute) {
     return <RouteDetail route={selectedRoute} onBack={() => setSelectedRoute(null)} />;
@@ -221,110 +280,221 @@ export function BusScreen({
 
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
-      <header className="bg-white px-5 pt-12 pb-4 border-b border-slate-100 sticky top-0 z-30">
-        <h1 className="text-xl font-bold text-slate-900 mb-3">버스 노선 검색</h1>
-        <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="노선번호 또는 기점·종점명을 입력하세요"
-            className="w-full pl-10 pr-10 py-3 bg-slate-100 rounded-2xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
-          />
-          {query && (
-            <button
-              onClick={() => setQuery("")}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2"
-            >
-              <X className="w-4 h-4 text-slate-400" />
-            </button>
-          )}
-        </div>
-        {status === "loading" && (
-          <p className="text-[11px] text-slate-400 mt-2">
-            전주시 노선 데이터를 불러오는 중이에요. 노선이 많아 시간이 걸릴 수 있어요.
-          </p>
-        )}
-      </header>
+            <header className="bg-white px-5 pt-12 pb-4 border-b border-slate-100 sticky top-0 z-30">
+              <h1 className="text-xl font-bold text-slate-900 mb-3">버스 검색</h1>
 
-      <div className="px-4 py-4">
-        {status === "loading" && (
-          <div className="space-y-2">
-            {[1, 2, 3, 4].map((i) => (
-              <LoadingSkeleton key={i} className="h-24 w-full" />
-            ))}
-          </div>
-        )}
-        {status === "error" && <ErrorState onRetry={retry} />}
-        {status === "success" && filtered && filtered.length === 0 && (
-          <EmptyState
-            icon={BusIcon}
-            title="검색 결과가 없어요"
-            subtitle="다른 노선번호나 정류장명으로 검색해 보세요"
-          />
-        )}
-        {status === "success" && filtered && filtered.length > 0 && (
-          <div className="space-y-2">
-            {filtered.map((route) => (
-              <div
-              key={`${route.id}-${route.number}`}
-              role="button"
-              tabIndex={0}
-              onClick={() => setSelectedRoute(route)}
-              onKeyDown={(e) => e.key === "Enter" && setSelectedRoute(route)}
-              className="w-full bg-white rounded-2xl p-4 border border-slate-100 text-left hover:border-blue-200 hover:shadow-sm transition-all cursor-pointer"
-            >
-              <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-              {(() => {
-                  const label = getRouteTypeLabel(route.number, route.start, route.end);
-                  const isMain = label === "본선";
-                  return (
-                    <div
-                      className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
-                        isMain ? "bg-blue-50" : "bg-emerald-50"
-                      }`}
-                    >
-                      <span
-                        className={`font-bold text-xs leading-tight text-center ${
-                          isMain ? "text-blue-700" : "text-emerald-700"
-                        }`}
-                      >
-                        {label}
-                      </span>
-                    </div>
-                  );
-                })()}
-                <div>
-                  <span className="font-semibold text-slate-900 text-base">{route.number}</span>
-                </div>
-                </div>
+              <div className="flex bg-slate-100 rounded-xl p-1 mb-3">
                 <button
-                  onClick={(e) => toggleFavorite(route, e)}
-                  className="p-1 -m-1 rounded-full hover:bg-amber-50"
+                  onClick={() => {
+                    setSearchTab("route");
+                    setQuery("");
+                  }}
+                  className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    searchTab === "route"
+                      ? "bg-white text-blue-600 shadow-sm"
+                      : "text-slate-500"
+                  }`}
                 >
-                  <Star
-                    className={`w-4 h-4 transition-colors ${
-                      isFavorited(route.id)
-                        ? "text-amber-400 fill-amber-400"
-                        : "text-slate-300 hover:text-amber-400"
-                    }`}
-                  />
+                  노선
+                </button>
+                <button
+                  onClick={() => {
+                    setSearchTab("station");
+                    setQuery("");
+                  }}
+                  className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    searchTab === "station"
+                      ? "bg-white text-blue-600 shadow-sm"
+                      : "text-slate-500"
+                  }`}
+                >
+                  정류장
                 </button>
               </div>
-              <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                <span className="font-medium text-slate-600">{route.start || "기점 정보 없음"}</span>
-                <span className="text-slate-300">→</span>
-                <span className="font-medium text-slate-600">{route.end || "종점 정보 없음"}</span>
+
+              <div className="relative">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={
+                    searchTab === "route"
+                      ? "노선번호 또는 기점·종점명"
+                      : "정류장명 (예: 전주역, 시청)"
+                  }
+                  className="w-full pl-10 pr-10 py-3 bg-slate-100 rounded-2xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                />
+                {query && (
+                  <button
+                    onClick={() => setQuery("")}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2"
+                  >
+                    <X className="w-4 h-4 text-slate-400" />
+                  </button>
+                )}
               </div>
-              <div className="flex items-center gap-3 mt-2 text-[11px] text-slate-400">
-                <span>첫차 {route.firstBus}</span>
-                <span>막차 {route.lastBus}</span>
-                <span>배차 {route.interval}</span>
+              {searchTab === "route" && status === "loading" && (
+                <p className="text-[11px] text-slate-400 mt-2">
+                  전주시 노선 데이터를 불러오는 중이에요. 노선이 많아 시간이 걸릴 수 있어요.
+                </p>
+              )}
+            </header>
+
+            <div className="px-4 py-4">
+        {searchTab === "route" && (
+          <>
+            {status === "loading" && (
+              <div className="space-y-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <LoadingSkeleton key={i} className="h-24 w-full" />
+                ))}
               </div>
-            </div>
-            ))}
-          </div>
+            )}
+            {status === "error" && <ErrorState onRetry={retry} />}
+            {status === "success" && filtered && filtered.length === 0 && (
+              <EmptyState
+                icon={BusIcon}
+                title="검색 결과가 없어요"
+                subtitle="다른 노선번호나 기점·종점으로 검색해 보세요"
+              />
+            )}
+            {status === "success" && filtered && filtered.length > 0 && (
+              <div className="space-y-2">
+                {filtered.map((route) => (
+                  <div
+                    key={`${route.id}-${route.number}`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedRoute(route)}
+                    onKeyDown={(e) => e.key === "Enter" && setSelectedRoute(route)}
+                    className="w-full bg-white rounded-2xl p-4 border border-slate-100 text-left hover:border-blue-200 hover:shadow-sm transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        {(() => {
+                          const label = getRouteTypeLabel(route.number, route.start, route.end);
+                          const isMain = label === "본선";
+                          return (
+                            <div
+                              className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+                                isMain ? "bg-blue-50" : "bg-emerald-50"
+                              }`}
+                            >
+                              <span
+                                className={`font-bold text-xs leading-tight text-center ${
+                                  isMain ? "text-blue-700" : "text-emerald-700"
+                                }`}
+                              >
+                                {label}
+                              </span>
+                            </div>
+                          );
+                        })()}
+                        <div>
+                          <span className="font-semibold text-slate-900 text-base">
+                            {route.number}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => toggleFavorite(route, e)}
+                        className="p-1 -m-1 rounded-full hover:bg-amber-50"
+                      >
+                        <Star
+                          className={`w-4 h-4 transition-colors ${
+                            isFavorited(route.id)
+                              ? "text-amber-400 fill-amber-400"
+                              : "text-slate-300 hover:text-amber-400"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <span className="font-medium text-slate-600">
+                        {route.start || "기점 정보 없음"}
+                      </span>
+                      <span className="text-slate-300">→</span>
+                      <span className="font-medium text-slate-600">
+                        {route.end || "종점 정보 없음"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 mt-2 text-[11px] text-slate-400">
+                      <span>첫차 {route.firstBus}</span>
+                      <span>막차 {route.lastBus}</span>
+                      <span>배차 {route.interval}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {searchTab === "station" && (
+          <>
+            {!query.trim() && (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <MapPin className="w-10 h-10 text-slate-300 mb-3" />
+                <p className="text-sm text-slate-400">정류장 이름을 검색해 보세요</p>
+                <p className="text-xs text-slate-300 mt-1">전주시 버스 정류장</p>
+              </div>
+            )}
+            {query.trim() && stationStatus === "loading" && (
+              <div className="space-y-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <LoadingSkeleton key={i} className="h-14 w-full" />
+                ))}
+              </div>
+            )}
+            {query.trim() && stationStatus === "error" && (
+              <p className="text-sm text-red-500 text-center py-8">
+                정류장 검색에 실패했어요
+              </p>
+            )}
+            {query.trim() && stationStatus === "success" && stations.length === 0 && (
+              <EmptyState
+                icon={MapPin}
+                title="검색 결과가 없어요"
+                subtitle="다른 정류장명으로 검색해 보세요"
+              />
+            )}
+            {query.trim() && stationStatus === "success" && stations.length > 0 && (
+              <div className="space-y-2">
+                {stations.map((station) => (
+                  <div
+                    key={station.id}
+                    className="w-full bg-white rounded-2xl p-4 border border-slate-100 flex items-center gap-3"
+                  >
+                    <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+                      <MapPin className="w-5 h-5 text-emerald-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-800 truncate">
+                        {station.name}
+                      </p>
+                      {station.arsId && (
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          정류장번호 {station.arsId}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      onClick={(e) => toggleStationFavorite(station, e)}
+                      className="p-1.5 rounded-full hover:bg-amber-50"
+                    >
+                      <Star
+                        className={`w-4 h-4 transition-colors ${
+                          isStationFavorited(station.id)
+                            ? "text-amber-400 fill-amber-400"
+                            : "text-slate-300 hover:text-amber-400"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
