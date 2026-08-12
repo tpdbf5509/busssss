@@ -160,33 +160,59 @@ function getRouteTypeLabel(number: string, start: string, end: string) {
   });
   return matched ? "본선" : "분선";
 }
-function FavoriteArrivalBadge({ fav }: { fav: Favorite }) {
+function FavoriteArrivalInfo({
+  fav,
+  isRoute,
+  routeNumber,
+}: {
+  fav: Favorite;
+  isRoute: boolean;
+  routeNumber: string;
+}) {
   const isStopRoute = fav.type === "stop_route";
   const { data, status } = useArrivalInfo(
     isStopRoute ? fav.tagoNodeId : undefined,
     isStopRoute ? fav.tagoRouteId : undefined
   );
 
-  if (!isStopRoute) {
-    return (
-      <div className="text-right shrink-0">
-        <p className="text-xs font-medium text-slate-300">도착정보</p>
-        <p className="text-sm font-semibold text-slate-400">준비중</p>
-      </div>
-    );
+  let subtitle: string;
+  if (isRoute) {
+    subtitle = "노선";
+  } else if (!isStopRoute) {
+    subtitle = "정류장";
+  } else if (status === "loading") {
+    subtitle = "정거장 확인 중";
+  } else if (status === "success" && data) {
+    subtitle = data.stopsAway <= 0 ? "곧 도착 정류장" : `${data.stopsAway}정거장 전`;
+  } else {
+    subtitle = `${fav.routeNumber}번 정류장`;
   }
 
   return (
-    <div className="text-right shrink-0">
-      <p className="text-xs font-medium text-slate-300">도착정보</p>
-      {status === "loading" && <p className="text-sm font-semibold text-slate-300">조회 중</p>}
-      {status === "success" && data && (
-        <p className={`text-sm font-bold ${data.minutes <= 3 ? "text-blue-600" : "text-slate-700"}`}>
-          {data.minutes <= 0 ? "곧 도착" : `${data.minutes}분 후`}
+    <>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-slate-800 truncate">
+          {isRoute ? `${routeNumber}번` : fav.name}
         </p>
-      )}
-      {status === "error" && <p className="text-sm font-semibold text-slate-300">정보 없음</p>}
-    </div>
+        <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>
+      </div>
+
+      <div className="text-right shrink-0">
+        <p className="text-xs font-medium text-slate-300">도착정보</p>
+        {!isStopRoute && <p className="text-sm font-semibold text-slate-400">준비중</p>}
+        {isStopRoute && status === "loading" && (
+          <p className="text-sm font-semibold text-slate-300">조회 중</p>
+        )}
+        {isStopRoute && status === "success" && data && (
+          <p className={`text-sm font-bold ${data.minutes <= 3 ? "text-blue-600" : "text-slate-700"}`}>
+            {data.minutes <= 0 ? "곧 도착" : `${data.minutes}분 후`}
+          </p>
+        )}
+        {isStopRoute && status === "error" && (
+          <p className="text-sm font-semibold text-slate-300">정보 없음</p>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -326,17 +352,8 @@ export function HomeScreen({
                 </span>
               </div>
 
-              {/* 가운데: 노선번호 */}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-800 truncate">
-                  {isRoute ? `${routeNumber}번` : fav.name}
-                </p>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  {isRoute ? "노선" : isStopRoute ? `${fav.routeNumber}번 정류장` : "정류장"}
-                </p>
-              </div>
-
-              <FavoriteArrivalBadge fav={fav} />
+            {/* 가운데: 노선번호 + 정거장 남은 개수 / 오른쪽: 도착정보 배지 */}
+            <FavoriteArrivalInfo fav={fav} isRoute={isRoute} routeNumber={routeNumber} />
             </button>
 
             {editMode && (
