@@ -126,3 +126,4 @@ export async function getSttnAcctoArvlPrearngeInfoList(
   if (routeId) params.routeId = routeId;
   return callTagoApi("/ArvlInfoInqireService/getSttnAcctoArvlPrearngeInfoList", params);
 }
+

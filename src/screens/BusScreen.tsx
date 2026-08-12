@@ -9,10 +9,10 @@ import type { Route, BusStop } from "@/types/route";
 import type { Favorite } from "@/types";
 import { LoadingSkeleton, ErrorState, EmptyState } from "@/components/ui";
 import { showToast } from "@/components/Toast";
-import { searchStations } from "@/services/stationService";
 import type { Station } from "@/types/route";
 import { MapPin } from "lucide-react";
 import { resolveNodeId, resolveRouteId } from "@/services/arrivalService";
+import { searchStations, fetchRoutesForStation, type StationRoute } from "@/services/stationService";
 
 const MAIN_LINES: { number: string; start: string; end: string }[] = [
   { number: "2", start: "평화동종점", end: "평화동종점" },
@@ -176,6 +176,7 @@ export function BusScreen({
 } = {}) {
   const [query, setQuery] = useState("");
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
+  const [selectedStation, setSelectedStation] = useState<Station | null>(null);
   const { state, dispatch } = useApp();
   
 
@@ -280,6 +281,14 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
     return <RouteDetail route={selectedRoute} onBack={() => setSelectedRoute(null)} />;
   }
 
+  if (selectedStation) {
+    return (
+      <StationDetail
+        station={selectedStation}
+        onBack={() => setSelectedStation(null)}
+      />
+    );
+  }
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
             <header className="bg-white px-5 pt-12 pb-4 border-b border-slate-100 sticky top-0 z-30">
@@ -465,7 +474,11 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                 {stations.map((station) => (
                   <div
                     key={station.id}
-                    className="w-full bg-white rounded-2xl p-4 border border-slate-100 flex items-center gap-3"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedStation(station)}
+                    onKeyDown={(e) => e.key === "Enter" && setSelectedStation(station)}
+                    className="w-full bg-white rounded-2xl p-4 border border-slate-100 flex items-center gap-3 cursor-pointer hover:border-blue-200 hover:shadow-sm transition-all"
                   >
                     <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
                       <MapPin className="w-5 h-5 text-emerald-600" />
@@ -496,6 +509,472 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                 ))}
               </div>
             )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StationDetail({
+  station,
+  onBack,
+}: {
+  station: Station;
+  onBack: () => void;
+}) {
+  const { state, dispatch } = useApp();
+
+  const [routes, setRoutes] = useState<StationRoute[]>([]);
+  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
+  const [addingRouteNo, setAddingRouteNo] = useState<string | null>(null);
+
+  const { data: allRoutes } = useAsync(() => fetchAllRoutes(), []);
+
+  const [detailTab, setDetailTab] = useState<"arrival" | "all">("arrival");
+  const [allViaRoutes, setAllViaRoutes] = useState<Route[]>([]);
+  const [allStatus, setAllStatus] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
+
+  // 실시간 도착 노선 불러오기
+  useEffect(() => {
+    let cancelled = false;
+
+    setStatus("loading");
+
+    fetchRoutesForStation(station.id)
+      .then((list) => {
+        if (cancelled) return;
+
+        setRoutes(list);
+        setStatus("success");
+      })
+      .catch(() => {
+        if (cancelled) return;
+
+        setRoutes([]);
+        setStatus("error");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [station.id]);
+
+  // 전체 경유노선 불러오기
+  useEffect(() => {
+    if (detailTab !== "all") return;
+    if (!allRoutes || allRoutes.length === 0) return;
+
+    let cancelled = false;
+
+    setAllStatus("loading");
+
+    const normalize = (s: string) =>
+      (s ?? "")
+        .replace(/\s+/g, "")
+        .replace(/\(.*?\)/g, "")
+        .trim();
+
+    const target = normalize(station.name);
+
+    (async () => {
+      try {
+        const matched: Route[] = [];
+
+        for (const route of allRoutes) {
+          if (cancelled) return;
+
+          try {
+            const stops = await fetchStopsForRoute(route.id);
+
+            const hit = stops.some(
+              (st) => normalize(st.name) === target
+            );
+
+            if (hit) {
+              matched.push(route);
+            }
+          } catch {
+            // 한 노선 조회 실패해도 다른 노선은 계속 조회
+          }
+        }
+
+        if (cancelled) return;
+
+        matched.sort((a, b) =>
+          a.number.localeCompare(b.number, undefined, {
+            numeric: true,
+          })
+        );
+
+        setAllViaRoutes(matched);
+        setAllStatus("success");
+      } catch {
+        if (!cancelled) {
+          setAllStatus("error");
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [detailTab, station.name, allRoutes]);
+
+  // 실시간 노선 즐겨찾기 여부
+  const isArrivalFavorited = (routeNo: string) =>
+    state.favorites.some(
+      (f) =>
+        f.type === "stop_route" &&
+        f.routeNumber === routeNo &&
+        f.stopName === station.name
+    );
+
+  // 실시간 노선 즐겨찾기
+  const handleRouteClick = async (sr: StationRoute) => {
+    const existing = state.favorites.find(
+      (f) =>
+        f.type === "stop_route" &&
+        f.routeNumber === sr.routeNo &&
+        f.stopName === station.name
+    );
+
+    if (existing) {
+      dispatch({
+        type: "REMOVE_FAVORITE",
+        id: existing.id,
+      });
+
+      showToast("즐겨찾기에서 삭제했어요");
+      return;
+    }
+
+    setAddingRouteNo(sr.routeNo);
+
+    try {
+      const appRoute = allRoutes?.find(
+        (r) =>
+          r.number === sr.routeNo ||
+          r.rawNumber === sr.routeNo
+      );
+
+      dispatch({
+        type: "ADD_FAVORITE",
+        favorite: {
+          id: `fav-stop-${station.id}-${sr.routeId}`,
+          type: "stop_route",
+          name: station.name,
+          label: sr.routeNo,
+          refId: `${station.id}-${sr.routeId}`,
+          tagoNodeId: station.id,
+          tagoRouteId: sr.routeId,
+          appRouteId: appRoute?.id,
+          stopName: station.name,
+          routeNumber: sr.routeNo,
+        },
+      });
+
+      showToast("즐겨찾기에 추가했어요");
+    } catch {
+      showToast("즐겨찾기 추가에 실패했어요");
+    } finally {
+      setAddingRouteNo(null);
+    }
+  };
+
+  // 전체 경유노선 즐겨찾기
+  const handleAllRouteClick = async (route: Route) => {
+    const existing = state.favorites.find(
+      (f) =>
+        f.type === "stop_route" &&
+        f.routeNumber === route.number &&
+        f.stopName === station.name
+    );
+
+    if (existing) {
+      dispatch({
+        type: "REMOVE_FAVORITE",
+        id: existing.id,
+      });
+
+      showToast("즐겨찾기에서 삭제했어요");
+      return;
+    }
+
+    setAddingRouteNo(route.number);
+
+    try {
+      const tagoRouteId = await resolveRouteId(route);
+
+      if (!tagoRouteId) {
+        showToast("이 노선은 아직 실시간 도착정보를 지원하지 않아요");
+        return;
+      }
+
+      dispatch({
+        type: "ADD_FAVORITE",
+        favorite: {
+          id: `fav-stop-${station.id}-${tagoRouteId}`,
+          type: "stop_route",
+          name: station.name,
+          label: route.number,
+          refId: `${station.id}-${tagoRouteId}`,
+          tagoNodeId: station.id,
+          tagoRouteId,
+          appRouteId: route.id,
+          stopName: station.name,
+          routeNumber: route.number,
+        },
+      });
+
+      showToast("즐겨찾기에 추가했어요");
+    } catch {
+      showToast("즐겨찾기 추가에 실패했어요");
+    } finally {
+      setAddingRouteNo(null);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 pb-20">
+      <header className="bg-white px-4 pt-12 pb-4 border-b border-slate-100 sticky top-0 z-30">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onBack}
+            className="p-1.5 -ml-1.5 rounded-full hover:bg-slate-100"
+          >
+            <ArrowLeft className="w-5 h-5 text-slate-700" />
+          </button>
+
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-bold text-slate-900 truncate">
+              {station.name}
+            </h1>
+
+            {station.arsId && (
+              <p className="text-xs text-slate-400 mt-0.5">
+                정류장번호 {station.arsId}
+              </p>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* 탭 */}
+      <div className="px-4 pt-3">
+        <div className="flex bg-slate-100 rounded-xl p-1">
+          <button
+            onClick={() => setDetailTab("arrival")}
+            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              detailTab === "arrival"
+                ? "bg-white text-blue-600 shadow-sm"
+                : "text-slate-500"
+            }`}
+          >
+            실시간 도착
+          </button>
+
+          <button
+            onClick={() => setDetailTab("all")}
+            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              detailTab === "all"
+                ? "bg-white text-blue-600 shadow-sm"
+                : "text-slate-500"
+            }`}
+          >
+            전체 경유노선
+          </button>
+        </div>
+      </div>
+
+      <div className="px-4 py-4">
+
+        {/* ========================= */}
+        {/* 실시간 도착 탭 */}
+        {/* ========================= */}
+
+        {detailTab === "arrival" && (
+          <>
+            <p className="text-xs text-slate-400 mb-3">
+              이 정류장을 경유하는 노선
+            </p>
+
+            {status === "loading" && (
+              <div className="space-y-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <LoadingSkeleton
+                    key={i}
+                    className="h-16 w-full"
+                  />
+                ))}
+              </div>
+            )}
+
+            {status === "error" && (
+              <p className="text-sm text-red-500 text-center py-8">
+                노선 정보를 불러오지 못했어요
+              </p>
+            )}
+
+            {status === "success" && routes.length === 0 && (
+              <EmptyState
+                icon={BusIcon}
+                title="경유 노선이 없어요"
+                subtitle="운행 중인 버스가 없거나 정보가 없을 수 있어요"
+              />
+            )}
+
+            {status === "success" && routes.length > 0 && (
+              <div className="space-y-2">
+                {routes.map((sr) => {
+                  const minutes =
+                    sr.arrtime != null
+                      ? Math.max(
+                          0,
+                          Math.round(sr.arrtime / 60)
+                        )
+                      : null;
+
+                  return (
+                    <button
+                      key={sr.routeId}
+                      onClick={() => handleRouteClick(sr)}
+                      disabled={
+                        addingRouteNo === sr.routeNo
+                      }
+                      className="w-full bg-white rounded-2xl p-4 border border-slate-100 text-left hover:border-blue-200 hover:shadow-sm transition-all flex items-center gap-3"
+                    >
+                      <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                        <span className="font-bold text-sm text-blue-700">
+                          {sr.routeNo}
+                        </span>
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-800">
+                          {sr.routeNo}번
+
+                          {sr.routeTp ? (
+                            <span className="text-xs font-normal text-slate-400 ml-1.5">
+                              {sr.routeTp}
+                            </span>
+                          ) : null}
+                        </p>
+
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {minutes == null
+                            ? "도착정보 없음"
+                            : minutes <= 0
+                            ? "곧 도착"
+                            : `${minutes}분 후` +
+                              (sr.arrprevstationcnt != null
+                                ? ` · ${sr.arrprevstationcnt}정거장 전`
+                                : "")}
+                        </p>
+                      </div>
+
+                      {addingRouteNo === sr.routeNo ? (
+                        <span className="w-4 h-4 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin shrink-0" />
+                      ) : (
+                        <Star
+                          className={`w-4 h-4 shrink-0 transition-colors ${
+                            isArrivalFavorited(sr.routeNo)
+                              ? "text-amber-400 fill-amber-400"
+                              : "text-slate-300"
+                          }`}
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ========================= */}
+        {/* 전체 경유노선 탭 */}
+        {/* ========================= */}
+
+        {detailTab === "all" && (
+          <>
+            <p className="text-xs text-slate-400 mb-3">
+              이 정류장을 경유하는 모든 노선
+            </p>
+
+            {allStatus === "loading" && (
+              <div className="space-y-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <LoadingSkeleton
+                    key={i}
+                    className="h-16 w-full"
+                  />
+                ))}
+              </div>
+            )}
+
+            {allStatus === "error" && (
+              <p className="text-sm text-red-500 text-center py-8">
+                경유 노선을 불러오지 못했어요
+              </p>
+            )}
+
+            {allStatus === "success" &&
+              allViaRoutes.length === 0 && (
+                <EmptyState
+                  icon={BusIcon}
+                  title="경유 노선이 없어요"
+                  subtitle="정류장 이름이 일치하는 노선이 없습니다"
+                />
+              )}
+
+            {allStatus === "success" &&
+              allViaRoutes.length > 0 && (
+                <div className="space-y-2">
+                  {allViaRoutes.map((route) => (
+                    <button
+                      key={route.id}
+                      onClick={() =>
+                        handleAllRouteClick(route)
+                      }
+                      disabled={
+                        addingRouteNo === route.number
+                      }
+                      className="w-full bg-white rounded-2xl p-4 border border-slate-100 text-left hover:border-blue-200 hover:shadow-sm transition-all flex items-center gap-3"
+                    >
+                      <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+                        <span className="font-bold text-sm text-emerald-700">
+                          {route.number}
+                        </span>
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-800">
+                          {route.number}번
+                        </p>
+
+                        <p className="text-xs text-slate-400 mt-0.5 truncate">
+                          {route.start} → {route.end}
+                        </p>
+                      </div>
+
+                      {addingRouteNo === route.number ? (
+                        <span className="w-4 h-4 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin shrink-0" />
+                      ) : (
+                        <Star
+                          className={`w-4 h-4 shrink-0 transition-colors ${
+                            isArrivalFavorited(route.number)
+                              ? "text-amber-400 fill-amber-400"
+                              : "text-slate-300"
+                          }`}
+                        />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
           </>
         )}
       </div>
@@ -812,6 +1291,8 @@ function DispatchScheduleModal({
       cancelled = true;
     };
   }, [route.id]);
+
+  
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
