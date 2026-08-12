@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { MapPin, ChevronDown, Star, Search, RadioTower } from "lucide-react";
 import { useApp } from "@/store/AppContext";
 import { useAsync } from "@/hooks/useAsync";
 import { fetchAllRoutes } from "@/services/routeService";
 import { RegionModal } from "@/components/RegionModal";
 import { showToast } from "@/components/Toast";
 import type { TabId } from "@/components/BottomNav";
+import { MapPin, ChevronDown, Star, Search, RadioTower, X } from "lucide-react";
+import { useArrivalInfo } from "@/hooks/useArrivalInfo";
+import type { Favorite } from "@/types";
 
 const MAIN_LINES: { number: string; start: string; end: string }[] = [
   { number: "2", start: "평화동종점", end: "평화동종점" },
@@ -158,6 +160,35 @@ function getRouteTypeLabel(number: string, start: string, end: string) {
   });
   return matched ? "본선" : "분선";
 }
+function FavoriteArrivalBadge({ fav }: { fav: Favorite }) {
+  const isStopRoute = fav.type === "stop_route";
+  const { data, status } = useArrivalInfo(
+    isStopRoute ? fav.tagoNodeId : undefined,
+    isStopRoute ? fav.tagoRouteId : undefined
+  );
+
+  if (!isStopRoute) {
+    return (
+      <div className="text-right shrink-0">
+        <p className="text-xs font-medium text-slate-300">도착정보</p>
+        <p className="text-sm font-semibold text-slate-400">준비중</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="text-right shrink-0">
+      <p className="text-xs font-medium text-slate-300">도착정보</p>
+      {status === "loading" && <p className="text-sm font-semibold text-slate-300">조회 중</p>}
+      {status === "success" && data && (
+        <p className={`text-sm font-bold ${data.minutes <= 3 ? "text-blue-600" : "text-slate-700"}`}>
+          {data.minutes <= 0 ? "곧 도착" : `${data.minutes}분 후`}
+        </p>
+      )}
+      {status === "error" && <p className="text-sm font-semibold text-slate-300">정보 없음</p>}
+    </div>
+  );
+}
 
 export function HomeScreen({
   onNavigate,
@@ -166,6 +197,7 @@ export function HomeScreen({
 }) {
   const { state, dispatch } = useApp();
   const [regionOpen, setRegionOpen] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const { data: routes } = useAsync(() => fetchAllRoutes(), []);
 
   return (
@@ -217,89 +249,113 @@ export function HomeScreen({
       </section>
 
       <section className="px-4 mt-6">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold text-slate-700">즐겨찾기</h3>
-          <button
-            onClick={() => onNavigate("my")}
-            className="text-xs text-blue-600 font-medium hover:underline"
-          >
-            전체보기
-          </button>
-        </div>
-        {state.favorites.length === 0 ? (
-          <div className="bg-white rounded-2xl p-6 text-center border border-slate-100">
-            <Star className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-            <p className="text-sm text-slate-400">즐겨찾기를 추가해 보세요</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {state.favorites.map((fav) => {
-              const isRoute = fav.type === "route";
-              const matchedRoute = isRoute
-                ? routes?.find((r) => r.id === fav.refId)
-                : undefined;
-              const isMain = matchedRoute
-                ? getRouteTypeLabel(
-                    matchedRoute.number,
-                    matchedRoute.start,
-                    matchedRoute.end
-                  ) === "본선"
-                : true;
+  <div className="flex items-center justify-between mb-3">
+    <h3 className="text-sm font-bold text-slate-700">즐겨찾기</h3>
+    <div className="flex items-center gap-3">
+      {state.favorites.length > 0 && (
+        <button
+          onClick={() => setEditMode((v) => !v)}
+          className="text-xs text-slate-400 font-medium hover:text-slate-600"
+        >
+          {editMode ? "완료" : "편집"}
+        </button>
+      )}
+      <button
+        onClick={() => onNavigate("my")}
+        className="text-xs text-blue-600 font-medium hover:underline"
+      >
+        전체보기
+      </button>
+    </div>
+  </div>
+  {state.favorites.length === 0 ? (
+    <div className="bg-white rounded-2xl p-6 text-center border border-slate-100">
+      <Star className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+      <p className="text-sm text-slate-400">즐겨찾기를 추가해 보세요</p>
+    </div>
+  ) : (
+    <div className="space-y-2">
+      {state.favorites.map((fav) => {
+        const isRoute = fav.type === "route";
+        const matchedRoute = isRoute
+          ? routes?.find((r) => r.id === fav.refId)
+          : undefined;
+        const isMain = matchedRoute
+          ? getRouteTypeLabel(
+              matchedRoute.number,
+              matchedRoute.start,
+              matchedRoute.end
+            ) === "본선"
+          : true;
 
-              const badgeBg = isRoute
-                ? isMain
-                  ? "bg-blue-50"
-                  : "bg-emerald-50"
-                : "bg-blue-50";
-              const badgeText = isRoute
-                ? isMain
-                  ? "text-blue-700"
-                  : "text-emerald-700"
-                : "text-blue-700";
+        const badgeBg = isRoute
+          ? isMain
+            ? "bg-blue-50"
+            : "bg-emerald-50"
+          : "bg-blue-50";
+        const badgeText = isRoute
+          ? isMain
+            ? "text-blue-700"
+            : "text-emerald-700"
+          : "text-blue-700";
 
-              const routeNumber =
-                matchedRoute?.number ?? fav.name.replace(/번$/, "").trim();
+        const routeNumber =
+          matchedRoute?.number ?? fav.name.replace(/번$/, "").trim();
 
-              return (
-                <button
-                  key={fav.id}
-                  onClick={() =>
-                    onNavigate(isRoute ? "bus" : "home", fav.refId)
-                  }
-                  className="w-full bg-white rounded-2xl border border-slate-100 px-4 py-3.5 flex items-center gap-3 text-left hover:border-blue-200 hover:shadow-sm transition-all"
+          const isStopRoute = fav.type === "stop_route";
+          const targetTab: TabId = isRoute || isStopRoute ? "bus" : "home";
+          const targetId = isStopRoute ? fav.appRouteId : fav.refId;
+
+        return (
+          <div key={fav.id} className="relative">
+            <button
+              onClick={() => { 
+                if (editMode) return;
+                onNavigate(targetTab, targetId);
+              }}
+              className="w-full bg-white rounded-2xl border border-slate-100 px-4 py-3.5 flex items-center gap-3 text-left hover:border-blue-200 hover:shadow-sm transition-all"
+            >
+              {/* 왼쪽: 본선/분선 글씨 + 색 */}
+              <div
+                className={`min-w-[64px] h-11 rounded-xl flex items-center justify-center shrink-0 px-2 ${badgeBg}`}
+              >
+                <span
+                  className={`font-bold text-sm leading-tight text-center truncate ${badgeText}`}
                 >
-                  {/* 왼쪽: 본선/분선 글씨 + 색 */}
-                  <div
-                    className={`min-w-[64px] h-11 rounded-xl flex items-center justify-center shrink-0 px-2 ${badgeBg}`}
-                  >
-                    <span
-                      className={`font-bold text-sm leading-tight text-center truncate ${badgeText}`}
-                    >
-                      {isRoute ? (isMain ? "본선" : "분선") : fav.label}
-                    </span>
-                  </div>
+                  {isRoute ? (isMain ? "본선" : "분선") : fav.label}
+                </span>
+              </div>
 
-                  {/* 가운데: 노선번호 */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-800 truncate">
-                      {isRoute ? `${routeNumber}번` : fav.name}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      {isRoute ? "노선" : "정류장"}
-                    </p>
-                  </div>
+              {/* 가운데: 노선번호 */}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-slate-800 truncate">
+                  {isRoute ? `${routeNumber}번` : fav.name}
+                </p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {isRoute ? "노선" : isStopRoute ? `${fav.routeNumber}번 정류장` : "정류장"}
+                </p>
+              </div>
 
-                  {/* 오른쪽: 도착정보 */}
-                  <div className="text-right shrink-0">
-                    <p className="text-xs font-medium text-slate-300">도착정보</p>
-                    <p className="text-sm font-semibold text-slate-400">준비중</p>
-                  </div>
-                </button>
-              );
-            })}
+              <FavoriteArrivalBadge fav={fav} />
+            </button>
+
+            {editMode && (
+              <button
+                onClick={() => {
+                  dispatch({ type: "REMOVE_FAVORITE", id: fav.id });
+                  showToast("삭제했어요");
+                }}
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center shadow-sm active:scale-90 transition-transform"
+              >
+                <X className="w-3 h-3" strokeWidth={3} />
+              </button>
+            )}
           </div>
-        )}
-      </section>
+        );
+      })}
+    </div>
+  )}
+</section>
 
       <RegionModal
         open={regionOpen}

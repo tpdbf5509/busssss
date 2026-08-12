@@ -110,3 +110,19 @@ export async function getSttnNoList(
     pageNo: "1",
   });
 }
+
+/** 정류소 도착예정정보(도착정보 API) 조회. routeId를 넘기면 그 노선만 필터링됩니다. */
+export async function getSttnAcctoArvlPrearngeInfoList(
+  nodeId: string,
+  routeId?: string,
+  cityCode: string = JEONJU_CITY_CODE
+): Promise<RawTagoField[]> {
+  const params: Record<string, string> = {
+    cityCode,
+    nodeId,
+    numOfRows: "10",
+    pageNo: "1",
+  };
+  if (routeId) params.routeId = routeId;
+  return callTagoApi("/ArvlInfoInqireService/getSttnAcctoArvlPrearngeInfoList", params);
+}

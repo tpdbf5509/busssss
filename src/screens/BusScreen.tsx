@@ -5,13 +5,15 @@ import { useBusLocations } from "@/hooks/useBusLocations";
 import { useApp } from "@/store/AppContext";
 import { fetchAllRoutes, fetchStopsForRoute } from "@/services/routeService";
 import { fetchBisTimeInfo, type BisTimeInfo } from "@/api/jeonjuBis";
-import type { Route } from "@/types/route";
+import type { Route, BusStop } from "@/types/route";
 import type { Favorite } from "@/types";
 import { LoadingSkeleton, ErrorState, EmptyState } from "@/components/ui";
 import { showToast } from "@/components/Toast";
 import { searchStations } from "@/services/stationService";
 import type { Station } from "@/types/route";
 import { MapPin } from "lucide-react";
+import { resolveNodeId, resolveRouteId } from "@/services/arrivalService";
+
 const MAIN_LINES: { number: string; start: string; end: string }[] = [
   { number: "2", start: "평화동종점", end: "평화동종점" },
   { number: "3-1", start: "전주대학교", end: "전주대학교" },
@@ -526,6 +528,56 @@ function RouteDetail({ route, onBack }: { route: Route; onBack: () => void }) {
   }, [buses]);
   const normalizeStopName = (s: string) =>
     (s ?? "").replace(/\s+/g, "").replace(/\(.*?\)/g, "").trim();
+    const [addingStopId, setAddingStopId] = useState<string | null>(null);
+
+const isArrivalFavorited = (stopName: string) =>
+  state.favorites.some(
+    (f) => f.type === "stop_route" && f.routeNumber === route.number && f.stopName === stopName
+  );
+
+const handleStopClick = async (stop: BusStop) => {
+  const existing = state.favorites.find(
+    (f) => f.type === "stop_route" && f.routeNumber === route.number && f.stopName === stop.name
+  );
+  if (existing) {
+    dispatch({ type: "REMOVE_FAVORITE", id: existing.id });
+    showToast("즐겨찾기에서 삭제했어요");
+    return;
+  }
+
+  setAddingStopId(stop.id);
+  try {
+    const [nodeId, routeId] = await Promise.all([
+      resolveNodeId(stop.name),
+      resolveRouteId(route),
+    ]);
+    if (!nodeId || !routeId) {
+      showToast("이 정류장은 아직 실시간 도착정보를 지원하지 않아요");
+      return;
+    }
+    dispatch({
+      type: "ADD_FAVORITE",
+      favorite: {
+        id: `fav-stop-${route.id}-${stop.id}`,
+        type: "stop_route",
+        name: stop.name,
+        label: route.number,
+        refId: `${route.id}-${stop.id}`,
+        tagoNodeId: nodeId,
+        tagoRouteId: routeId,
+        appRouteId: route.id,
+        stopName: stop.name,
+        routeNumber: route.number,
+      },
+    });
+    showToast("즐겨찾기에 추가했어요");
+  } catch {
+    showToast("즐겨찾기 추가에 실패했어요");
+  } finally {
+    setAddingStopId(null);
+  }
+};
+  
 
  
   return (
@@ -645,7 +697,11 @@ function RouteDetail({ route, onBack }: { route: Route; onBack: () => void }) {
                     >
                       <span className="sr-only">{stop.order}</span>
                     </div>
-                    <div className="flex-1 py-2.5 px-3 rounded-xl hover:bg-white transition-colors">
+                    <button
+                      onClick={() => handleStopClick(stop)}
+                      disabled={addingStopId === stop.id}
+                      className="flex-1 flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-white transition-colors text-left"
+                    >
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-[11px] text-slate-400 font-medium w-5 shrink-0">
                           {stop.order}
@@ -659,7 +715,18 @@ function RouteDetail({ route, onBack }: { route: Route; onBack: () => void }) {
                           </span>
                         )}
                       </div>
-                    </div>
+                      {addingStopId === stop.id ? (
+                        <span className="w-4 h-4 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin shrink-0" />
+                      ) : (
+                        <Star
+                          className={`w-4 h-4 shrink-0 transition-colors ${
+                            isArrivalFavorited(stop.name)
+                              ? "text-amber-400 fill-amber-400"
+                              : "text-slate-300"
+                          }`}
+                        />
+                      )}
+                    </button>
                   </div>
                 );
               })}

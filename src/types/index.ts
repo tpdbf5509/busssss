@@ -49,11 +49,18 @@ export interface RouteStation {
 
 export interface Favorite {
   id: string;
-  type: "station" | "route";
+  type: "station" | "route" | "stop_route";
   name: string;
   label: string;
   refId: string;
+  // stop_route 전용: 특정 노선의 특정 정류장 도착정보 즐겨찾기
+  tagoNodeId?: string;   // TAGO 정류소ID
+  tagoRouteId?: string;  // TAGO 노선ID (실시간 조회용)
+  appRouteId?: string;   // 우리 앱 내부 route.id (상세화면 이동용)
+  stopName?: string;
+  routeNumber?: string;
 }
+
 
 export interface CardInfo {
   balance: number;
