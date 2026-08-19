@@ -5,10 +5,18 @@
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
   body {
     font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background-color: #f8fafc;
+    touch-action: manipulation;
+  }
+
+  input,
+  textarea,
+  select {
+    font-size: 16px;
   }
 }
 
@@ -20,10 +28,10 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
-  .w-4\.5 {
+  .w-4\\.5 {
     width: 1.125rem;
   }
-  .h-4\.5 {
+  .h-4\\.5 {
     height: 1.125rem;
   }
 }
