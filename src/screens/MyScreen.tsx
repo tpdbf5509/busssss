@@ -20,6 +20,7 @@ import { RegionModal } from "@/components/RegionModal";
 import { Toggle } from "@/components/ui";
 import { showToast } from "@/components/Toast";
 import { requestNotificationPermission } from "@/services/alertMonitorService";
+import { supabase } from "@/lib/supabaseClient";
 
 const SETTINGS_KEY = "busssss_settings_v1";
 
@@ -90,8 +91,13 @@ export function MyScreen() {
     else showToast("알림 권한이 필요해요. 브라우저 설정에서 허용해 주세요");
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (!confirm("로그아웃 할까요? (로컬 설정은 유지됩니다)")) return;
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      showToast("로그아웃에 실패했어요");
+      return;
+    }
     showToast("로그아웃되었어요");
   };
 
@@ -116,7 +122,6 @@ export function MyScreen() {
         </div>
       </header>
 
-      {/* Favorites */}
       <section className="px-4 -mt-3">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
           <div className="flex items-center gap-1.5 text-sm font-bold text-slate-700 mb-3">
@@ -187,7 +192,6 @@ export function MyScreen() {
         </div>
       </section>
 
-      {/* Settings */}
       <section className="px-4 mt-4">
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
           <SettingRow icon={Bell} label="알림 설정" onClick={handleNotification} />
