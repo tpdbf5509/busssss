@@ -4,12 +4,14 @@ import { useApp } from "@/store/AppContext";
 import { CARD_INFO } from "@/data/mock";
 import { showToast } from "@/components/Toast";
 
-const chargeAmounts = [5000, 10000, 20000, 50000];
+const chargeAmounts = [1000, 5000, 10000, 50000];
 
 export function CardScreen() {
   const { state, dispatch } = useApp();
-  const [amount, setAmount] = useState(10000);
+  const [amount, setAmount] = useState(5000);
   const [charging, setCharging] = useState(false);
+  const [customMode, setCustomMode] = useState(false);
+  const [customInput, setCustomInput] = useState("");
 
   const card = CARD_INFO;
 
@@ -23,12 +25,24 @@ export function CardScreen() {
     }, 800);
   };
 
+  const applyCustomInput = (raw: string) => {
+    const digits = raw.replace(/[^0-9]/g, "");
+    setCustomInput(digits);
+    const n = parseInt(digits || "0", 10);
+    if (!Number.isNaN(n)) setAmount(n);
+  };
+
+  const formatLabel = (amt: number) => {
+    if (amt >= 10000) return `${amt / 10000}만원`;
+    if (amt >= 1000) return `${amt / 1000}천원`;
+    return `${amt}원`;
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
       <header className="bg-gradient-to-b from-slate-900 to-slate-800 px-5 pt-12 pb-8 text-white">
         <h1 className="text-xl font-bold mb-4">모바일 버스카드</h1>
 
-        {/* Card */}
         <div className="relative bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-400 rounded-2xl p-5 shadow-xl overflow-hidden">
           <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full" />
           <div className="absolute -right-4 -bottom-10 w-24 h-24 bg-white/10 rounded-full" />
@@ -43,47 +57,89 @@ export function CardScreen() {
             <div>
               <p className="text-xs text-blue-100 mb-1">잔액</p>
               <p className="text-3xl font-bold tracking-tight">
-                {state.cardBalance.toLocaleString()}<span className="text-lg font-medium ml-1">원</span>
+                {state.cardBalance.toLocaleString()}
+                <span className="text-lg font-medium ml-1">원</span>
               </p>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Charge */}
       <section className="px-4 -mt-4">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-          <h2 className="text-sm font-bold text-slate-700 mb-3">충전하기</h2>
-
-          <div className="grid grid-cols-4 gap-2 mb-4">
-            {chargeAmounts.map((amt) => (
-              <button
-                key={amt}
-                onClick={() => setAmount(amt)}
-                className={`py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                  amount === amt
-                    ? "bg-blue-600 text-white"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                {amt >= 1000 ? `${amt / 1000}만` : amt}
-              </button>
-            ))}
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-bold text-slate-700">충전하기</h2>
+            <button
+              onClick={() => {
+                setCustomMode((v) => !v);
+                if (!customMode) setCustomInput(amount > 0 ? String(amount) : "");
+              }}
+              className="text-xs text-blue-600 font-medium hover:underline"
+            >
+              {customMode ? "금액 선택" : "직접 입력"}
+            </button>
           </div>
+
+          {!customMode ? (
+            <div className="grid grid-cols-4 gap-2 mb-4">
+              {chargeAmounts.map((amt) => (
+                <button
+                  key={amt}
+                  onClick={() => setAmount(amt)}
+                  className={`py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                    amount === amt
+                      ? "bg-blue-600 text-white"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  {formatLabel(amt)}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="mb-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={customInput}
+                  onChange={(e) => applyCustomInput(e.target.value)}
+                  placeholder="충전 금액 입력"
+                  className="w-full px-4 py-3 pr-12 bg-slate-100 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+                  원
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1.5 px-1">
+                1,000원 단위로 입력하는 것을 권장해요
+              </p>
+            </div>
+          )}
 
           <div className="flex items-center gap-2 mb-4">
             <button
-              onClick={() => setAmount((a) => Math.max(1000, a - 1000))}
+              onClick={() => {
+                const next = Math.max(0, amount - 1000);
+                setAmount(next);
+                if (customMode) setCustomInput(next > 0 ? String(next) : "");
+              }}
               className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors"
             >
               <Minus className="w-4 h-4 text-slate-600" />
             </button>
             <div className="flex-1 text-center">
-              <span className="text-2xl font-bold text-slate-900">{amount.toLocaleString()}</span>
+              <span className="text-2xl font-bold text-slate-900">
+                {amount.toLocaleString()}
+              </span>
               <span className="text-base text-slate-400 ml-1">원</span>
             </div>
             <button
-              onClick={() => setAmount((a) => a + 1000)}
+              onClick={() => {
+                const next = amount + 1000;
+                setAmount(next);
+                if (customMode) setCustomInput(String(next));
+              }}
               className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors"
             >
               <Plus className="w-4 h-4 text-slate-600" />
@@ -92,7 +148,7 @@ export function CardScreen() {
 
           <button
             onClick={handleCharge}
-            disabled={charging}
+            disabled={charging || amount <= 0}
             className="w-full py-3.5 bg-blue-600 text-white rounded-2xl font-semibold text-sm hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {charging ? (
@@ -110,7 +166,6 @@ export function CardScreen() {
         </div>
       </section>
 
-      {/* Stats */}
       <section className="px-4 mt-4">
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-white rounded-2xl p-4 border border-slate-100">
@@ -119,7 +174,8 @@ export function CardScreen() {
               이번 주
             </div>
             <p className="text-lg font-bold text-slate-900">
-              {card.weeklyUsage.toLocaleString()}<span className="text-sm text-slate-400 ml-0.5">원</span>
+              {card.weeklyUsage.toLocaleString()}
+              <span className="text-sm text-slate-400 ml-0.5">원</span>
             </p>
           </div>
           <div className="bg-white rounded-2xl p-4 border border-slate-100">
@@ -128,13 +184,13 @@ export function CardScreen() {
               이번 달
             </div>
             <p className="text-lg font-bold text-slate-900">
-              {card.monthlyUsage.toLocaleString()}<span className="text-sm text-slate-400 ml-0.5">원</span>
+              {card.monthlyUsage.toLocaleString()}
+              <span className="text-sm text-slate-400 ml-0.5">원</span>
             </p>
           </div>
         </div>
       </section>
 
-      {/* History */}
       <section className="px-4 mt-4">
         <div className="flex items-center gap-1.5 text-sm font-bold text-slate-700 mb-3">
           <Receipt className="w-4 h-4" />

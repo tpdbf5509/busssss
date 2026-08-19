@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Bell,
   Plus,
@@ -15,20 +15,45 @@ import {
 import { useApp } from "@/store/AppContext";
 import { useAsync } from "@/hooks/useAsync";
 import { fetchAllRoutes, fetchStopsForRoute } from "@/services/routeService";
-import { ALERT_RECORDS } from "@/data/mock";
 import { Toggle, EmptyState, LoadingSkeleton } from "@/components/ui";
 import { showToast } from "@/components/Toast";
-import type { AlertSetting } from "@/types";
+import type { AlertSetting, AlertRecord } from "@/types";
 import type { Route, BusStop } from "@/types/route";
+import {
+  loadAlertRecords,
+  saveAlertRecords,
+  requestNotificationPermission,
+} from "@/services/alertMonitorService";
 
 export function AlertScreen() {
   const { state, dispatch } = useApp();
   const [showAdd, setShowAdd] = useState(false);
-  const [records, setRecords] = useState(ALERT_RECORDS);
+  const [records, setRecords] = useState<AlertRecord[]>(() => loadAlertRecords());
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(
+    () => ("Notification" in window ? Notification.permission : "denied")
+  );
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setRecords(loadAlertRecords());
+    }, 5000);
+    return () => clearInterval(id);
+  }, []);
 
   const markAllRead = () => {
-    setRecords((prev) => prev.map((r) => ({ ...r, read: true })));
+    const next = records.map((r) => ({ ...r, read: true }));
+    setRecords(next);
+    saveAlertRecords(next);
     showToast("모든 알림을 읽었어요");
+  };
+
+  const handleRequestPermission = async () => {
+    const ok = await requestNotificationPermission();
+    setNotifPermission(
+      ok ? "granted" : "Notification" in window ? Notification.permission : "denied"
+    );
+    if (ok) showToast("알림 권한이 허용되었어요");
+    else showToast("알림 권한이 거부되었어요. 브라우저 설정에서 허용해 주세요");
   };
 
   return (
@@ -47,6 +72,24 @@ export function AlertScreen() {
           </button>
         </div>
       </header>
+        {notifPermission !== "granted" && (
+          <div className="mx-4 mt-4 p-4 bg-white border border-slate-100 rounded-2xl flex items-center justify-between gap-3 shadow-sm">
+            <div className="flex items-start gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                <Bell className="w-4 h-4 text-blue-600" />
+              </div>
+              <p className="text-xs text-slate-500 leading-relaxed pt-1">
+                실제 하차 알림을 받으려면 브라우저 알림 권한이 필요해요.
+              </p>
+            </div>
+            <button
+              onClick={handleRequestPermission}
+              className="shrink-0 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-full transition-colors"
+            >
+              허용하기
+            </button>
+          </div>
+        )}
 
       <section className="px-4 pt-4">
         <div className="flex items-center justify-between mb-3">
