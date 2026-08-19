@@ -74,7 +74,6 @@ Deno.serve(async (req) => {
 
     const db = createClient(supabaseUrl, serviceRole);
 
-    // 1. 전주 전체 노선 식별자 수집
     const idXml = await callJeonju("/bus_location_all_common", {}, key);
     const idRows = parseItems(idXml);
     const uniquePairs = Array.from(
@@ -89,7 +88,6 @@ Deno.serve(async (req) => {
     let stopCount = 0;
     let failedRoutes = 0;
 
-    // 2. 노선 상세정보 저장
     for (const pair of uniquePairs) {
       try {
         const detailXml = await callJeonju("/bus_location1_common", {
@@ -110,8 +108,8 @@ Deno.serve(async (req) => {
             brt_stdid: brtStdid,
             brt_class: row.brtClass ?? pair.brtClass ?? "",
             brt_no: brtNo,
-            start_name: row.brtStartNm ?? row.startNm ?? "",
-            end_name: row.brtEndNm ?? row.endNm ?? "",
+            start_name: row.brtStartNm ?? row.brtSname ?? row.startNm ?? "",
+            end_name: row.brtEndNm ?? row.brtEname ?? row.endNm ?? "",
             raw: row,
             updated_at: new Date().toISOString(),
           }, { onConflict: "route_key" });
@@ -119,7 +117,6 @@ Deno.serve(async (req) => {
           if (error) throw error;
           routeCount++;
 
-          // 3. 해당 노선의 경유 정류장 저장
           if (!brtStdid) continue;
 
           try {
@@ -129,15 +126,34 @@ Deno.serve(async (req) => {
             const stops = parseItems(stopXml);
 
             if (stops.length > 0) {
-              const stopRows = stops.map((stop, index) => ({
-                route_id: brtStdid,
-                stop_key: stop.nodeid ?? stop.nodeId ?? `${index}-${stop.nodenm ?? ""}`,
-                sequence_no: Number(stop.seq ?? stop.ord ?? index + 1) || index + 1,
-                node_id: stop.nodeid ?? stop.nodeId ?? "",
-                node_name: stop.nodenm ?? stop.nodeNm ?? "",
-                raw: stop,
-                updated_at: new Date().toISOString(),
-              }));
+              const stopRows = stops.map((stop, index) => {
+                // 실제 전주시 응답은 stopStandardid / bnodeId / stopKname / brnSeqno를 사용합니다.
+                const nodeId =
+                  stop.nodeid ??
+                  stop.nodeId ??
+                  stop.stopStandardid ??
+                  stop.bnodeId ??
+                  stop.stopId ??
+                  "";
+                const nodeName =
+                  stop.nodenm ??
+                  stop.nodeNm ??
+                  stop.stopKname ??
+                  "";
+                const sequence = Number(
+                  stop.seq ?? stop.ord ?? stop.brnSeqno ?? stop.brsSeqno ?? index + 1
+                ) || index + 1;
+
+                return {
+                  route_id: brtStdid,
+                  stop_key: nodeId || `${sequence}-${nodeName}`,
+                  sequence_no: sequence,
+                  node_id: nodeId,
+                  node_name: nodeName,
+                  raw: stop,
+                  updated_at: new Date().toISOString(),
+                };
+              });
 
               const { error: stopError } = await db
                 .from("bus_route_stops_cache")
@@ -155,7 +171,6 @@ Deno.serve(async (req) => {
         console.error("route sync failed", pair, error);
       }
 
-      // 공공 API에 과도한 요청이 몰리지 않도록 짧은 간격을 둡니다.
       await sleep(250);
     }
 
@@ -167,6 +182,7 @@ Deno.serve(async (req) => {
       syncedAt: new Date().toISOString(),
     }), { status: 200, headers: corsHeaders });
   } catch (error) {
+    console.error("sync-bus-data fatal", error);
     return new Response(JSON.stringify({
       ok: false,
       error: error instanceof Error ? error.message : "알 수 없는 오류",
