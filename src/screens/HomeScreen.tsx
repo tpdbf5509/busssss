@@ -5,7 +5,7 @@ import { fetchAllRoutes } from "@/services/routeService";
 import { RegionModal } from "@/components/RegionModal";
 import { showToast } from "@/components/Toast";
 import type { TabId } from "@/components/BottomNav";
-import { MapPin, ChevronDown, Star, Search, RadioTower, X } from "lucide-react";
+import { MapPin, ChevronDown, Star, Search, X } from "lucide-react";
 import { useArrivalInfo } from "@/hooks/useArrivalInfo";
 import type { Favorite } from "@/types";
 
@@ -227,8 +227,8 @@ export function HomeScreen({
   const { data: routes } = useAsync(() => fetchAllRoutes(), []);
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
-      <header className="bg-gradient-to-b from-blue-600 to-blue-500 text-white px-5 pt-12 pb-6">
+    <div className="h-[100dvh] overflow-hidden flex flex-col bg-slate-50 pb-20">
+      <header className="bg-gradient-to-b from-blue-600 to-blue-500 text-white px-5 pt-12 pb-6 shrink-0">
         <div className="flex items-center justify-between mb-1">
           <h1 className="text-2xl font-bold tracking-tight">BUS STOP</h1>
           <button
@@ -242,23 +242,8 @@ export function HomeScreen({
         </div>
         <p className="text-blue-100 text-sm">전주시 버스 노선 정보</p>
       </header>
-
-      <section className="px-4 -mt-3">
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 px-4 py-4 flex items-start gap-3">
-          <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
-            <RadioTower className="w-4.5 h-4.5 text-amber-500" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-slate-800">실시간 도착정보는 준비중이에요</p>
-            <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
-              현재 연동된 API는 노선·정류장·배차시간 정보만 제공합니다. 실시간 위치와 도착예정시간은
-              추가 연동 후 제공될 예정이에요.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="px-4 mt-4">
+  
+      <section className="px-4 -mt-3 shrink-0">
         <button
           onClick={() => onNavigate("bus")}
           className="w-full bg-white rounded-2xl border border-slate-200 shadow-sm px-4 py-3.5 flex items-center gap-3 hover:border-blue-300 hover:shadow transition-all active:scale-[0.99]"
@@ -273,10 +258,12 @@ export function HomeScreen({
           <span className="text-slate-300 text-lg">›</span>
         </button>
       </section>
+  
+      {/* 이 아래에 기존 즐겨찾기 섹션 그대로 유지 */}
 
-      <section className="px-4 mt-6">
-  <div className="flex items-center justify-between mb-3">
-    <h3 className="text-sm font-bold text-slate-700">즐겨찾기</h3>
+      <section className="px-4 mt-6 flex-1 flex flex-col min-h-0">
+      <div className="flex items-center justify-between mb-3 shrink-0">
+         <h3 className="text-sm font-bold text-slate-700">즐겨찾기</h3>
     <div className="flex items-center gap-3">
       {state.favorites.length > 0 && (
         <button
@@ -300,8 +287,8 @@ export function HomeScreen({
       <p className="text-sm text-slate-400">즐겨찾기를 추가해 보세요</p>
     </div>
   ) : (
-    <div className="space-y-2">
-      {state.favorites.map((fav) => {
+    <div className="flex-1 min-h-0 overflow-y-auto bg-white rounded-2xl border border-slate-100 p-3 space-y-2.5">
+  {state.favorites.map((fav) => {
         const isRoute = fav.type === "route";
         const matchedRoute = isRoute
           ? routes?.find((r) => r.id === fav.refId)
@@ -339,7 +326,7 @@ export function HomeScreen({
                 if (editMode) return;
                 onNavigate(targetTab, targetId);
               }}
-              className="w-full bg-white rounded-2xl border border-slate-100 px-4 py-3.5 flex items-center gap-3 text-left hover:border-blue-200 hover:shadow-sm transition-all"
+              className="w-full bg-slate-50 rounded-xl border border-slate-100 px-4 py-5 flex items-center gap-3 text-left hover:bg-blue-50 hover:border-blue-100 transition-all"
             >
               {/* 왼쪽: 본선/분선 글씨 + 색 */}
               <div

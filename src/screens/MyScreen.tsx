@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ChevronRight,
   MapPin,
   Star,
   Pencil,
   Trash2,
-  Settings,
   Bell,
   HelpCircle,
   LogOut,
@@ -20,13 +19,57 @@ import { useApp } from "@/store/AppContext";
 import { RegionModal } from "@/components/RegionModal";
 import { Toggle } from "@/components/ui";
 import { showToast } from "@/components/Toast";
+import { requestNotificationPermission } from "@/services/alertMonitorService";
+
+const SETTINGS_KEY = "busssss_settings_v1";
+
+interface AppSettings {
+  darkMode: boolean;
+  largeText: boolean;
+  colorBlind: boolean;
+  voiceGuide: boolean;
+}
+
+const defaultSettings: AppSettings = {
+  darkMode: false,
+  largeText: false,
+  colorBlind: false,
+  voiceGuide: false,
+};
+
+function loadSettings(): AppSettings {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) return { ...defaultSettings, ...JSON.parse(raw) };
+  } catch {}
+  return { ...defaultSettings };
+}
+
+function applySettings(s: AppSettings) {
+  const root = document.documentElement;
+  root.classList.toggle("dark", s.darkMode);
+  root.classList.toggle("large-text", s.largeText);
+  root.classList.toggle("color-blind", s.colorBlind);
+}
 
 export function MyScreen() {
   const { state, dispatch } = useApp();
   const [regionOpen, setRegionOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState("");
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settings, setSettings] = useState<AppSettings>(() => loadSettings());
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  useEffect(() => {
+    applySettings(settings);
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    } catch {}
+  }, [settings]);
+
+  const updateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
+    setSettings((prev) => ({ ...prev, [key]: value }));
+  };
 
   const startEdit = (id: string, label: string) => {
     setEditingId(id);
@@ -39,6 +82,17 @@ export function MyScreen() {
       showToast("이름을 변경했어요");
     }
     setEditingId(null);
+  };
+
+  const handleNotification = async () => {
+    const ok = await requestNotificationPermission();
+    if (ok) showToast("알림 권한이 허용되었어요");
+    else showToast("알림 권한이 필요해요. 브라우저 설정에서 허용해 주세요");
+  };
+
+  const handleLogout = () => {
+    if (!confirm("로그아웃 할까요? (로컬 설정은 유지됩니다)")) return;
+    showToast("로그아웃되었어요");
   };
 
   return (
@@ -62,7 +116,7 @@ export function MyScreen() {
         </div>
       </header>
 
-      {/* Favorites management */}
+      {/* Favorites */}
       <section className="px-4 -mt-3">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
           <div className="flex items-center gap-1.5 text-sm font-bold text-slate-700 mb-3">
@@ -133,16 +187,50 @@ export function MyScreen() {
         </div>
       </section>
 
-      {/* Settings list */}
+      {/* Settings */}
       <section className="px-4 mt-4">
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-          <SettingRow icon={Bell} label="알림 설정" onClick={() => showToast("알림 설정")} />
-          <SettingRow icon={Moon} label="다크모드" onClick={() => showToast("다크모드는 준비 중이에요")} />
-          <SettingRow icon={Type} label="큰 글씨" onClick={() => showToast("큰 글씨 설정")} />
-          <SettingRow icon={Eye} label="색약 모드" onClick={() => showToast("색약 모드 설정")} />
-          <SettingRow icon={Volume2} label="음성 안내" onClick={() => showToast("음성 안내 설정")} />
-          <SettingRow icon={HelpCircle} label="도움말" onClick={() => showToast("도움말")} />
-          <SettingRow icon={LogOut} label="로그아웃" danger onClick={() => showToast("로그아웃되었어요")} last />
+          <SettingRow icon={Bell} label="알림 설정" onClick={handleNotification} />
+
+          <SettingToggle
+            icon={Moon}
+            label="다크모드"
+            checked={settings.darkMode}
+            onChange={(v) => {
+              updateSetting("darkMode", v);
+              showToast(v ? "다크모드를 켰어요" : "다크모드를 껐어요");
+            }}
+          />
+          <SettingToggle
+            icon={Type}
+            label="큰 글씨"
+            checked={settings.largeText}
+            onChange={(v) => {
+              updateSetting("largeText", v);
+              showToast(v ? "큰 글씨를 켰어요" : "큰 글씨를 껐어요");
+            }}
+          />
+          <SettingToggle
+            icon={Eye}
+            label="색약 모드"
+            checked={settings.colorBlind}
+            onChange={(v) => {
+              updateSetting("colorBlind", v);
+              showToast(v ? "색약 모드를 켰어요" : "색약 모드를 껐어요");
+            }}
+          />
+          <SettingToggle
+            icon={Volume2}
+            label="음성 안내"
+            checked={settings.voiceGuide}
+            onChange={(v) => {
+              updateSetting("voiceGuide", v);
+              showToast(v ? "음성 안내를 켰어요" : "음성 안내를 껐어요");
+            }}
+          />
+
+          <SettingRow icon={HelpCircle} label="도움말" onClick={() => setHelpOpen(true)} />
+          <SettingRow icon={LogOut} label="로그아웃" danger onClick={handleLogout} last />
         </div>
       </section>
 
@@ -157,6 +245,28 @@ export function MyScreen() {
           showToast(`${sido} ${sigungu}로 설정되었어요`);
         }}
       />
+
+      {helpOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setHelpOpen(false)} />
+          <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 shadow-2xl">
+            <h2 className="text-lg font-bold text-slate-900 mb-3">도움말</h2>
+            <ul className="space-y-2 text-sm text-slate-600 leading-relaxed">
+              <li>· 홈에서 즐겨찾기를 관리하고 도착 정보를 확인해요.</li>
+              <li>· 버스 탭에서 노선을 검색하고 실시간 위치를 볼 수 있어요.</li>
+              <li>· 알림 탭에서 하차 알림을 설정하면 정거장 전에 알려줘요.</li>
+              <li>· 카드 탭은 미리보기용이며 실제 결제는 지원하지 않아요.</li>
+              <li>· 다크모드·큰 글씨·색약 모드는 이 기기에서만 적용돼요.</li>
+            </ul>
+            <button
+              onClick={() => setHelpOpen(false)}
+              className="mt-5 w-full py-3 bg-blue-600 text-white rounded-2xl font-semibold text-sm"
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -187,5 +297,25 @@ function SettingRow({
       </span>
       <ChevronRight className="w-4 h-4 text-slate-300" />
     </button>
+  );
+}
+
+function SettingToggle({
+  icon: Icon,
+  label,
+  checked,
+  onChange,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-slate-50">
+      <Icon className="w-4.5 h-4.5 text-slate-500" />
+      <span className="flex-1 text-left text-sm font-medium text-slate-700">{label}</span>
+      <Toggle checked={checked} onChange={onChange} />
+    </div>
   );
 }

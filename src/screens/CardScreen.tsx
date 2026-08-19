@@ -64,6 +64,22 @@ export function CardScreen() {
           </div>
         </div>
       </header>
+          <section className="px-4 -mt-4 mb-7">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 px-4 py-4 flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+                <CreditCard className="w-4 h-4 text-amber-500" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-800">카드 기능은 준비중이에요</p>
+                <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
+                  모바일 버스카드 연동이 아직 완료되지 않아 실제 충전·결제 기능은 사용할 수 없어요.
+                  아래 화면은 미리보기용입니다.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="px-4 mt-1"></section>
 
       <section className="px-4 -mt-4">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
