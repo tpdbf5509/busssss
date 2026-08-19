@@ -1,8 +1,5 @@
 import { parseXml } from "./xml";
 
-const BASE_URL = "https://apis.data.go.kr/4641000/nosun";
-const SERVICE_KEY = import.meta.env.VITE_JEONJU_API_KEY as string | undefined;
-
 export type RawRouteField = Record<string, string>;
 
 interface ApiEnvelope {
@@ -13,96 +10,55 @@ interface ApiEnvelope {
   };
 }
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-async function callApi(
-  path: string,
-  params: Record<string, string> = {},
-  retry = 0
-): Promise<RawRouteField[]> {
-  if (!SERVICE_KEY) {
-    throw new Error("VITE_JEONJU_API_KEY가 설정되지 않았습니다.");
-  }
+async function callApi(path: string, params: Record<string, string> = {}): Promise<RawRouteField[]> {
+  if (!SUPABASE_URL) throw new Error("VITE_SUPABASE_URL이 설정되지 않았습니다.");
 
-  const search = new URLSearchParams(params);
-  const url = `${BASE_URL}${path}?serviceKey=${encodeURIComponent(SERVICE_KEY)}${
-    search.toString() ? `&${search.toString()}` : ""
-  }`;
+  const search = new URLSearchParams({ path, ...params });
+  const url = `${SUPABASE_URL.replace(/\/$/, "")}/functions/v1/jeonju-proxy?${search.toString()}`;
 
-  let res: Response;
-  try {
-    res = await fetch(url);
-  } catch {
-    throw new Error("노선 정보 서버에 연결하지 못했습니다.");
-  }
-
-  // 403 또는 429 처리
-  if (res.status === 429 || res.status === 403) {
-    if (retry < 4) {
-      const delay = 4000 + retry * 3000; // 4초 → 7초 → 10초 → 13초
-      console.log(`[API] ${res.status} 발생 — ${delay}ms 후 재시도 (${retry + 1}/4)`);
-      await sleep(delay);
-      return callApi(path, params, retry + 1);
-    }
-    throw new Error(`API 요청이 거부되었습니다. (${res.status}) 잠시 후 다시 시도해주세요.`);
-  }
+  const res = await fetch(url, {
+    headers: SUPABASE_ANON_KEY
+      ? { Authorization: `Bearer ${SUPABASE_ANON_KEY}`, apikey: SUPABASE_ANON_KEY }
+      : undefined,
+  });
 
   if (!res.ok) {
-    throw new Error(`노선 정보를 불러오지 못했습니다. (HTTP ${res.status})`);
+    const message = await res.text().catch(() => "");
+    throw new Error(message || `전주시 API 요청 실패 (HTTP ${res.status})`);
   }
 
-  const xmlText = await res.text();
-  const json = parseXml<ApiEnvelope>(xmlText);
+  const json = parseXml<ApiEnvelope>(await res.text());
   const body = json.RFC30;
-
   if (!body) throw new Error("응답 형식 오류");
-  if (body.code && body.code !== "000") {
-    throw new Error(body.msg || `오류 코드: ${body.code}`);
-  }
-
+  if (body.code && body.code !== "000") throw new Error(body.msg || `오류 코드: ${body.code}`);
   return body.routeList?.list ?? [];
 }
 
-async function getRouteIdList(): Promise<RawRouteField[]> {
-  return callApi("/bus_location_all_common");
-}
-
-async function getRouteDetail(brtId: string, brtClass: string): Promise<RawRouteField[]> {
-  return callApi("/bus_location1_common", { brtId, brtClass });
-}
-
-async function mapSequentially<T, R>(
-  items: T[],
-  fn: (item: T) => Promise<R>,
-  delayMs = 2500
-): Promise<R[]> {
-  const results: R[] = [];
-  for (let i = 0; i < items.length; i++) {
-    results.push(await fn(items[i]));
-    if (i < items.length - 1) await sleep(delayMs);
-  }
-  return results;
-}
-
 export async function getRoutes(): Promise<RawRouteField[]> {
-  const idList = await getRouteIdList();
-  console.log("ID LIST SAMPLE:", idList[0]);
-
+  // 서버 캐시가 담당하므로 브라우저에서 노선을 하나씩 2.5초 간격으로 요청하지 않습니다.
+  // 서버 프록시가 필요한 상세정보를 호출하고 결과를 캐시합니다.
+  const idList = await callApi("/bus_location_all_common");
   const uniquePairs = Array.from(
-    new Map(
-      idList.filter((r) => r.brtId).map((r) => [`${r.brtId}-${r.brtClass}`, r])
-    ).values()
+    new Map(idList.filter((r) => r.brtId).map((r) => [`${r.brtId}-${r.brtClass}`, r])).values()
   );
 
-  console.log(`[API] 노선 ${uniquePairs.length}개 상세 조회 시작 (순차, 100ms 간격)`);
-
-  const branchLists = await mapSequentially(
-    uniquePairs,
-    (pair) => getRouteDetail(pair.brtId, pair.brtClass).catch(() => [] as RawRouteField[]),
-    2500
+  const results = await Promise.all(
+    uniquePairs.map(async (pair) => {
+      try {
+        return await callApi("/bus_location1_common", {
+          brtId: pair.brtId,
+          brtClass: pair.brtClass,
+        });
+      } catch {
+        return [] as RawRouteField[];
+      }
+    })
   );
 
-  return branchLists.flat();
+  return results.flat();
 }
 
 export async function getRouteStops(routeId: string): Promise<RawRouteField[]> {
