@@ -1,0 +1,91 @@
+From 16f25d940e4335d98272cfa5b74f1eac5a177041 Mon Sep 17 00:00:00 2001
+From: Claude <dev@example.com>
+Date: Fri, 21 Aug 2026 14:39:50 +0000
+Subject: [PATCH] fix: favorite direction separation
+
+---
+ src/screens/BusScreen.tsx          | 28 ++++++++++++++++++----------
+ 1 file changed, 18 insertions(+), 10 deletions(-)
+
+diff --git a/src/screens/BusScreen.tsx b/src/screens/BusScreen.tsx
+index 4430373..c999b08 100644
+--- a/src/screens/BusScreen.tsx
++++ b/src/screens/BusScreen.tsx
+@@ -624,12 +624,15 @@ function StationDetail({
+   }, [detailTab, station.name, allRoutes]);
+ 
+   // 실시간 노선 즐겨찾기 여부
+-  const isArrivalFavorited = (routeNo: string) =>
++  // 같은 버스번호라도 방향(TAGO routeId 또는 appRouteId)이 다르면 서로 다른
++  // 즐겨찾기이므로, routeNumber+stopName이 아닌 실제 노선 ID로 판정합니다.
++  const isArrivalFavorited = (matcher: { tagoRouteId?: string; appRouteId?: string }) =>
+     state.favorites.some(
+       (f) =>
+         f.type === "stop_route" &&
+-        f.routeNumber === routeNo &&
+-        f.stopName === station.name
++        f.tagoNodeId === station.id &&
++        ((matcher.tagoRouteId && f.tagoRouteId === matcher.tagoRouteId) ||
++          (matcher.appRouteId && f.appRouteId === matcher.appRouteId))
+     );
+ 
+   // 실시간 노선 즐겨찾기
+@@ -637,8 +640,8 @@ function StationDetail({
+     const existing = state.favorites.find(
+       (f) =>
+         f.type === "stop_route" &&
+-        f.routeNumber === sr.routeNo &&
+-        f.stopName === station.name
++        f.tagoNodeId === station.id &&
++        f.tagoRouteId === sr.routeId
+     );
+ 
+     if (existing) {
+@@ -685,12 +688,14 @@ function StationDetail({
+   };
+ 
+   // 전체 경유노선 즐겨찾기
++  // route.id(brtStdid)는 노선의 실제 방향까지 구분하는 앱 고유 ID이므로
++  // 버스번호(route.number) 대신 이 값으로 방향을 구분합니다.
+   const handleAllRouteClick = async (route: Route) => {
+     const existing = state.favorites.find(
+       (f) =>
+         f.type === "stop_route" &&
+-        f.routeNumber === route.number &&
+-        f.stopName === station.name
++        f.tagoNodeId === station.id &&
++        f.appRouteId === route.id
+     );
+ 
+     if (existing) {
+@@ -880,7 +885,7 @@ function StationDetail({
+                       ) : (
+                         <Star
+                           className={`w-4 h-4 shrink-0 transition-colors ${
+-                            isArrivalFavorited(sr.routeNo)
++                            isArrivalFavorited({ tagoRouteId: sr.routeId })
+                               ? "text-amber-400 fill-amber-400"
+                               : "text-slate-300"
+                           }`}
+@@ -965,7 +970,7 @@ function StationDetail({
+                       ) : (
+                         <Star
+                           className={`w-4 h-4 shrink-0 transition-colors ${
+-                            isArrivalFavorited(route.number)
++                            isArrivalFavorited({ appRouteId: route.id })
+                               ? "text-amber-400 fill-amber-400"
+                               : "text-slate-300"
+                           }`}
+@@ -1017,8 +1022,11 @@ const isArrivalFavorited = (stopName: string) =>
+   );
+ 
+ const handleStopClick = async (stop: BusStop) => {
++  // route.id(brtStdid)는 노선의 실제 방향까지 구분하는 앱 고유 ID이므로
++  // 위 isArrivalFavorited와 동일한 기준(appRouteId)으로 판정해야
++  // 반대 방향 노선의 같은 이름 정류장과 즐겨찾기가 섞이지 않습니다.
+   const existing = state.favorites.find(
+-    (f) => f.type === "stop_route" && f.routeNumber === route.number && f.stopName === stop.name
++    (f) => f.type === "stop_route" && f.appRouteId === route.id && f.stopName === stop.name
+   );
+   if (existing) {
+     dispatch({ type: "REMOVE_FAVORITE", id: existing.id });
