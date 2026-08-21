@@ -2,6 +2,8 @@ import { createContext, useContext, useReducer, useEffect, type ReactNode } from
 import type { Favorite, AlertSetting } from "@/types";
 import { FAVORITES, ALERT_SETTINGS, CARD_INFO } from "@/data/mock";
 import { fetchRoutesForStation } from "@/services/stationService";
+import { fetchAllRoutes } from "@/services/routeService";
+import { resolveDirections } from "@/services/busLocationService";
 
 interface AppState {
   region: { sido: string; sigungu: string };
@@ -117,14 +119,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, [state.alerts]);
 
-  // 저장되어 있던 즐겨찾기의 TAGO routeId가 반대 방향이거나 오래된 경우를
-  // 현재 정류장의 실시간 도착정보 기준으로 한 번 보정합니다.
+  // 저장된 즐겨찾기의 TAGO routeId를 보정할 때 버스 번호만 보지 않습니다.
+  // appRouteId가 가리키는 우리 앱의 기점/종점 방향과 정확히 일치하는
+  // TAGO 방향만 선택합니다. 따라서 2001번의 정방향/역방향 routeId가 섞이지 않습니다.
   useEffect(() => {
     const stopFavorites = state.favorites.filter(
       (favorite) =>
         favorite.type === "stop_route" &&
         favorite.tagoNodeId &&
-        favorite.routeNumber
+        favorite.routeNumber &&
+        favorite.appRouteId
     );
 
     if (stopFavorites.length === 0) return;
@@ -132,43 +136,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     (async () => {
-      const nodeIds = Array.from(
-        new Set(stopFavorites.map((favorite) => favorite.tagoNodeId!))
-      );
+      try {
+        const allRoutes = await fetchAllRoutes();
+        if (cancelled) return;
 
-      const routesByNode = new Map<string, Awaited<ReturnType<typeof fetchRoutesForStation>>>();
+        const routeById = new Map(allRoutes.map((route) => [route.id, route]));
+        const directionResults = new Map<string, string | null>();
 
-      await Promise.all(
-        nodeIds.map(async (nodeId) => {
-          try {
-            routesByNode.set(nodeId, await fetchRoutesForStation(nodeId));
-          } catch {
-            // 한 정류장 조회 실패는 다른 즐겨찾기 보정에 영향을 주지 않습니다.
+        for (const favorite of stopFavorites) {
+          if (cancelled) return;
+
+          const route = routeById.get(favorite.appRouteId!);
+          if (!route) continue;
+
+          const cacheKey = `${route.id}|${route.number}|${route.start}|${route.end}`;
+          if (!directionResults.has(cacheKey)) {
+            try {
+              const directions = await resolveDirections(route);
+              const exact = directions.find(
+                (direction) =>
+                  direction.routeId &&
+                  (direction.start ?? "").replace(/\s+/g, "") === route.start.replace(/\s+/g, "") &&
+                  (direction.end ?? "").replace(/\s+/g, "") === route.end.replace(/\s+/g, "")
+              );
+              directionResults.set(cacheKey, exact?.routeId ?? null);
+            } catch {
+              directionResults.set(cacheKey, null);
+            }
           }
-        })
-      );
 
-      if (cancelled) return;
-
-      for (const favorite of stopFavorites) {
-        const nodeId = favorite.tagoNodeId;
-        const routeNumber = favorite.routeNumber;
-        if (!nodeId || !routeNumber) continue;
-
-        const currentRoute = routesByNode
-          .get(nodeId)
-          ?.find((route) => route.routeNo === routeNumber);
-
-        if (
-          currentRoute?.routeId &&
-          currentRoute.routeId !== favorite.tagoRouteId
-        ) {
-          dispatch({
-            type: "SYNC_FAVORITE_ROUTE_ID",
-            id: favorite.id,
-            tagoRouteId: currentRoute.routeId,
-          });
+          const exactRouteId = directionResults.get(cacheKey);
+          if (
+            exactRouteId &&
+            exactRouteId !== favorite.tagoRouteId
+          ) {
+            dispatch({
+              type: "SYNC_FAVORITE_ROUTE_ID",
+              id: favorite.id,
+              tagoRouteId: exactRouteId,
+            });
+          }
         }
+      } catch {
+        // 방향 보정 실패는 기존 즐겨찾기를 변경하지 않습니다.
       }
     })();
 
