@@ -1,5 +1,6 @@
 import { getBusLocationsByRoute } from "@/api/jeonju";
-import type { Route, BusLocation } from "@/types/route";
+import { getRouteNoList } from "@/api/tago";
+import type { Route, BusLocation, RouteDirection } from "@/types/route";
 
 function firstValue(item: Record<string, string>, keys: string[]): string {
   for (const key of keys) {
@@ -7,6 +8,10 @@ function firstValue(item: Record<string, string>, keys: string[]): string {
     if (value !== undefined && value !== null && String(value).trim() !== "") return String(value).trim();
   }
   return "";
+}
+
+function normalize(value: string): string {
+  return (value ?? "").replace(/\s+/g, "").trim();
 }
 
 function toNumber(value: string): number | null {
@@ -34,6 +39,31 @@ function toBusLocation(item: Record<string, string>, route: Route): BusLocation 
     routeId: route.id,
     direction: `${route.start} → ${route.end}`,
   };
+}
+
+/**
+ * 기존 도착정보 서비스가 사용하는 TAGO 방향 조회 호환 함수입니다.
+ * 실시간 위치 조회 자체는 전주시 GW를 사용하며, 도착정보에서 필요한 TAGO routeId만 별도로 조회합니다.
+ */
+export async function resolveDirections(route: Route): Promise<RouteDirection[]> {
+  const items = await getRouteNoList(route.number);
+
+  const directions = items
+    .map((item) => ({
+      routeId: firstValue(item, ["routeid", "routeId", "route_id"]),
+      start: firstValue(item, ["startnodenm", "startNodeNm", "start", "startNode"]),
+      end: firstValue(item, ["endnodenm", "endNodeNm", "end", "endNode"]),
+    }))
+    .filter((item) => item.routeId);
+
+  const start = normalize(route.start);
+  const end = normalize(route.end);
+
+  const exact = directions.filter(
+    (item) => normalize(item.start) === start && normalize(item.end) === end,
+  );
+
+  return exact.length > 0 ? exact : directions;
 }
 
 /** 전주시 실시간 운행정보 GW에서 노선별 현재 버스 GPS 위치를 조회합니다. */
