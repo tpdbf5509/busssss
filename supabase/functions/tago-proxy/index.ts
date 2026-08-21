@@ -16,6 +16,22 @@ function ttlForPath(path: string): number {
   return 24 * 60 * 60_000;
 }
 
+/**
+ * 공공데이터포털은 Encoding 키와 Decoding 키를 모두 제공할 수 있습니다.
+ * Supabase Secret에 어느 형태가 들어와도 한 번만 디코딩한 뒤 다시 URL 인코딩하여
+ * TAGO에 정확히 한 번만 인코딩된 serviceKey를 전달합니다.
+ */
+function normalizeServiceKey(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+
+  try {
+    return encodeURIComponent(decodeURIComponent(trimmed));
+  } catch {
+    return encodeURIComponent(trimmed);
+  }
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -24,7 +40,7 @@ serve(async (req: Request) => {
   try {
     const url = new URL(req.url);
     const path = url.searchParams.get("path");
-    const serviceKey = Deno.env.get("TAGO_API_KEY");
+    const rawServiceKey = Deno.env.get("TAGO_API_KEY");
 
     if (!path || !path.startsWith("/")) {
       return new Response(JSON.stringify({ error: "path 파라미터가 필요합니다." }), {
@@ -33,7 +49,7 @@ serve(async (req: Request) => {
       });
     }
 
-    if (!serviceKey) {
+    if (!rawServiceKey?.trim()) {
       return new Response(JSON.stringify({ error: "TAGO_API_KEY가 Supabase에 설정되지 않았습니다." }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -44,7 +60,8 @@ serve(async (req: Request) => {
     params.delete("path");
     params.set("_type", "xml");
 
-    const upstreamUrl = `${BASE_URL}${path}?serviceKey=${encodeURIComponent(serviceKey)}&${params.toString()}`;
+    const serviceKey = normalizeServiceKey(rawServiceKey);
+    const upstreamUrl = `${BASE_URL}${path}?serviceKey=${serviceKey}&${params.toString()}`;
     const cacheKey = upstreamUrl;
     const cached = cache.get(cacheKey);
 
@@ -59,7 +76,13 @@ serve(async (req: Request) => {
       });
     }
 
-    const upstream = await fetch(upstreamUrl);
+    const upstream = await fetch(upstreamUrl, {
+      method: "GET",
+      headers: {
+        Accept: "application/xml, text/xml, */*",
+        "User-Agent": "BUS-STOP/1.0",
+      },
+    });
     const body = await upstream.text();
 
     if (!upstream.ok) {
@@ -69,14 +92,19 @@ serve(async (req: Request) => {
       });
     }
 
-    cache.set(cacheKey, { body, expiresAt: Date.now() + ttlForPath(path) });
+    // OpenAPI_ServiceResponse(예: HTTP_ERROR)도 성공 HTTP 상태로 내려올 수 있으므로
+    // 해당 오류 응답은 캐시하지 않습니다. 다음 요청에서 바로 재시도할 수 있어야 합니다.
+    const isOpenApiError = body.includes("<OpenAPI_ServiceResponse>");
+    if (!isOpenApiError) {
+      cache.set(cacheKey, { body, expiresAt: Date.now() + ttlForPath(path) });
+    }
 
     return new Response(body, {
       status: 200,
       headers: {
         ...corsHeaders,
         "Content-Type": "application/xml; charset=utf-8",
-        "X-BUS-Cache": "MISS",
+        "X-BUS-Cache": isOpenApiError ? "ERROR-NOCACHE" : "MISS",
       },
     });
   } catch (err) {
