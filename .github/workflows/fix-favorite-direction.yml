@@ -2,14 +2,14 @@ name: Fix favorite direction bugs
 
 on:
   pull_request:
-    types: [opened]
+    types: [opened, synchronize]
 
 permissions:
   contents: write
 
 jobs:
   fix:
-    if: github.event.action == 'opened'
+    if: github.event.action == 'opened' || github.event.action == 'synchronize'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,7 +42,7 @@ jobs:
           )
           p.write_text(s)
 
-          replace('src/screens/BusScreen.tsx', '''  // 실시간 노선 즐겨찾기 여부\n  const isArrivalFavorited = (routeNo: string) =>\n    state.favorites.some(\n      (f) =>\n        f.type === "stop_route" &&\n        f.routeNumber === routeNo &&\n        f.stopName === station.name\n    );\n''', '''  // 즐겨찾기는 버스 번호가 아니라 정확한 방향(TAGO routeId/appRouteId)까지 구분합니다.\n  const isArrivalFavorited = (routeNo: string, tagoRouteId?: string, appRouteId?: string) =>\n    state.favorites.some(\n      (f) =>\n        f.type === "stop_route" &&\n        f.stopName === station.name &&\n        ((!!tagoRouteId && f.tagoRouteId === tagoRouteId) ||\n          (!!appRouteId && f.appRouteId === appRouteId))\n    );\n\n  const findAppRouteForTagoRoute = async (routeNo: string, tagoRouteId: string): Promise<Route | undefined> => {\n    const candidates = allRoutes?.filter(\n      (r) => r.number === routeNo || r.rawNumber === routeNo\n    ) ?? [];\n\n    for (const candidate of candidates) {\n      try {\n        const directions = await resolveDirections(candidate);\n        if (directions.some((direction) => direction.routeId === tagoRouteId)) {\n          return candidate;\n        }\n      } catch {}\n    }\n\n    return undefined;\n  };\n''', 1)
+          replace('src/screens/BusScreen.tsx', '''  // 실시간 노선 즐겨찾기 여부\n  const isArrivalFavorited = (routeNo: string) =>\n    state.favorites.some(\n      (f) =>\n        f.type === "stop_route" &&\n        f.routeNumber === routeNo &&\n        f.stopName === station.name\n    );\n''', '''  // 즐겨찾기는 버스 번호가 아니라 정확한 방향(TAGO routeId/appRouteId)까지 구분합니다.\n  const isArrivalFavorited = (routeNo: string, tagoRouteId?: string, appRouteId?: string) =>\n    state.favorites.some(\n      (f) =>\n        f.type === "stop_route" &&\n        f.stopName === station.name &&\n        ((!!tagoRouteId && f.tagoRouteId === tagoRouteId) ||\n          (!!appRouteId && f.appRouteId === appRouteId))\n    );\n\n  const findAppRouteForTagoRoute = async (routeNo: string, tagoRouteId: string): Promise<Route | undefined> => {\n    const candidates = allRoutes?.filter(\n      (r) => r.number === routeNo || r.rawNumber === routeNo\n    ) ?? [];\n\n    for (const candidate of candidates) {\n      try {\n        const directions = await resolveDirections(candidate);\n        if (directions.some((direction) => direction.routeId === tagoRouteId)) return candidate;\n      } catch {}\n    }\n\n    return undefined;\n  };\n''', 1)
 
           replace('src/screens/BusScreen.tsx', '''    const existing = state.favorites.find(\n      (f) =>\n        f.type === "stop_route" &&\n        f.routeNumber === sr.routeNo &&\n        f.stopName === station.name\n    );\n''', '''    const existing = state.favorites.find(\n      (f) =>\n        f.type === "stop_route" &&\n        f.stopName === station.name &&\n        f.tagoRouteId === sr.routeId\n    );\n''', 1)
 
@@ -76,5 +76,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/screens/BusScreen.tsx src/store/AppContext.tsx
+          if git diff --cached --quiet; then
+            echo "No source changes needed"
+            exit 0
+          fi
           git commit -m "fix: separate favorite route directions [favorite direction fix]"
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
