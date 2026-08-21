@@ -47,6 +47,7 @@ async function callApi(path: string, params: Record<string, string> = {}): Promi
 
 function collectObjects(value: unknown, out: RawRouteField[] = []): RawRouteField[] {
   if (!value || typeof value !== "object") return out;
+
   if (Array.isArray(value)) {
     for (const item of value) collectObjects(item, out);
     return out;
@@ -54,25 +55,23 @@ function collectObjects(value: unknown, out: RawRouteField[] = []): RawRouteFiel
 
   const obj = value as Record<string, unknown>;
   const primitive: RawRouteField = {};
+
   for (const [key, item] of Object.entries(obj)) {
+    if (key === "?xml") continue;
     if (item !== null && item !== undefined && typeof item !== "object") {
-      primitive[key] = String(item);
+      primitive[key] = String(item).trim();
     }
   }
 
-  // 전주시 GW 응답의 실제 필드명이 TAGO와 다를 수 있으므로
-  // 좌표 필드만 보고 레코드를 버리지 않습니다. 버스/위치 관련 필드가
-  // 하나라도 있는 객체를 후보 레코드로 보존하여 실제 응답 구조를 확인합니다.
-  const keyText = Object.keys(primitive).join(" ").toLowerCase();
+  const keys = Object.keys(primitive);
+  const keyText = keys.join(" ").toLowerCase();
   const locationHint = [
     "gps", "lat", "lng", "lon", "long", "latitude", "longitude",
     "vehicle", "veh", "bus", "car", "node", "stop", "station",
     "route", "brt", "x", "y"
   ].some((hint) => keyText.includes(hint));
 
-  if (Object.keys(primitive).length > 0 && locationHint) {
-    out.push(primitive);
-  }
+  if (keys.length > 0 && locationHint) out.push(primitive);
 
   for (const child of Object.values(obj)) collectObjects(child, out);
   return out;
@@ -81,8 +80,8 @@ function collectObjects(value: unknown, out: RawRouteField[] = []): RawRouteFiel
 /** 전주시 GW: 특정 노선의 현재 운행 버스 위치 */
 export async function getBusLocationsByRoute(brtStdid: string): Promise<RawRouteField[]> {
   if (!brtStdid) return [];
-
   if (!SUPABASE_URL) throw new Error("VITE_SUPABASE_URL이 설정되지 않았습니다.");
+
   const search = new URLSearchParams({
     path: "/realtime/bus_location_bus_position_common",
     brtStdid,
@@ -97,12 +96,12 @@ export async function getBusLocationsByRoute(brtStdid: string): Promise<RawRoute
   if (!res.ok) throw new Error(text || `전주시 실시간 위치 요청 실패 (HTTP ${res.status})`);
 
   const parsed = parseXml<unknown>(text);
-  const records = collectObjects(parsed);
+  const records = collectObjects(parsed).filter((item) => !Object.prototype.hasOwnProperty.call(item, "?xml"));
 
   console.info("[BUS STOP] Jeonju realtime response", {
     brtStdid,
     count: records.length,
-    sample: records[0] ?? null,
+    samples: records.slice(0, 5),
   });
 
   return records;
