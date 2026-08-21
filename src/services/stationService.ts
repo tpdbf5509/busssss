@@ -30,6 +30,9 @@ export interface StationRoute {
 
 export async function fetchRoutesForStation(nodeId: string): Promise<StationRoute[]> {
   const items = await getSttnAcctoArvlPrearngeInfoList(nodeId);
+
+  // 같은 버스번호라도 TAGO routeId가 다르면 서로 다른 방향의 노선입니다.
+  // 기존에는 routeNo만 key로 사용해서 104번의 양방향을 하나로 합쳐버렸습니다.
   const map = new Map<string, StationRoute>();
 
   for (const item of items) {
@@ -37,20 +40,28 @@ export async function fetchRoutesForStation(nodeId: string): Promise<StationRout
     const routeNo = item.routeno ?? "";
     if (!routeId || !routeNo) continue;
 
-    const existing = map.get(routeNo);
+    const key = `${routeNo}|${routeId}`;
+    const existing = map.get(key);
     const arrtime = Number(item.arrtime1 ?? item.arrtime);
+    const prevStationCount = Number(
+      item.arrprevstationcnt1 ?? item.arrprevstationcnt
+    );
+
     if (!existing || (arrtime && arrtime < (existing.arrtime ?? Infinity))) {
-      map.set(routeNo, {
+      map.set(key, {
         routeId,
         routeNo,
         routeTp: item.routetp ?? "",
         arrtime: isNaN(arrtime) ? undefined : arrtime,
-        arrprevstationcnt: Number(item.arrprevstationcnt1 ?? item.arrprevstationcnt) || undefined,
+        arrprevstationcnt: isNaN(prevStationCount)
+          ? undefined
+          : prevStationCount,
       });
     }
   }
 
   return Array.from(map.values()).sort((a, b) =>
-    a.routeNo.localeCompare(b.routeNo, undefined, { numeric: true })
+    a.routeNo.localeCompare(b.routeNo, undefined, { numeric: true }) ||
+    a.routeId.localeCompare(b.routeId)
   );
 }
