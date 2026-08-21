@@ -96,15 +96,28 @@ export async function getBusLocationsByRoute(brtStdid: string): Promise<RawRoute
   if (!res.ok) throw new Error(text || `전주시 실시간 위치 요청 실패 (HTTP ${res.status})`);
 
   const parsed = parseXml<unknown>(text);
-  const records = collectObjects(parsed).filter((item) => !Object.prototype.hasOwnProperty.call(item, "?xml"));
+  const records = collectObjects(parsed).filter(
+    (item) => !Object.prototype.hasOwnProperty.call(item, "?xml"),
+  );
+
+  // 중요: 이 API의 routeList는 '정류장 목록'이며 모든 정류장이 반환됩니다.
+  // 실제 운행 중인 버스는 busNo(또는 BNo)가 채워진 정류장에만 표시됩니다.
+  // 따라서 records.length를 버스 대수로 사용하면 56개 정류장이 모두 버스로 잘못 인식됩니다.
+  const liveBuses = records.filter((item) => {
+    const vehicleNo = String(
+      item.busNo ?? item.BNo ?? item.vehicleNo ?? item.vehicleid ?? "",
+    ).trim();
+    return vehicleNo.length > 0;
+  });
 
   console.info("[BUS STOP] Jeonju realtime response", {
     brtStdid,
-    count: records.length,
-    samples: records.slice(0, 5),
+    stopCount: records.length,
+    busCount: liveBuses.length,
+    samples: liveBuses.slice(0, 5),
   });
 
-  return records;
+  return liveBuses;
 }
 
 export async function getRoutes(): Promise<RawRouteField[]> {
