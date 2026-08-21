@@ -30,7 +30,8 @@ function toNumber(value: string): number | null {
 }
 
 function toBusLocation(item: Record<string, string>, route: Route): BusLocation | null {
-  // 전주시 GW 응답에서 사용하는 좌표명 후보를 넓게 지원합니다.
+  // 이 API는 현재 버스의 GPS 좌표를 주지 않고, 버스가 위치한 정류장 정보를 줍니다.
+  // 따라서 lat/lng가 없어도 정류장 기준 실시간 위치를 정상적으로 만들 수 있습니다.
   const lat = toNumber(firstValue(item, [
     "gpslati", "gpsLat", "gpsLatitude", "latitude", "lat",
     "y", "mapY", "mapy", "gpsY", "gpsy", "busY", "busy",
@@ -42,19 +43,24 @@ function toBusLocation(item: Record<string, string>, route: Route): BusLocation 
     "xPos", "xpos", "posX", "posx", "BLng", "blng",
   ]));
 
-  if (lat === null || lng === null) return null;
-
   const vehicleNo = firstValue(item, [
-    "vehicleno", "vehicleNo", "vehicle_no", "vehicleId", "vehicleid",
-    "busNo", "busno", "carNo", "carno", "BNo", "bNo", "bno",
+    "busNo", "busno", "vehicleNo", "vehicleno", "vehicle_no", "vehicleId", "vehicleid",
+    "carNo", "carno", "BNo", "bNo", "bno",
   ]);
+
+  // busNo가 없는 데이터는 이미 getBusLocationsByRoute에서 제거되지만,
+  // 서비스 계층에서도 한 번 더 방어합니다.
+  if (!vehicleNo) return null;
+
   const nodeName = firstValue(item, [
-    "nodenm", "nodeName", "node_name", "stopName", "stopname",
+    "stopKname", "stopkname", "nodenm", "nodeName", "node_name", "stopName", "stopname",
     "stationName", "bnodeNm", "bnodename", "nodeNm",
   ]);
+
   const nodeOrder = Number(firstValue(item, [
+    "brnSeqno", "brnseqno", "brsSeqno", "brsseqno",
     "nodeord", "nodeOrder", "node_order", "seq", "sequence",
-    "brnSeqno", "brnseqno", "routeSeq", "routeseq",
+    "routeSeq", "routeseq",
   ]));
 
   return {
@@ -97,7 +103,7 @@ export async function resolveDirections(route: Route): Promise<RouteDirection[]>
   return exact.length > 0 ? exact : directions;
 }
 
-/** 전주시 실시간 운행정보 GW에서 노선별 현재 버스 GPS 위치를 조회합니다. */
+/** 전주시 실시간 운행정보 GW에서 노선별 현재 버스 위치를 조회합니다. */
 export async function fetchBusLocations(route: Route): Promise<BusLocation[]> {
   if (!route.id) {
     throw new Error("전주시 노선 ID(brtStdid)를 찾을 수 없습니다.");
@@ -114,7 +120,6 @@ export async function fetchBusLocations(route: Route): Promise<BusLocation[]> {
 
   const items = await getBusLocationsByRoute(brtStdid);
 
-  // 실제 응답 필드 확인용. 좌표가 아직 없는 경우에도 원본 키를 확인할 수 있습니다.
   if (items.length > 0) {
     console.info("[BUS STOP] Jeonju realtime fields", {
       keys: Object.keys(items[0]),
@@ -129,8 +134,13 @@ export async function fetchBusLocations(route: Route): Promise<BusLocation[]> {
   console.info("[BUS STOP] Jeonju BusLocation result", {
     routeNumber: route.number,
     brtStdid,
-    received: items.length,
+    receivedLiveBuses: items.length,
     locations: locations.length,
+    buses: locations.map((bus) => ({
+      vehicleNo: bus.vehicleNo,
+      nodeName: bus.nodeName,
+      nodeOrder: bus.nodeOrder,
+    })),
   });
 
   return locations;
