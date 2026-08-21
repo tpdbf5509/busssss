@@ -13,15 +13,12 @@ function formatTime(raw?: string): string {
 
 function formatRouteNumber(raw: RawRouteField): string {
   const id = raw.brtId ?? "";
-  // 숫자로 된 분선만 붙임 (A, B, C 같은 영어는 무시)
   const candidates = [raw.brtClass, raw.brtSubid];
   const branch = candidates.find(
     (v) => v && v !== "0" && /^\d+$/.test(v)
   );
 
-  if (branch) {
-    return `${id}-${branch}`;
-  }
+  if (branch) return `${id}-${branch}`;
   return id;
 }
 
@@ -31,11 +28,11 @@ function mapToRoute(raw: RawRouteField): Route {
 
   return {
     id: raw.brtStdid ?? "",
-    number: displayNumber,           // 예: "3-1", "62", "5-5"
-    rawNumber: raw.brtId ?? "",      // 예: "3"
+    number: displayNumber,
+    rawNumber: raw.brtId ?? "",
     class: raw.brtClass ?? "",
     subId: raw.brtSubid ?? "",
-    name: `본선${displayNumber}`,    // 예: "본선3-1"
+    name: `본선${displayNumber}`,
     start: raw.brtSname ?? "",
     end: raw.brtEname ?? "",
     firstBus: formatTime(raw.brtFirsttime),
@@ -58,18 +55,17 @@ function mapToBusStop(raw: RawRouteField, index: number): BusStop {
   };
 }
 
-const CACHE_KEY = "jeonju_routes_v3";
-const CACHE_TTL = 1000 * 60 * 60 * 24; // 24시간
+// 전주시 GW의 brtStdid를 실시간 위치 조회에 사용하므로 기존 캐시는 폐기합니다.
+const CACHE_KEY = "jeonju_routes_v4";
+const CACHE_TTL = 1000 * 60 * 60 * 24;
 
 let routesCache: Route[] | null = null;
 let routesPromise: Promise<Route[]> | null = null;
 const stopsCache = new Map<string, BusStop[]>();
 
 export async function fetchAllRoutes(): Promise<Route[]> {
-  // 1. 메모리 캐시
   if (routesCache) return routesCache;
 
-  // 2. localStorage 캐시 (최우선)
   try {
     const cached = localStorage.getItem(CACHE_KEY);
     if (cached) {
@@ -82,7 +78,6 @@ export async function fetchAllRoutes(): Promise<Route[]> {
     }
   } catch {}
 
-  // 3. API 호출 (캐시가 없을 때만)
   if (!routesPromise) {
     routesPromise = fetchRoutesRaw()
       .then((raw) => {
