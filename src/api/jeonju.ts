@@ -53,15 +53,25 @@ function collectObjects(value: unknown, out: RawRouteField[] = []): RawRouteFiel
   }
 
   const obj = value as Record<string, unknown>;
-  const hasCoordinate = Object.keys(obj).some((key) =>
-    ["gpslati", "gpslong", "gpsLat", "gpsLong", "latitude", "longitude", "lat", "lng", "x", "y"].includes(key)
-  );
-  if (hasCoordinate) {
-    const record: RawRouteField = {};
-    for (const [key, item] of Object.entries(obj)) {
-      if (item !== null && item !== undefined && typeof item !== "object") record[key] = String(item);
+  const primitive: RawRouteField = {};
+  for (const [key, item] of Object.entries(obj)) {
+    if (item !== null && item !== undefined && typeof item !== "object") {
+      primitive[key] = String(item);
     }
-    out.push(record);
+  }
+
+  // 전주시 GW 응답의 실제 필드명이 TAGO와 다를 수 있으므로
+  // 좌표 필드만 보고 레코드를 버리지 않습니다. 버스/위치 관련 필드가
+  // 하나라도 있는 객체를 후보 레코드로 보존하여 실제 응답 구조를 확인합니다.
+  const keyText = Object.keys(primitive).join(" ").toLowerCase();
+  const locationHint = [
+    "gps", "lat", "lng", "lon", "long", "latitude", "longitude",
+    "vehicle", "veh", "bus", "car", "node", "stop", "station",
+    "route", "brt", "x", "y"
+  ].some((hint) => keyText.includes(hint));
+
+  if (Object.keys(primitive).length > 0 && locationHint) {
+    out.push(primitive);
   }
 
   for (const child of Object.values(obj)) collectObjects(child, out);
