@@ -84,8 +84,22 @@ export async function getSttnNoList(nodeNm: string, cityCode: string = JEONJU_CI
   });
 }
 
-export async function getSttnAcctoArvlPrearngeInfoList(nodeId: string, routeId?: string, cityCode: string = JEONJU_CITY_CODE) {
-  const p: Record<string, string> = { cityCode, nodeId, numOfRows: "10", pageNo: "1" };
-  if (routeId) p.routeId = routeId;
-  return callTagoApi("/ArvlInfoInqireService/getSttnAcctoArvlPrearngeInfoList", p);
+export async function getSttnAcctoArvlPrearngeInfoList(
+  nodeId: string,
+  routeId?: string,
+  cityCode: string = JEONJU_CITY_CODE,
+) {
+  // TAGO의 정류장별 도착예정 API는 routeId까지 붙이면 특정 노선에서
+  // 504/HTTP_ERROR가 발생하는 경우가 있습니다. 정류장 전체 도착정보를
+  // 받은 뒤 arrivalService에서 routeId를 기준으로 골라 쓰면 동일한 결과를
+  // 얻을 수 있으므로 routeId는 서버 요청에서 제외합니다.
+  // 특히 전주 104번처럼 방향별 routeId가 서로 다른 노선에서 안정성이 높습니다.
+  void routeId;
+
+  return callTagoApi("/ArvlInfoInqireService/getSttnAcctoArvlPrearngeInfoList", {
+    cityCode,
+    nodeId,
+    numOfRows: "10",
+    pageNo: "1",
+  });
 }
