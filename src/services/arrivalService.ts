@@ -22,8 +22,6 @@ type RouteDirectionCache = {
   expiresAt: number;
 };
 
-// TAGO 도착정보 API는 여러 정류장을 동시에 호출하면 504가 발생하기 쉽습니다.
-// 앱 전체에서 도착정보 요청을 작은 큐로 제한해 요청 폭주를 막습니다.
 type ArrivalTask = {
   run: () => Promise<ArrivalInfo | null>;
   resolve: (value: ArrivalInfo | null) => void;
@@ -115,9 +113,12 @@ export async function resolveRouteId(route: Route): Promise<string | null> {
 
 export async function fetchArrivalInfo(
   nodeId: string,
-  routeId: string
+  routeId: string,
+  routeNumber?: string,
 ): Promise<ArrivalInfo | null> {
-  const key = `${nodeId}|${routeId}`;
+  // 기존 즐겨찾기에 저장된 routeId가 반대 방향이거나 오래된 경우에도
+  // 현재 정류장에서 같은 노선번호의 실시간 정보를 우선 사용합니다.
+  const key = `${nodeId}|${routeId}|${routeNumber ?? ""}`;
   const now = Date.now();
 
   const cached = arrivalCache.get(key);
@@ -129,7 +130,14 @@ export async function fetchArrivalInfo(
   const request = enqueueArrivalRequest(async (): Promise<ArrivalInfo | null> => {
     try {
       const items = await getSttnAcctoArvlPrearngeInfoList(nodeId, routeId);
-      const item = items.find((i) => i.routeid === routeId) ?? items[0];
+      const normalizedRouteNumber = normalize(routeNumber ?? "");
+
+      const item = normalizedRouteNumber
+        ? items.find((i) => normalize(i.routeno ?? "") === normalizedRouteNumber)
+          ?? items.find((i) => i.routeid === routeId)
+          ?? items[0]
+        : items.find((i) => i.routeid === routeId) ?? items[0];
+
       if (!item) return null;
 
       const arrtime = Number(item.arrtime1 ?? item.arrtime);
@@ -144,6 +152,7 @@ export async function fetchArrivalInfo(
       console.warn("[BUS STOP] Arrival request failed; keeping previous value", {
         nodeId,
         routeId,
+        routeNumber,
         error,
       });
       return null;
