@@ -3,8 +3,8 @@ import { resolveDirections } from "@/services/busLocationService";
 import type { Route } from "@/types/route";
 
 export interface ArrivalInfo {
-  minutes: number;   // 도착까지 남은 분
-  stopsAway: number;  // 남은 정류장 수
+  minutes: number;
+  stopsAway: number;
 }
 
 function normalize(s: string): string {
@@ -12,9 +12,6 @@ function normalize(s: string): string {
 }
 
 const nodeIdCache = new Map<string, string>();
-
-// 같은 정류장/노선 요청을 짧은 시간 동안 합쳐서 TAGO/Supabase 프록시의
-// 중복 요청과 504 Gateway Timeout을 줄입니다.
 const ARRIVAL_CACHE_TTL_MS = 5_000;
 const arrivalCache = new Map<string, { value: ArrivalInfo | null; expiresAt: number }>();
 const arrivalInFlight = new Map<string, Promise<ArrivalInfo | null>>();
@@ -25,7 +22,64 @@ type RouteDirectionCache = {
   expiresAt: number;
 };
 
-/** 정류장 이름으로 TAGO 정류소ID(nodeId)를 찾습니다. */
+// TAGO 도착정보 API는 여러 정류장을 동시에 호출하면 504가 발생하기 쉽습니다.
+// 앱 전체에서 도착정보 요청을 작은 큐로 제한해 요청 폭주를 막습니다.
+type ArrivalTask = {
+  run: () => Promise<ArrivalInfo | null>;
+  resolve: (value: ArrivalInfo | null) => void;
+};
+
+const arrivalQueue: ArrivalTask[] = [];
+let activeArrivalRequests = 0;
+let lastArrivalRequestAt = 0;
+let queueTimer: ReturnType<typeof setTimeout> | null = null;
+const MAX_CONCURRENT_ARRIVAL_REQUESTS = 2;
+const MIN_ARRIVAL_REQUEST_GAP_MS = 700;
+
+function scheduleArrivalQueue() {
+  if (queueTimer !== null) return;
+
+  const runNext = () => {
+    queueTimer = null;
+
+    if (arrivalQueue.length === 0) return;
+    if (activeArrivalRequests >= MAX_CONCURRENT_ARRIVAL_REQUESTS) return;
+
+    const wait = Math.max(0, MIN_ARRIVAL_REQUEST_GAP_MS - (Date.now() - lastArrivalRequestAt));
+    if (wait > 0) {
+      queueTimer = setTimeout(runNext, wait);
+      return;
+    }
+
+    const task = arrivalQueue.shift();
+    if (!task) return;
+
+    activeArrivalRequests += 1;
+    lastArrivalRequestAt = Date.now();
+
+    task.run()
+      .then(task.resolve)
+      .catch(() => task.resolve(null))
+      .finally(() => {
+        activeArrivalRequests -= 1;
+        scheduleArrivalQueue();
+      });
+
+    if (activeArrivalRequests < MAX_CONCURRENT_ARRIVAL_REQUESTS && arrivalQueue.length > 0) {
+      queueTimer = setTimeout(runNext, MIN_ARRIVAL_REQUEST_GAP_MS);
+    }
+  };
+
+  queueTimer = setTimeout(runNext, 0);
+}
+
+function enqueueArrivalRequest(run: () => Promise<ArrivalInfo | null>) {
+  return new Promise<ArrivalInfo | null>((resolve) => {
+    arrivalQueue.push({ run, resolve });
+    scheduleArrivalQueue();
+  });
+}
+
 export async function resolveNodeId(stopName: string): Promise<string | null> {
   const key = normalize(stopName);
   if (!key) return null;
@@ -41,7 +95,6 @@ export async function resolveNodeId(stopName: string): Promise<string | null> {
   return matched.nodeid;
 }
 
-/** 우리 앱 Route를 TAGO 노선ID로 변환합니다. */
 export async function resolveRouteId(route: Route): Promise<string | null> {
   const key = `${route.number}|${normalize(route.start)}|${normalize(route.end)}`;
   const now = Date.now();
@@ -60,7 +113,6 @@ export async function resolveRouteId(route: Route): Promise<string | null> {
   return directions[0]?.routeId ?? null;
 }
 
-/** 특정 정류장 + 특정 노선의 실시간 도착예정정보를 조회합니다. */
 export async function fetchArrivalInfo(
   nodeId: string,
   routeId: string
@@ -69,15 +121,12 @@ export async function fetchArrivalInfo(
   const now = Date.now();
 
   const cached = arrivalCache.get(key);
-  if (cached && cached.expiresAt > now) {
-    return cached.value;
-  }
+  if (cached && cached.expiresAt > now) return cached.value;
 
-  // 같은 요청이 이미 진행 중이면 새 HTTP 요청을 만들지 않고 기존 요청을 공유합니다.
   const running = arrivalInFlight.get(key);
   if (running) return running;
 
-  const request = (async (): Promise<ArrivalInfo | null> => {
+  const request = enqueueArrivalRequest(async (): Promise<ArrivalInfo | null> => {
     try {
       const items = await getSttnAcctoArvlPrearngeInfoList(nodeId, routeId);
       const item = items.find((i) => i.routeid === routeId) ?? items[0];
@@ -99,13 +148,12 @@ export async function fetchArrivalInfo(
       });
       return null;
     }
-  })();
+  });
 
   arrivalInFlight.set(key, request);
 
   try {
     const value = await request;
-    // 성공뿐 아니라 null도 짧게 캐시하여 504 직후 즉시 같은 요청을 반복하지 않습니다.
     arrivalCache.set(key, {
       value,
       expiresAt: Date.now() + ARRIVAL_CACHE_TTL_MS,
