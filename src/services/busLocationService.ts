@@ -42,6 +42,18 @@ function toBusLocation(item: Record<string, string>, route: Route): BusLocation 
 }
 
 /**
+ * 전주시 GW의 최신 brtStdid와 기존 캐시의 brtStdid가 다른 노선에 대한 임시 매핑입니다.
+ * 104번 송천동종점 → 평화동종점은 전주시 실시간 GW에서 305001271을 사용합니다.
+ */
+function resolveJeonjuBrtStdid(route: Route): string {
+  const direction = `${route.start} → ${route.end}`;
+  if (route.number === "104" && direction === "송천동종점 → 평화동종점") {
+    return "305001271";
+  }
+  return route.id;
+}
+
+/**
  * 기존 도착정보 서비스가 사용하는 TAGO 방향 조회 호환 함수입니다.
  * 실시간 위치 조회 자체는 전주시 GW를 사용하며, 도착정보에서 필요한 TAGO routeId만 별도로 조회합니다.
  */
@@ -72,20 +84,23 @@ export async function fetchBusLocations(route: Route): Promise<BusLocation[]> {
     throw new Error("전주시 노선 ID(brtStdid)를 찾을 수 없습니다.");
   }
 
+  const brtStdid = resolveJeonjuBrtStdid(route);
+
   console.info("[BUS STOP] Jeonju BusLocation request", {
     routeNumber: route.number,
-    brtStdid: route.id,
+    brtStdid,
+    originalBrtStdid: route.id,
     direction: `${route.start} → ${route.end}`,
   });
 
-  const items = await getBusLocationsByRoute(route.id);
+  const items = await getBusLocationsByRoute(brtStdid);
   const locations = items
     .map((item) => toBusLocation(item, route))
     .filter((item): item is BusLocation => item !== null);
 
   console.info("[BUS STOP] Jeonju BusLocation result", {
     routeNumber: route.number,
-    brtStdid: route.id,
+    brtStdid,
     count: locations.length,
   });
 
