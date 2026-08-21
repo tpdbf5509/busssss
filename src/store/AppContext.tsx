@@ -17,7 +17,7 @@ type Action =
   | { type: "ADD_FAVORITE"; favorite: Favorite }
   | { type: "REMOVE_FAVORITE"; id: string }
   | { type: "RENAME_FAVORITE"; id: string; label: string }
-  | { type: "SYNC_FAVORITE_ROUTE_ID"; id: string; tagoRouteId: string }
+  | { type: "SYNC_FAVORITE_ROUTE_ID"; id: string; tagoRouteId: string; appRouteId?: string }
   | { type: "CHARGE_CARD"; amount: number }
   | { type: "PAY_CARD"; amount: number }
   | { type: "ADD_ALERT"; alert: AlertSetting }
@@ -76,7 +76,9 @@ function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         favorites: state.favorites.map((f) =>
-          f.id === action.id ? { ...f, tagoRouteId: action.tagoRouteId } : f
+          f.id === action.id
+              ? { ...f, tagoRouteId: action.tagoRouteId, ...(action.appRouteId ? { appRouteId: action.appRouteId } : {}) }
+              : f
         ),
       };
     case "CHARGE_CARD":

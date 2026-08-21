@@ -623,22 +623,50 @@ function StationDetail({
     };
   }, [detailTab, station.name, allRoutes]);
 
-  // 실시간 노선 즐겨찾기 여부
-  const isArrivalFavorited = (routeNo: string) =>
+  // 즐겨찾기는 버스 번호가 아니라 정확한 방향(TAGO routeId/appRouteId)까지 구분합니다.
+  const isArrivalFavorited = (
+    routeNo: string,
+    tagoRouteId?: string,
+    appRouteId?: string
+  ) =>
     state.favorites.some(
       (f) =>
         f.type === "stop_route" &&
-        f.routeNumber === routeNo &&
-        f.stopName === station.name
+        f.stopName === station.name &&
+        ((!!tagoRouteId && f.tagoRouteId === tagoRouteId) ||
+          (!!appRouteId && f.appRouteId === appRouteId))
     );
+
+  const findAppRouteForTagoRoute = async (
+    routeNo: string,
+    tagoRouteId: string
+  ): Promise<Route | undefined> => {
+    const candidates =
+      allRoutes?.filter(
+        (r) => r.number === routeNo || r.rawNumber === routeNo
+      ) ?? [];
+
+    for (const candidate of candidates) {
+      try {
+        const directions = await resolveDirections(candidate);
+        if (directions.some((direction) => direction.routeId === tagoRouteId)) {
+          return candidate;
+        }
+      } catch {
+        // 다음 동일 번호 노선을 확인합니다.
+      }
+    }
+
+    return undefined;
+  };
 
   // 실시간 노선 즐겨찾기
   const handleRouteClick = async (sr: StationRoute) => {
     const existing = state.favorites.find(
       (f) =>
         f.type === "stop_route" &&
-        f.routeNumber === sr.routeNo &&
-        f.stopName === station.name
+        f.stopName === station.name &&
+        f.tagoRouteId === sr.routeId
     );
 
     if (existing) {
@@ -654,10 +682,9 @@ function StationDetail({
     setAddingRouteNo(sr.routeNo);
 
     try {
-      const appRoute = allRoutes?.find(
-        (r) =>
-          r.number === sr.routeNo ||
-          r.rawNumber === sr.routeNo
+      const appRoute = await findAppRouteForTagoRoute(
+        sr.routeNo,
+        sr.routeId
       );
 
       dispatch({
@@ -689,7 +716,7 @@ function StationDetail({
     const existing = state.favorites.find(
       (f) =>
         f.type === "stop_route" &&
-        f.routeNumber === route.number &&
+        f.appRouteId === route.id &&
         f.stopName === station.name
     );
 
@@ -880,7 +907,7 @@ function StationDetail({
                       ) : (
                         <Star
                           className={`w-4 h-4 shrink-0 transition-colors ${
-                            isArrivalFavorited(sr.routeNo)
+                            isArrivalFavorited(sr.routeNo, sr.routeId)
                               ? "text-amber-400 fill-amber-400"
                               : "text-slate-300"
                           }`}
@@ -965,7 +992,7 @@ function StationDetail({
                       ) : (
                         <Star
                           className={`w-4 h-4 shrink-0 transition-colors ${
-                            isArrivalFavorited(route.number)
+                            isArrivalFavorited(route.number, undefined, route.id)
                               ? "text-amber-400 fill-amber-400"
                               : "text-slate-300"
                           }`}
@@ -1011,12 +1038,18 @@ function RouteDetail({ route, onBack }: { route: Route; onBack: () => void }) {
 
 const isArrivalFavorited = (stopName: string) =>
   state.favorites.some(
-    (f) => f.type === "stop_route" && f.routeNumber === route.number && f.stopName === stopName
+    (f) =>
+      f.type === "stop_route" &&
+      f.appRouteId === route.id &&
+      f.stopName === stopName
   );
 
 const handleStopClick = async (stop: BusStop) => {
   const existing = state.favorites.find(
-    (f) => f.type === "stop_route" && f.routeNumber === route.number && f.stopName === stop.name
+    (f) =>
+      f.type === "stop_route" &&
+      f.appRouteId === route.id &&
+      f.stopName === stop.name
   );
   if (existing) {
     dispatch({ type: "REMOVE_FAVORITE", id: existing.id });
