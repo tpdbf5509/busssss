@@ -1,0 +1,137 @@
+From 16f25d940e4335d98272cfa5b74f1eac5a177041 Mon Sep 17 00:00:00 2001
+From: Claude <dev@example.com>
+Date: Fri, 21 Aug 2026 14:39:50 +0000
+Subject: [PATCH] =?UTF-8?q?fix:=20=EC=A6=90=EA=B2=A8=EC=B0=BE=EA=B8=B0=20?=
+ =?UTF-8?q?=EB=B0=A9=ED=96=A5=20=EB=B6=84=EB=A6=AC=20-=20routeNumber=20?=
+ =?UTF-8?q?=EB=8C=80=EC=8B=A0=20=EC=8B=A4=EC=A0=9C=20=EB=85=B8=EC=84=A0=20?=
+ =?UTF-8?q?ID=EB=A1=9C=20=ED=8C=90=EC=A0=95?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- StationDetail(실시간 노선 탭, 전체 경유노선 탭)의 즐겨찾기 판정을
+  routeNumber+stopName 대신 tagoRouteId/appRouteId + tagoNodeId 기준으로 변경
+  (같은 버스 번호의 반대 방향 노선이 즐겨찾기를 공유하던 버그 A 수정)
+- RouteDetail의 즐겨찾기 삭제 판정을 isArrivalFavorited와 동일한 기준
+  (appRouteId)으로 통일 (버그 C 수정)
+- busLocationService.ts의 104번 하드코딩을 노선번호|기점|종점 키의
+  보정 테이블(BRT_STDID_OVERRIDES)로 일반화 (버그 D 관련 유지보수성 개선)
+---
+ src/screens/BusScreen.tsx          | 28 ++++++++++++++++++----------
+ src/services/busLocationService.ts | 17 ++++++++++++-----
+ 2 files changed, 30 insertions(+), 15 deletions(-)
+
+diff --git a/src/screens/BusScreen.tsx b/src/screens/BusScreen.tsx
+index 4430373..c999b08 100644
+--- a/src/screens/BusScreen.tsx
++++ b/src/screens/BusScreen.tsx
+@@ -624,12 +624,15 @@ function StationDetail({
+   }, [detailTab, station.name, allRoutes]);
+ 
+   // 실시간 노선 즐겨찾기 여부
+-  const isArrivalFavorited = (routeNo: string) =>
++  // 같은 버스번호라도 방향(TAGO routeId 또는 appRouteId)이 다르면 서로 다른
++  // 즐겨찾기이므로, routeNumber+stopName이 아닌 실제 노선 ID로 판정합니다.
++  const isArrivalFavorited = (matcher: { tagoRouteId?: string; appRouteId?: string }) =>
+     state.favorites.some(
+       (f) =>
+         f.type === "stop_route" &&
+-        f.routeNumber === routeNo &&
+-        f.stopName === station.name
++        f.tagoNodeId === station.id &&
++        ((matcher.tagoRouteId && f.tagoRouteId === matcher.tagoRouteId) ||
++          (matcher.appRouteId && f.appRouteId === matcher.appRouteId))
+     );
+ 
+   // 실시간 노선 즐겨찾기
+@@ -637,8 +640,8 @@ function StationDetail({
+     const existing = state.favorites.find(
+       (f) =>
+         f.type === "stop_route" &&
+-        f.routeNumber === sr.routeNo &&
+-        f.stopName === station.name
++        f.tagoNodeId === station.id &&
++        f.tagoRouteId === sr.routeId
+     );
+ 
+     if (existing) {
+@@ -685,12 +688,14 @@ function StationDetail({
+   };
+ 
+   // 전체 경유노선 즐겨찾기
++  // route.id(brtStdid)는 노선의 실제 방향까지 구분하는 앱 고유 ID이므로
++  // 버스번호(route.number) 대신 이 값으로 방향을 구분합니다.
+   const handleAllRouteClick = async (route: Route) => {
+     const existing = state.favorites.find(
+       (f) =>
+         f.type === "stop_route" &&
+-        f.routeNumber === route.number &&
+-        f.stopName === station.name
++        f.tagoNodeId === station.id &&
++        f.appRouteId === route.id
+     );
+ 
+     if (existing) {
+@@ -880,7 +885,7 @@ function StationDetail({
+                       ) : (
+                         <Star
+                           className={`w-4 h-4 shrink-0 transition-colors ${
+-                            isArrivalFavorited(sr.routeNo)
++                            isArrivalFavorited({ tagoRouteId: sr.routeId })
+                               ? "text-amber-400 fill-amber-400"
+                               : "text-slate-300"
+                           }`}
+@@ -965,7 +970,7 @@ function StationDetail({
+                       ) : (
+                         <Star
+                           className={`w-4 h-4 shrink-0 transition-colors ${
+-                            isArrivalFavorited(route.number)
++                            isArrivalFavorited({ appRouteId: route.id })
+                               ? "text-amber-400 fill-amber-400"
+                               : "text-slate-300"
+                           }`}
+@@ -1017,8 +1022,11 @@ const isArrivalFavorited = (stopName: string) =>
+   );
+ 
+ const handleStopClick = async (stop: BusStop) => {
++  // route.id(brtStdid)는 노선의 실제 방향까지 구분하는 앱 고유 ID이므로
++  // 위 isArrivalFavorited와 동일한 기준(appRouteId)으로 판정해야
++  // 반대 방향 노선의 같은 이름 정류장과 즐겨찾기가 섞이지 않습니다.
+   const existing = state.favorites.find(
+-    (f) => f.type === "stop_route" && f.routeNumber === route.number && f.stopName === stop.name
++    (f) => f.type === "stop_route" && f.appRouteId === route.id && f.stopName === stop.name
+   );
+   if (existing) {
+     dispatch({ type: "REMOVE_FAVORITE", id: existing.id });
+diff --git a/src/services/busLocationService.ts b/src/services/busLocationService.ts
+index 09d587f..76185eb 100644
+--- a/src/services/busLocationService.ts
++++ b/src/services/busLocationService.ts
+@@ -74,12 +74,19 @@ function toBusLocation(item: Record<string, string>, route: Route): BusLocation
+   };
+ }
+ 
++// 전주시 GW가 내려주는 brtStdid가 실제 방향과 어긋나는 일부 노선에 대한
++// 보정 테이블입니다. 노선번호 하나에 if문을 하나씩 추가하는 대신
++// "번호|기점|종점" 키로 관리해 새로운 예외가 생겨도 이 테이블에만
++// 항목을 추가하면 되도록 했습니다.
++// TODO: 전주시 API에서 방향별 brtStdid가 정상적으로 내려오는 것이 확인되면
++// 이 보정 테이블은 제거해도 됩니다.
++const BRT_STDID_OVERRIDES: Record<string, string> = {
++  "104|송천동종점|평화동종점": "305001271",
++};
++
+ function resolveJeonjuBrtStdid(route: Route): string {
+-  const direction = `${route.start} → ${route.end}`;
+-  if (route.number === "104" && direction === "송천동종점 → 평화동종점") {
+-    return "305001271";
+-  }
+-  return route.id;
++  const key = `${route.number}|${normalize(route.start)}|${normalize(route.end)}`;
++  return BRT_STDID_OVERRIDES[key] ?? route.id;
+ }
+ 
+ const directionCache = new Map<string, { directions: RouteDirection[]; expiresAt: number }>();
+-- 
+2.43.0
+
