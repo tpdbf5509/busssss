@@ -11,6 +11,7 @@ export function useArrivalInfo(nodeId?: string, routeId?: string) {
   const load = useCallback(async () => {
     if (!nodeId || !routeId) return;
     try {
+      setStatus("loading");
       const info = await fetchArrivalInfo(nodeId, routeId);
       setData(info);
       setStatus(info ? "success" : "error");
@@ -32,5 +33,5 @@ export function useArrivalInfo(nodeId?: string, routeId?: string) {
     };
   }, [nodeId, routeId, load]);
 
-  return { data, status };
+  return { data, status, refresh: load };
 }

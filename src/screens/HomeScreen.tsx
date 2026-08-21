@@ -5,7 +5,7 @@ import { fetchAllRoutes } from "@/services/routeService";
 import { RegionModal } from "@/components/RegionModal";
 import { showToast } from "@/components/Toast";
 import type { TabId } from "@/components/BottomNav";
-import { MapPin, ChevronDown, Star, Search, X } from "lucide-react";
+import { MapPin, ChevronDown, Star, Search, X, RefreshCw } from "lucide-react";
 import { useArrivalInfo } from "@/hooks/useArrivalInfo";
 import type { Favorite } from "@/types";
 
@@ -224,7 +224,13 @@ export function HomeScreen({
   const { state, dispatch } = useApp();
   const [regionOpen, setRegionOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);  // 추가
   const { data: routes } = useAsync(() => fetchAllRoutes(), []);
+
+  const handleRefresh = () => {
+    setRefreshKey((k) => k + 1);
+    showToast("새로고침했어요");
+  };
 
   return (
     <div className="h-[100dvh] overflow-hidden flex flex-col bg-slate-50 pb-20">
@@ -263,24 +269,33 @@ export function HomeScreen({
 
       <section className="px-4 mt-6 flex-1 flex flex-col min-h-0">
       <div className="flex items-center justify-between mb-3 shrink-0">
-         <h3 className="text-sm font-bold text-slate-700">즐겨찾기</h3>
-    <div className="flex items-center gap-3">
-      {state.favorites.length > 0 && (
-        <button
-          onClick={() => setEditMode((v) => !v)}
-          className="text-xs text-slate-400 font-medium hover:text-slate-600"
-        >
-          {editMode ? "완료" : "편집"}
-        </button>
-      )}
-      <button
-        onClick={() => onNavigate("my")}
-        className="text-xs text-blue-600 font-medium hover:underline"
-      >
-        전체보기
-      </button>
-    </div>
-  </div>
+        <h3 className="text-sm font-bold text-slate-700">즐겨찾기</h3>
+        <div className="flex items-center gap-3">
+          {/* 새로고침 버튼 */}
+          <button
+            onClick={handleRefresh}
+            className="p-1.5 rounded-full text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+            aria-label="새로고침"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+
+          {state.favorites.length > 0 && (
+            <button
+              onClick={() => setEditMode((v) => !v)}
+              className="text-xs text-slate-400 font-medium hover:text-slate-600"
+            >
+              {editMode ? "완료" : "편집"}
+            </button>
+          )}
+          <button
+            onClick={() => onNavigate("my")}
+            className="text-xs text-blue-600 font-medium hover:underline"
+          >
+            전체보기
+          </button>
+        </div>
+      </div>
   {state.favorites.length === 0 ? (
     <div className="bg-white rounded-2xl p-6 text-center border border-slate-100">
       <Star className="w-8 h-8 text-slate-300 mx-auto mb-2" />
