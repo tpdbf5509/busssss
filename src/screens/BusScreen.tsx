@@ -1011,7 +1011,9 @@ function RouteDetail({ route, onBack }: { route: Route; onBack: () => void }) {
 
 const isArrivalFavorited = (stopName: string) =>
   state.favorites.some(
-    (f) => f.type === "stop_route" && f.routeNumber === route.number && f.stopName === stopName
+    (f) => f.type === "stop_route" &&
+    f.appRouteId === route.id &&
+    f.stopName === stopName
   );
 
 const handleStopClick = async (stop: BusStop) => {
