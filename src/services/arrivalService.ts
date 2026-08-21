@@ -39,7 +39,6 @@ function scheduleArrivalQueue() {
 
   const runNext = () => {
     queueTimer = null;
-
     if (arrivalQueue.length === 0) return;
     if (activeArrivalRequests >= MAX_CONCURRENT_ARRIVAL_REQUESTS) return;
 
@@ -94,12 +93,16 @@ export async function resolveNodeId(stopName: string): Promise<string | null> {
 }
 
 export async function resolveRouteId(route: Route): Promise<string | null> {
-  const key = `${route.number}|${normalize(route.start)}|${normalize(route.end)}`;
+  const key = `${route.id}|${route.number}|${normalize(route.start)}|${normalize(route.end)}`;
   const now = Date.now();
   const cached = routeDirectionsCache.get(key);
 
   if (cached && cached.expiresAt > now) {
-    return cached.directions[0]?.routeId ?? null;
+    return cached.directions.find(
+      (direction) =>
+        normalize(direction.start) === normalize(route.start) &&
+        normalize(direction.end) === normalize(route.end)
+    )?.routeId ?? null;
   }
 
   const directions = await resolveDirections(route);
@@ -108,7 +111,13 @@ export async function resolveRouteId(route: Route): Promise<string | null> {
     expiresAt: now + 60_000,
   });
 
-  return directions[0]?.routeId ?? null;
+  const exact = directions.find(
+    (direction) =>
+      normalize(direction.start) === normalize(route.start) &&
+      normalize(direction.end) === normalize(route.end)
+  );
+
+  return exact?.routeId ?? null;
 }
 
 export async function fetchArrivalInfo(
@@ -116,8 +125,6 @@ export async function fetchArrivalInfo(
   routeId: string,
   routeNumber?: string,
 ): Promise<ArrivalInfo | null> {
-  // 기존 즐겨찾기에 저장된 routeId가 반대 방향이거나 오래된 경우에도
-  // 현재 정류장에서 같은 노선번호의 실시간 정보를 우선 사용합니다.
   const key = `${nodeId}|${routeId}|${routeNumber ?? ""}`;
   const now = Date.now();
 
