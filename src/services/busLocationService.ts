@@ -82,7 +82,21 @@ function resolveJeonjuBrtStdid(route: Route): string {
   return route.id;
 }
 
+const directionCache = new Map<string, { directions: RouteDirection[]; expiresAt: number }>();
+const locationCache = new Map<string, { locations: BusLocation[]; expiresAt: number }>();
+const locationInFlight = new Map<string, Promise<BusLocation[]>>();
+const LOCATION_CACHE_TTL_MS = 3_000;
+const DIRECTION_CACHE_TTL_MS = 60_000;
+
 export async function resolveDirections(route: Route): Promise<RouteDirection[]> {
+  const cacheKey = `${route.number}|${normalize(route.start)}|${normalize(route.end)}`;
+  const cached = directionCache.get(cacheKey);
+  const now = Date.now();
+
+  if (cached && cached.expiresAt > now) {
+    return cached.directions;
+  }
+
   const items = await getRouteNoList(route.number);
 
   const directions = items
@@ -99,8 +113,14 @@ export async function resolveDirections(route: Route): Promise<RouteDirection[]>
   const exact = directions.filter(
     (item) => normalize(item.start) === start && normalize(item.end) === end,
   );
+  const result = exact.length > 0 ? exact : directions;
 
-  return exact.length > 0 ? exact : directions;
+  directionCache.set(cacheKey, {
+    directions: result,
+    expiresAt: now + DIRECTION_CACHE_TTL_MS,
+  });
+
+  return result;
 }
 
 /** 전주시 실시간 운행정보 GW에서 노선별 현재 버스 위치를 조회합니다. */
@@ -110,6 +130,19 @@ export async function fetchBusLocations(route: Route): Promise<BusLocation[]> {
   }
 
   const brtStdid = resolveJeonjuBrtStdid(route);
+  const cacheKey = `${brtStdid}|${normalize(route.start)}|${normalize(route.end)}`;
+  const now = Date.now();
+
+  const cached = locationCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    return cached.locations;
+  }
+
+  // 화면의 여러 컴포넌트가 같은 노선을 동시에 조회해도 HTTP 요청은 하나만 보냅니다.
+  const running = locationInFlight.get(cacheKey);
+  if (running) {
+    return running;
+  }
 
   console.info("[BUS STOP] Jeonju BusLocation request", {
     routeNumber: route.number,
@@ -118,30 +151,46 @@ export async function fetchBusLocations(route: Route): Promise<BusLocation[]> {
     direction: `${route.start} → ${route.end}`,
   });
 
-  const items = await getBusLocationsByRoute(brtStdid);
+  const request = (async (): Promise<BusLocation[]> => {
+    const items = await getBusLocationsByRoute(brtStdid);
 
-  if (items.length > 0) {
-    console.info("[BUS STOP] Jeonju realtime fields", {
-      keys: Object.keys(items[0]),
-      firstItem: items[0],
+    if (items.length > 0) {
+      console.info("[BUS STOP] Jeonju realtime fields", {
+        keys: Object.keys(items[0]),
+        firstItem: items[0],
+      });
+    }
+
+    const locations = items
+      .map((item) => toBusLocation(item, route))
+      .filter((item): item is BusLocation => item !== null);
+
+    console.info("[BUS STOP] Jeonju BusLocation result", {
+      routeNumber: route.number,
+      brtStdid,
+      receivedLiveBuses: items.length,
+      locations: locations.length,
+      buses: locations.map((bus) => ({
+        vehicleNo: bus.vehicleNo,
+        nodeName: bus.nodeName,
+        nodeOrder: bus.nodeOrder,
+      })),
     });
+
+    // 정상 응답을 잠깐 보관하여 같은 화면의 중복 렌더링이 API를 다시 호출하지 않게 합니다.
+    locationCache.set(cacheKey, {
+      locations,
+      expiresAt: Date.now() + LOCATION_CACHE_TTL_MS,
+    });
+
+    return locations;
+  })();
+
+  locationInFlight.set(cacheKey, request);
+
+  try {
+    return await request;
+  } finally {
+    locationInFlight.delete(cacheKey);
   }
-
-  const locations = items
-    .map((item) => toBusLocation(item, route))
-    .filter((item): item is BusLocation => item !== null);
-
-  console.info("[BUS STOP] Jeonju BusLocation result", {
-    routeNumber: route.number,
-    brtStdid,
-    receivedLiveBuses: items.length,
-    locations: locations.length,
-    buses: locations.map((bus) => ({
-      vehicleNo: bus.vehicleNo,
-      nodeName: bus.nodeName,
-      nodeOrder: bus.nodeOrder,
-    })),
-  });
-
-  return locations;
 }
