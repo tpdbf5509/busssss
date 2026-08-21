@@ -8,6 +8,8 @@ const corsHeaders = {
 
 const BASE_URL = "https://apis.data.go.kr/1613000";
 const cache = new Map<string, { body: string; expiresAt: number }>();
+const inFlight = new Map<string, Promise<Response>>();
+const UPSTREAM_TIMEOUT_MS = 8_000;
 
 function ttlForPath(path: string): number {
   if (path.includes("ArvlInfoInqireService")) return 5_000;
@@ -16,11 +18,6 @@ function ttlForPath(path: string): number {
   return 24 * 60 * 60_000;
 }
 
-/**
- * 공공데이터포털은 Encoding 키와 Decoding 키를 모두 제공할 수 있습니다.
- * Supabase Secret에 어느 형태가 들어와도 한 번만 디코딩한 뒤 다시 URL 인코딩하여
- * TAGO에 정확히 한 번만 인코딩된 serviceKey를 전달합니다.
- */
 function normalizeServiceKey(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) return trimmed;
@@ -29,6 +26,65 @@ function normalizeServiceKey(value: string): string {
     return encodeURIComponent(decodeURIComponent(trimmed));
   } catch {
     return encodeURIComponent(trimmed);
+  }
+}
+
+function xmlResponse(body: string, status = 200, cacheStatus?: string) {
+  return new Response(body, {
+    status,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/xml; charset=utf-8",
+      ...(cacheStatus ? { "X-BUS-Cache": cacheStatus } : {}),
+    },
+  });
+}
+
+async function fetchUpstream(upstreamUrl: string, path: string, cacheKey: string) {
+  const previous = cache.get(cacheKey);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+
+  try {
+    const upstream = await fetch(upstreamUrl, {
+      method: "GET",
+      headers: {
+        Accept: "application/xml, text/xml, */*",
+        "User-Agent": "BUS-STOP/1.0",
+      },
+      signal: controller.signal,
+    });
+
+    const body = await upstream.text();
+
+    if (!upstream.ok) {
+      if (previous?.body) return xmlResponse(previous.body, 200, "STALE-HTTP-ERROR");
+      return xmlResponse(body, upstream.status, "UPSTREAM-ERROR");
+    }
+
+    const isOpenApiError = body.includes("<OpenAPI_ServiceResponse>");
+    if (!isOpenApiError) {
+      cache.set(cacheKey, { body, expiresAt: Date.now() + ttlForPath(path) });
+      return xmlResponse(body, 200, "MISS");
+    }
+
+    if (previous?.body) return xmlResponse(previous.body, 200, "STALE-OPENAPI-ERROR");
+    return xmlResponse(body, 200, "ERROR-NOCACHE");
+  } catch (error) {
+    if (previous?.body) return xmlResponse(previous.body, 200, "STALE-TIMEOUT");
+
+    const message = error instanceof DOMException && error.name === "AbortError"
+      ? "TAGO upstream timeout"
+      : error instanceof Error
+        ? error.message
+        : "TAGO upstream request failed";
+
+    return new Response(JSON.stringify({ error: message }), {
+      status: 504,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -66,51 +122,25 @@ serve(async (req: Request) => {
     const cached = cache.get(cacheKey);
 
     if (cached && cached.expiresAt > Date.now()) {
-      return new Response(cached.body, {
-        status: 200,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/xml; charset=utf-8",
-          "X-BUS-Cache": "HIT",
-        },
-      });
+      return xmlResponse(cached.body, 200, "HIT");
     }
 
-    const upstream = await fetch(upstreamUrl, {
-      method: "GET",
-      headers: {
-        Accept: "application/xml, text/xml, */*",
-        "User-Agent": "BUS-STOP/1.0",
-      },
-    });
-    const body = await upstream.text();
+    // 같은 요청이 여러 컴포넌트에서 동시에 발생해도 TAGO에는 하나만 보냅니다.
+    const running = inFlight.get(cacheKey);
+    if (running) return running.then((response) => response.clone());
 
-    if (!upstream.ok) {
-      return new Response(body, {
-        status: upstream.status,
-        headers: { ...corsHeaders, "Content-Type": "application/xml; charset=utf-8" },
-      });
+    const request = fetchUpstream(upstreamUrl, path, cacheKey);
+    inFlight.set(cacheKey, request);
+
+    try {
+      return await request;
+    } finally {
+      inFlight.delete(cacheKey);
     }
-
-    // OpenAPI_ServiceResponse(예: HTTP_ERROR)도 성공 HTTP 상태로 내려올 수 있으므로
-    // 해당 오류 응답은 캐시하지 않습니다. 다음 요청에서 바로 재시도할 수 있어야 합니다.
-    const isOpenApiError = body.includes("<OpenAPI_ServiceResponse>");
-    if (!isOpenApiError) {
-      cache.set(cacheKey, { body, expiresAt: Date.now() + ttlForPath(path) });
-    }
-
-    return new Response(body, {
-      status: 200,
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "application/xml; charset=utf-8",
-        "X-BUS-Cache": isOpenApiError ? "ERROR-NOCACHE" : "MISS",
-      },
-    });
   } catch (err) {
     return new Response(
       JSON.stringify({ error: err instanceof Error ? err.message : "알 수 없는 오류" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
