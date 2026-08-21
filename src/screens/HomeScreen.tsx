@@ -164,10 +164,13 @@ function FavoriteArrivalInfo({
   fav,
   isRoute,
   routeNumber,
+  directionLabel,
 }: {
   fav: Favorite;
   isRoute: boolean;
   routeNumber: string;
+  /** stop_route일 때 기점 → 종점 표시용 */
+  directionLabel?: string;
 }) {
   const isStopRoute = fav.type === "stop_route";
   const { data, status } = useArrivalInfo(
@@ -180,12 +183,15 @@ function FavoriteArrivalInfo({
     subtitle = "노선";
   } else if (!isStopRoute) {
     subtitle = "정류장";
+  } else if (directionLabel) {
+    // 같은 번호 반대 방향을 구분하기 위해 기점→종점을 표시
+    subtitle = directionLabel;
   } else if (status === "loading") {
     subtitle = "정거장 확인 중";
   } else if (status === "success" && data) {
     subtitle = data.stopsAway <= 0 ? "곧 도착 정류장" : `${data.stopsAway}정거장 전`;
   } else {
-    subtitle = `${fav.routeNumber}번 정류장`;
+    subtitle = fav.routeNumber ? `${fav.routeNumber}번` : "정류장";
   }
 
   return (
@@ -194,7 +200,7 @@ function FavoriteArrivalInfo({
         <p className="text-sm font-semibold text-slate-800 truncate">
           {isRoute ? `${routeNumber}번` : fav.name}
         </p>
-        <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>
+        <p className="text-xs text-slate-400 mt-0.5 truncate">{subtitle}</p>
       </div>
 
       <div className="text-right shrink-0">
@@ -334,8 +340,16 @@ export function HomeScreen({
           const targetTab: TabId = isRoute || isStopRoute ? "bus" : "home";
           const targetId = isStopRoute ? fav.appRouteId : fav.refId;
 
+          // stop_route: appRouteId로 실제 노선 방향을 찾아 기점→종점 표시
+          const stopRoute = isStopRoute && fav.appRouteId
+            ? routes?.find((r) => r.id === fav.appRouteId)
+            : undefined;
+          const directionLabel = stopRoute
+            ? `${stopRoute.start || "기점"} → ${stopRoute.end || "종점"}`
+            : undefined;
+
         return (
-          <div key={fav.id} className="relative">
+          <div key={`${fav.id}-${refreshKey}`} className="relative">
             <button
               onClick={() => { 
                 if (editMode) return;
@@ -354,8 +368,13 @@ export function HomeScreen({
                 </span>
               </div>
 
-            {/* 가운데: 노선번호 + 정거장 남은 개수 / 오른쪽: 도착정보 배지 */}
-            <FavoriteArrivalInfo fav={fav} isRoute={isRoute} routeNumber={routeNumber} />
+            {/* 가운데: 정류장명 + 노선 방향 / 오른쪽: 도착정보 배지 */}
+            <FavoriteArrivalInfo
+              fav={fav}
+              isRoute={isRoute}
+              routeNumber={routeNumber}
+              directionLabel={directionLabel}
+            />
             </button>
 
             {editMode && (
