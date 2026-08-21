@@ -36,16 +36,69 @@ async function callApi(path: string, params: Record<string, string> = {}): Promi
       ? { Authorization: `Bearer ${SUPABASE_ANON_KEY}`, apikey: SUPABASE_ANON_KEY }
       : undefined,
   });
-  if (!res.ok) throw new Error((await res.text().catch(() => "")) || `전주시 API 요청 실패 (HTTP ${res.status})`);
-  const json = parseXml<ApiEnvelope>(await res.text());
+  const text = await res.text().catch(() => "");
+  if (!res.ok) throw new Error(text || `전주시 API 요청 실패 (HTTP ${res.status})`);
+  const json = parseXml<ApiEnvelope>(text);
   const body = json.RFC30;
   if (!body) throw new Error("응답 형식 오류");
   if (body.code && body.code !== "000") throw new Error(body.msg || `오류 코드: ${body.code}`);
   return body.routeList?.list ?? [];
 }
 
+function collectObjects(value: unknown, out: RawRouteField[] = []): RawRouteField[] {
+  if (!value || typeof value !== "object") return out;
+  if (Array.isArray(value)) {
+    for (const item of value) collectObjects(item, out);
+    return out;
+  }
+
+  const obj = value as Record<string, unknown>;
+  const hasCoordinate = Object.keys(obj).some((key) =>
+    ["gpslati", "gpslong", "gpsLat", "gpsLong", "latitude", "longitude", "lat", "lng", "x", "y"].includes(key)
+  );
+  if (hasCoordinate) {
+    const record: RawRouteField = {};
+    for (const [key, item] of Object.entries(obj)) {
+      if (item !== null && item !== undefined && typeof item !== "object") record[key] = String(item);
+    }
+    out.push(record);
+  }
+
+  for (const child of Object.values(obj)) collectObjects(child, out);
+  return out;
+}
+
+/** 전주시 GW: 특정 노선의 현재 운행 버스 위치 */
+export async function getBusLocationsByRoute(brtStdid: string): Promise<RawRouteField[]> {
+  if (!brtStdid) return [];
+
+  if (!SUPABASE_URL) throw new Error("VITE_SUPABASE_URL이 설정되지 않았습니다.");
+  const search = new URLSearchParams({
+    path: "/realtime/bus_location_bus_position_common",
+    brtStdid,
+  });
+  const url = `${SUPABASE_URL.replace(/\/$/, "")}/functions/v1/jeonju-proxy?${search.toString()}`;
+  const res = await fetch(url, {
+    headers: SUPABASE_ANON_KEY
+      ? { Authorization: `Bearer ${SUPABASE_ANON_KEY}`, apikey: SUPABASE_ANON_KEY }
+      : undefined,
+  });
+  const text = await res.text().catch(() => "");
+  if (!res.ok) throw new Error(text || `전주시 실시간 위치 요청 실패 (HTTP ${res.status})`);
+
+  const parsed = parseXml<unknown>(text);
+  const records = collectObjects(parsed);
+
+  console.info("[BUS STOP] Jeonju realtime response", {
+    brtStdid,
+    count: records.length,
+    sample: records[0] ?? null,
+  });
+
+  return records;
+}
+
 export async function getRoutes(): Promise<RawRouteField[]> {
-  // 정상 상태에서는 Supabase에 미리 저장된 노선을 즉시 사용합니다.
   try {
     const rows = await supabaseFetch<{
       brt_id: string | null;
@@ -72,7 +125,6 @@ export async function getRoutes(): Promise<RawRouteField[]> {
     console.warn("[BUS] Supabase 노선 캐시 조회 실패, 서버 프록시로 전환", error);
   }
 
-  // DB가 아직 비어 있는 최초 실행에서는 기존 프록시를 사용합니다.
   const idList = await callApi("/bus_location_all_common");
   const uniquePairs = Array.from(
     new Map(idList.filter((r) => r.brtId).map((r) => [`${r.brtId}-${r.brtClass}`, r])).values()
