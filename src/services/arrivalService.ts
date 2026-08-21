@@ -42,7 +42,10 @@ function scheduleArrivalQueue() {
     if (arrivalQueue.length === 0) return;
     if (activeArrivalRequests >= MAX_CONCURRENT_ARRIVAL_REQUESTS) return;
 
-    const wait = Math.max(0, MIN_ARRIVAL_REQUEST_GAP_MS - (Date.now() - lastArrivalRequestAt));
+    const wait = Math.max(
+      0,
+      MIN_ARRIVAL_REQUEST_GAP_MS - (Date.now() - lastArrivalRequestAt)
+    );
     if (wait > 0) {
       queueTimer = setTimeout(runNext, wait);
       return;
@@ -139,11 +142,17 @@ export async function fetchArrivalInfo(
       const items = await getSttnAcctoArvlPrearngeInfoList(nodeId, routeId);
       const normalizedRouteNumber = normalize(routeNumber ?? "");
 
-      const item = normalizedRouteNumber
-        ? items.find((i) => normalize(i.routeno ?? "") === normalizedRouteNumber)
-          ?? items.find((i) => i.routeid === routeId)
-          ?? items[0]
-        : items.find((i) => i.routeid === routeId) ?? items[0];
+      // routeId가 가장 정확한 방향 식별자이므로 먼저 사용합니다.
+      // 같은 버스번호의 반대 방향이 함께 내려오는 경우에도 잘못된 방향의
+      // arrprevstationcnt를 홈 화면에 표시하지 않도록 합니다.
+      const item =
+        items.find((i) => i.routeid === routeId) ??
+        (normalizedRouteNumber
+          ? items.find(
+              (i) => normalize(i.routeno ?? "") === normalizedRouteNumber
+            )
+          : undefined) ??
+        items[0];
 
       if (!item) return null;
 
@@ -153,7 +162,7 @@ export async function fetchArrivalInfo(
 
       return {
         minutes: Math.max(0, Math.round(arrtime / 60)),
-        stopsAway: isNaN(stopsAway) ? 0 : stopsAway,
+        stopsAway: isNaN(stopsAway) ? 0 : Math.max(0, stopsAway),
       };
     } catch (error) {
       console.warn("[BUS STOP] Arrival request failed; keeping previous value", {
