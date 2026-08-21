@@ -1,6 +1,7 @@
 import { createContext, useContext, useReducer, useEffect, type ReactNode } from "react";
 import type { Favorite, AlertSetting } from "@/types";
 import { FAVORITES, ALERT_SETTINGS, CARD_INFO } from "@/data/mock";
+import { fetchRoutesForStation } from "@/services/stationService";
 
 interface AppState {
   region: { sido: string; sigungu: string };
@@ -14,6 +15,7 @@ type Action =
   | { type: "ADD_FAVORITE"; favorite: Favorite }
   | { type: "REMOVE_FAVORITE"; id: string }
   | { type: "RENAME_FAVORITE"; id: string; label: string }
+  | { type: "SYNC_FAVORITE_ROUTE_ID"; id: string; tagoRouteId: string }
   | { type: "CHARGE_CARD"; amount: number }
   | { type: "PAY_CARD"; amount: number }
   | { type: "ADD_ALERT"; alert: AlertSetting }
@@ -68,6 +70,13 @@ function reducer(state: AppState, action: Action): AppState {
           f.id === action.id ? { ...f, label: action.label } : f
         ),
       };
+    case "SYNC_FAVORITE_ROUTE_ID":
+      return {
+        ...state,
+        favorites: state.favorites.map((f) =>
+          f.id === action.id ? { ...f, tagoRouteId: action.tagoRouteId } : f
+        ),
+      };
     case "CHARGE_CARD":
       return { ...state, cardBalance: state.cardBalance + action.amount };
     case "PAY_CARD":
@@ -107,6 +116,66 @@ export function AppProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(ALERTS_STORAGE_KEY, JSON.stringify(state.alerts));
     } catch {}
   }, [state.alerts]);
+
+  // 저장되어 있던 즐겨찾기의 TAGO routeId가 반대 방향이거나 오래된 경우를
+  // 현재 정류장의 실시간 도착정보 기준으로 한 번 보정합니다.
+  useEffect(() => {
+    const stopFavorites = state.favorites.filter(
+      (favorite) =>
+        favorite.type === "stop_route" &&
+        favorite.tagoNodeId &&
+        favorite.routeNumber
+    );
+
+    if (stopFavorites.length === 0) return;
+
+    let cancelled = false;
+
+    (async () => {
+      const nodeIds = Array.from(
+        new Set(stopFavorites.map((favorite) => favorite.tagoNodeId!))
+      );
+
+      const routesByNode = new Map<string, Awaited<ReturnType<typeof fetchRoutesForStation>>>();
+
+      await Promise.all(
+        nodeIds.map(async (nodeId) => {
+          try {
+            routesByNode.set(nodeId, await fetchRoutesForStation(nodeId));
+          } catch {
+            // 한 정류장 조회 실패는 다른 즐겨찾기 보정에 영향을 주지 않습니다.
+          }
+        })
+      );
+
+      if (cancelled) return;
+
+      for (const favorite of stopFavorites) {
+        const nodeId = favorite.tagoNodeId;
+        const routeNumber = favorite.routeNumber;
+        if (!nodeId || !routeNumber) continue;
+
+        const currentRoute = routesByNode
+          .get(nodeId)
+          ?.find((route) => route.routeNo === routeNumber);
+
+        if (
+          currentRoute?.routeId &&
+          currentRoute.routeId !== favorite.tagoRouteId
+        ) {
+          dispatch({
+            type: "SYNC_FAVORITE_ROUTE_ID",
+            id: favorite.id,
+            tagoRouteId: currentRoute.routeId,
+          });
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [state.favorites]);
 
   return <AppContext.Provider value={{ state, dispatch }}>{children}</AppContext.Provider>;
 }
