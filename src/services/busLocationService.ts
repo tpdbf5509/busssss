@@ -1,9 +1,7 @@
 import { getRouteNoList, getRouteAcctoBusLcList, type RawTagoField } from "@/api/tago";
 import type { Route, RouteDirection, BusLocation } from "@/types/route";
 
-// 노선번호(표시용, 예: "385", "3-1") 기준으로 TAGO routeId 방향 목록을 캐싱합니다.
 const directionsCache = new Map<string, RouteDirection[]>();
-// 동시에 같은 요청이 여러 번 나가는 것(리액트 재렌더링/StrictMode 등)을 막기 위한 진행중 캐시
 const directionsPromiseCache = new Map<string, Promise<RouteDirection[]>>();
 
 function toDirections(items: RawTagoField[]): RouteDirection[] {
@@ -20,25 +18,26 @@ function normalize(s: string): string {
   return (s ?? "").replace(/\s+/g, "").trim();
 }
 
-/** 노선번호가 같은 다른 노선까지 섞여 나오는 걸 막기 위해 기점/종점이 실제로 맞는 것만 남깁니다. */
+/** 기점과 종점이 모두 주어진 경우 둘 다 일치하는 방향만 사용합니다. */
 function filterMatchingDirections(route: Route, directions: RouteDirection[]): RouteDirection[] {
   const rs = normalize(route.start);
   const re = normalize(route.end);
 
+  if (!rs && !re) return directions.slice(0, 2);
+
   const matched = directions.filter((d) => {
     const ds = normalize(d.start);
     const de = normalize(d.end);
-    return (rs && (ds.includes(rs) || rs.includes(ds))) || (re && (de.includes(re) || re.includes(de)));
+    const startMatches = !rs || ds.includes(rs) || rs.includes(ds);
+    const endMatches = !re || de.includes(re) || re.includes(de);
+    return startMatches && endMatches;
   });
 
-  // 매칭되는 게 하나도 없으면(이름 표기가 달라서) 과도한 요청을 막기 위해 최대 2개까지만 사용
+  // 기점/종점이 모두 맞는 결과가 없으면, 양쪽 중 하나만 맞는 결과를 사용하지 않고
+  // 원본 방향 목록에서 최대 2개만 시도합니다. 잘못된 routeId를 위치 API에 보내는 것을 줄입니다.
   return matched.length > 0 ? matched : directions.slice(0, 2);
 }
 
-/**
- * 우리 앱의 Route(전주시 자체 API 기준)를 TAGO routeId로 변환합니다.
- * 표시번호 → 기본번호 순서로 재시도하고, 기점/종점이 일치하는 방향만 남깁니다.
- */
 export async function resolveDirections(route: Route): Promise<RouteDirection[]> {
   const cacheKey = route.id || `${route.number}-${route.start}-${route.end}`;
 
@@ -49,18 +48,21 @@ export async function resolveDirections(route: Route): Promise<RouteDirection[]>
   if (pending) return pending;
 
   const promise = (async () => {
-    let items = await getRouteNoList(route.number);
+    try {
+      let items = await getRouteNoList(route.number);
 
-    if (items.length === 0 && route.rawNumber && route.rawNumber !== route.number) {
-      items = await getRouteNoList(route.rawNumber);
+      if (items.length === 0 && route.rawNumber && route.rawNumber !== route.number) {
+        items = await getRouteNoList(route.rawNumber);
+      }
+
+      const allDirections = toDirections(items);
+      const directions = filterMatchingDirections(route, allDirections);
+
+      directionsCache.set(cacheKey, directions);
+      return directions;
+    } finally {
+      directionsPromiseCache.delete(cacheKey);
     }
-
-    const allDirections = toDirections(items);
-    const directions = filterMatchingDirections(route, allDirections);
-
-    directionsCache.set(cacheKey, directions);
-    directionsPromiseCache.delete(cacheKey);
-    return directions;
   })();
 
   directionsPromiseCache.set(cacheKey, promise);
@@ -82,11 +84,16 @@ export async function fetchBusLocations(route: Route): Promise<BusLocation[]> {
   const locations: BusLocation[] = [];
   const errors: unknown[] = [];
 
-  // 동시 요청 시 TAGO 위치정보 API가 429(Too Many Requests)를 반환하는 것으로
-  // 확인되어, 병렬 대신 순차 호출 + 짧은 간격을 둡니다.
+  // TAGO 위치정보 API는 방향별로 순차 호출합니다.
   for (let i = 0; i < directions.length; i++) {
     const dir = directions[i];
     try {
+      console.info("[BUS STOP] BusLcInfo request", {
+        routeNumber: route.number,
+        routeId: dir.routeId,
+        direction: `${dir.start} → ${dir.end}`,
+      });
+
       const items = await getRouteAcctoBusLcList(dir.routeId);
       for (const item of items) {
         locations.push({
@@ -100,11 +107,17 @@ export async function fetchBusLocations(route: Route): Promise<BusLocation[]> {
         });
       }
     } catch (err) {
+      console.error("[BUS STOP] BusLcInfo failed", {
+        routeNumber: route.number,
+        routeId: dir.routeId,
+        direction: `${dir.start} → ${dir.end}`,
+        error: err,
+      });
       errors.push(err);
     }
 
     if (i < directions.length - 1) {
-      await delay(400);
+      await delay(1000);
     }
   }
 
