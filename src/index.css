@@ -28,8 +28,11 @@
   #root > div {
     height: 100%;
     overflow-y: auto;
+    overflow-x: hidden;
     overscroll-behavior-y: contain;
     -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    pointer-events: auto;
   }
 
   input,
