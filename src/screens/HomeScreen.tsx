@@ -7,7 +7,7 @@ import { showToast } from "@/components/Toast";
 import type { TabId } from "@/components/BottomNav";
 import { MapPin, ChevronDown, Star, Search, X, RefreshCw } from "lucide-react";
 import { useArrivalInfo } from "@/hooks/useArrivalInfo";
-import { clearArrivalCache } from "@/services/arrivalService";
+import { triggerArrivalRefresh } from "@/services/arrivalService";
 import type { Favorite } from "@/types";
 
 const MAIN_LINES: { number: string; start: string; end: string }[] = [
@@ -174,7 +174,7 @@ function FavoriteArrivalInfo({
   directionLabel?: string;
 }) {
   const isStopRoute = fav.type === "stop_route";
-  const { data, status } = useArrivalInfo(
+  const { data, status, isRefreshing } = useArrivalInfo(
     isStopRoute ? fav.tagoNodeId : undefined,
     isStopRoute ? fav.tagoRouteId : undefined,
     isStopRoute ? (fav.routeNumber ?? routeNumber) : undefined,
@@ -206,17 +206,19 @@ function FavoriteArrivalInfo({
       </div>
 
       <div className="text-right shrink-0">
-        <p className="text-xs font-medium text-slate-300">도착정보</p>
+        <p className="text-xs font-medium text-slate-300">
+          {isStopRoute && isRefreshing ? "갱신 중" : "도착정보"}
+        </p>
         {!isStopRoute && <p className="text-sm font-semibold text-slate-400">준비중</p>}
-        {isStopRoute && status === "loading" && (
+        {isStopRoute && status === "loading" && !data && (
           <p className="text-sm font-semibold text-slate-300">조회 중</p>
         )}
-        {isStopRoute && status === "success" && data && (
+        {isStopRoute && data && (
           <p className={`text-sm font-bold ${data.minutes <= 3 ? "text-blue-600" : "text-slate-700"}`}>
             {data.minutes <= 0 ? "곧 도착" : `${data.minutes}분 후`}
           </p>
         )}
-        {isStopRoute && status === "error" && (
+        {isStopRoute && status === "error" && !data && (
           <p className="text-sm font-semibold text-slate-300">정보 없음</p>
         )}
       </div>
@@ -232,13 +234,20 @@ export function HomeScreen({
   const { state, dispatch } = useApp();
   const [regionOpen, setRegionOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);  // 추가
+  const [refreshing, setRefreshing] = useState(false);
   const { data: routes } = useAsync(() => fetchAllRoutes(), []);
 
-  const handleRefresh = () => {
-    clearArrivalCache();
-    setRefreshKey((k) => k + 1);
-    showToast("새로고침했어요");
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await triggerArrivalRefresh();
+      showToast("새로고침했어요");
+    } catch {
+      showToast("갱신에 실패했어요");
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   return (
@@ -283,10 +292,12 @@ export function HomeScreen({
           {/* 새로고침 버튼 */}
           <button
             onClick={handleRefresh}
-            className="p-1.5 rounded-full text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+            disabled={refreshing}
+            className="p-1.5 rounded-full text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50"
             aria-label="새로고침"
+            aria-busy={refreshing}
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
           </button>
 
           {state.favorites.length > 0 && (
@@ -352,7 +363,7 @@ export function HomeScreen({
             : undefined;
 
         return (
-          <div key={`${fav.id}-${refreshKey}`} className="relative">
+          <div key={fav.id} className="relative">
             <button
               onClick={() => { 
                 if (editMode) return;
