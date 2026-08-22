@@ -7,6 +7,7 @@ import { showToast } from "@/components/Toast";
 import type { TabId } from "@/components/BottomNav";
 import { MapPin, ChevronDown, Star, Search, X, RefreshCw } from "lucide-react";
 import { useArrivalInfo } from "@/hooks/useArrivalInfo";
+import { clearArrivalCache } from "@/services/arrivalService";
 import type { Favorite } from "@/types";
 
 const MAIN_LINES: { number: string; start: string; end: string }[] = [
@@ -235,6 +236,7 @@ export function HomeScreen({
   const { data: routes } = useAsync(() => fetchAllRoutes(), []);
 
   const handleRefresh = () => {
+    clearArrivalCache();
     setRefreshKey((k) => k + 1);
     showToast("새로고침했어요");
   };
