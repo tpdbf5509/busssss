@@ -205,19 +205,23 @@ export function resolveJeonjuBrtStdid(route: Pick<Route, "id" | "number" | "star
 /**
  * 노선 경유 정류장 목록을 조회합니다.
  * Route 객체를 넘기면 방향별 brtStdid 보정이 적용됩니다.
- * (하위 호환: 문자열 routeId만 넘겨도 동작)
+ * (하위 호환: 문자열 routeId만 넘겨도 캐시에서 방향 정보를 찾아 보정)
  */
 export async function fetchStopsForRoute(
   routeOrId: string | Pick<Route, "id" | "number" | "start" | "end">,
 ): Promise<BusStop[]> {
-  const routeId =
-    typeof routeOrId === "string"
-      ? routeOrId
-      : resolveJeonjuBrtStdid(routeOrId);
+  let routeId: string;
+  if (typeof routeOrId === "string") {
+    // id만 넘어온 경우: 캐시된 노선에서 방향 정보를 찾아 보정 시도
+    const fromCache = routesCache?.find((r) => r.id === routeOrId);
+    routeId = fromCache ? resolveJeonjuBrtStdid(fromCache) : routeOrId;
+  } else {
+    routeId = resolveJeonjuBrtStdid(routeOrId);
+  }
 
   const cacheKey =
     typeof routeOrId === "string"
-      ? routeOrId
+      ? `${routeOrId}|${routeId}`
       : `${routeOrId.number}|${normalizeName(routeOrId.start)}|${normalizeName(routeOrId.end)}|${routeId}`;
 
   const cached = stopsCache.get(cacheKey);
