@@ -57,7 +57,7 @@ function AppContent() {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-slate-50 h-[100dvh] overflow-hidden relative flex flex-col">
+    <div className="max-w-md mx-auto bg-slate-50 h-[100svh] overflow-hidden relative flex flex-col">
       {dropoffAlarm && (
         <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-6">
           <div className="w-full max-w-sm rounded-3xl bg-white shadow-2xl p-7 text-center animate-pulse">
@@ -134,7 +134,7 @@ function App() {
 
   if (!authReady) {
     return (
-      <div className="h-[100dvh] bg-slate-50 flex items-center justify-center text-sm text-slate-400">
+      <div className="h-[100svh] bg-slate-50 flex items-center justify-center text-sm text-slate-400">
         로그인 상태를 확인하는 중...
       </div>
     );
