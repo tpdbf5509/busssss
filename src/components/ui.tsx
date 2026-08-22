@@ -1,4 +1,5 @@
 import { Loader2, AlertTriangle, Inbox } from "lucide-react";
+import { formatArrivalText } from "@/lib/formatArrival";
 
 export function LoadingSkeleton({ className = "" }: { className?: string }) {
   return (
@@ -68,7 +69,13 @@ export function Toggle({
   );
 }
 
-export function ArrivalBadge({ minutes }: { minutes: number }) {
+export function ArrivalBadge({
+  minutes,
+  stopsAway,
+}: {
+  minutes: number;
+  stopsAway?: number | null;
+}) {
   const color =
     minutes <= 3
       ? "bg-red-50 text-red-600"
@@ -79,7 +86,7 @@ export function ArrivalBadge({ minutes }: { minutes: number }) {
     <span
       className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${color}`}
     >
-      {minutes <= 1 ? "곧 도착" : `${minutes}분 후`}
+      {formatArrivalText(minutes, stopsAway)}
     </span>
   );
 }
