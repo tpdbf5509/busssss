@@ -40,7 +40,7 @@ export function CardScreen() {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
-      <header className="bg-gradient-to-b from-slate-900 to-slate-800 px-5 pt-12 pb-8 text-white">
+      <header className="bg-gradient-to-b from-slate-900 to-slate-800 px-5 pt-16 pb-9 text-white">
         <h1 className="text-xl font-bold mb-4">모바일 버스카드</h1>
 
         <div className="relative bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-400 rounded-2xl p-5 shadow-xl overflow-hidden">

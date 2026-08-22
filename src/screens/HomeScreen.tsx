@@ -259,9 +259,9 @@ export function HomeScreen({
   };
 
   return (
-    <div className="h-[100dvh] overflow-hidden flex flex-col bg-slate-50 pb-20">
-      <header className="bg-gradient-to-b from-blue-600 to-blue-500 text-white px-5 pt-12 pb-6 shrink-0">
-        <div className="flex items-center justify-between mb-1">
+    <div className="min-h-[100dvh] flex flex-col bg-slate-50 pb-20">
+       <header className="bg-gradient-to-b from-blue-600 to-blue-500 text-white px-5 pt-16 pb-9 shrink-0">
+         <div className="flex items-center justify-between mb-1.5">
           <h1 className="text-2xl font-bold tracking-tight">BUS STOP</h1>
           <button
             onClick={() => setRegionOpen(true)}
