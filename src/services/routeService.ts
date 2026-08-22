@@ -183,19 +183,55 @@ export async function fetchAllRoutes(): Promise<Route[]> {
   return routesPromise;
 }
 
-export async function fetchStopsForRoute(routeId: string): Promise<BusStop[]> {
-  const cached = stopsCache.get(routeId);
+/**
+ * 전주시 GW가 내려주는 brtStdid가 실제 방향과 어긋나는 일부 노선 보정.
+ * 실시간 위치 조회뿐 아니라 정류장(실제 노선) 조회에도 동일하게 적용합니다.
+ * 키: "노선번호|기점|종점"
+ */
+const BRT_STDID_OVERRIDES: Record<string, string> = {
+  "104|송천동종점|평화동종점": "305001271",
+};
+
+function normalizeName(value: string): string {
+  return (value ?? "").replace(/\s+/g, "").trim();
+}
+
+/** 방향에 맞는 전주시 brtStdid를 반환합니다. */
+export function resolveJeonjuBrtStdid(route: Pick<Route, "id" | "number" | "start" | "end">): string {
+  const key = `${route.number}|${normalizeName(route.start)}|${normalizeName(route.end)}`;
+  return BRT_STDID_OVERRIDES[key] ?? route.id;
+}
+
+/**
+ * 노선 경유 정류장 목록을 조회합니다.
+ * Route 객체를 넘기면 방향별 brtStdid 보정이 적용됩니다.
+ * (하위 호환: 문자열 routeId만 넘겨도 동작)
+ */
+export async function fetchStopsForRoute(
+  routeOrId: string | Pick<Route, "id" | "number" | "start" | "end">,
+): Promise<BusStop[]> {
+  const routeId =
+    typeof routeOrId === "string"
+      ? routeOrId
+      : resolveJeonjuBrtStdid(routeOrId);
+
+  const cacheKey =
+    typeof routeOrId === "string"
+      ? routeOrId
+      : `${routeOrId.number}|${normalizeName(routeOrId.start)}|${normalizeName(routeOrId.end)}|${routeId}`;
+
+  const cached = stopsCache.get(cacheKey);
   if (cached) return cached;
 
   const raw = await fetchStopsRaw(routeId);
   const stops = raw
     .map((s, index) => mapToBusStop(s, index))
-    .filter((s) => s.name || s.id) // 이름이나 ID가 있는 정류장만
+    .filter((s) => s.name || s.id)
     .sort((a, b) => a.order - b.order);
 
   // 빈 결과가 나와도 캐시하지 않아 다음에 다시 시도할 수 있게 합니다.
   if (stops.length > 0) {
-    stopsCache.set(routeId, stops);
+    stopsCache.set(cacheKey, stops);
   }
   return stops;
 }
