@@ -6,6 +6,9 @@ import type { Route } from "@/types/route";
 const FIRED_KEY = "busssss_alert_fired_v1";
 const RECORDS_KEY = "busssss_alert_records_v1";
 
+let alarmTimer: number | null = null;
+let alarmContext: AudioContext | null = null;
+
 /** 이미 울린 알림 (alertId + vehicleNo) 중복 방지 */
 function loadFired(): Set<string> {
   try {
@@ -38,25 +41,69 @@ export function saveAlertRecords(records: AlertRecord[]) {
   } catch {}
 }
 
-function playBeep() {
+function playAlarmPattern() {
   try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.frequency.value = 880;
-    osc.type = "sine";
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.6);
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+
+    if (!alarmContext) alarmContext = new AudioContextClass();
+    if (alarmContext.state === "suspended") alarmContext.resume().catch(() => {});
+
+    const start = alarmContext.currentTime;
+    const beepLength = 0.28;
+    const gap = 0.16;
+
+    // 시계 알람처럼 띠링-띠링-띠링 3회
+    for (let i = 0; i < 3; i += 1) {
+      const offset = i * (beepLength + gap);
+      const osc = alarmContext.createOscillator();
+      const gain = alarmContext.createGain();
+      osc.connect(gain);
+      gain.connect(alarmContext.destination);
+      osc.frequency.setValueAtTime(880, start + offset);
+      osc.frequency.exponentialRampToValueAtTime(660, start + offset + beepLength);
+      osc.type = "sine";
+      gain.gain.setValueAtTime(0.001, start + offset);
+      gain.gain.exponentialRampToValueAtTime(0.32, start + offset + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.01, start + offset + beepLength);
+      osc.start(start + offset);
+      osc.stop(start + offset + beepLength);
+    }
   } catch {}
+}
+
+function stopAlarmSound() {
+  if (alarmTimer !== null) {
+    window.clearInterval(alarmTimer);
+    alarmTimer = null;
+  }
+  try {
+    alarmContext?.close();
+  } catch {}
+  alarmContext = null;
+}
+
+/** 현재 재생 중인 하차 알람을 중지합니다. */
+export function stopDropoffAlarm() {
+  stopAlarmSound();
+  window.dispatchEvent(new CustomEvent("busssss:dropoff-alarm-stop"));
+}
+
+/** 하차 알람을 시작하고 UI에 알람 내용을 전달합니다. */
+export function startDropoffAlarm(title: string, body: string) {
+  stopAlarmSound();
+  playAlarmPattern();
+  alarmTimer = window.setInterval(playAlarmPattern, 1800);
+  window.dispatchEvent(
+    new CustomEvent("busssss:dropoff-alarm", { detail: { title, body } })
+  );
 }
 
 function vibrate() {
   try {
-    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+    if (navigator.vibrate) {
+      navigator.vibrate([350, 150, 350, 150, 350, 500]);
+    }
   } catch {}
 }
 
@@ -129,7 +176,6 @@ export async function checkDropoffAlerts(
       if (triggerOrder < 1) continue;
 
       for (const bus of locations) {
-        // 목표 정류장 이전 구간에서, 트리거 순서 이상이면 알림
         if (
           bus.nodeOrder >= triggerOrder &&
           bus.nodeOrder < alert.targetStopOrder
@@ -139,10 +185,10 @@ export async function checkDropoffAlerts(
 
           fired.add(key);
 
-          const title = "하차 알림";
+          const title = "하차 알람";
           const body = `${alert.routeName} · ${bus.nodeName} 부근\n${alert.targetStation} 하차까지 약 ${alert.targetStopOrder - bus.nodeOrder}정거장`;
 
-          if (alert.sound) playBeep();
+          if (alert.sound) startDropoffAlarm(title, body);
           if (alert.vibrate) vibrate();
           await showBrowserNotification(title, body);
 
