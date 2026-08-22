@@ -174,13 +174,25 @@ export async function getRouteStops(routeId: string): Promise<RawRouteField[]> {
     }>("bus_route_stops_cache", `select=route_id,sequence_no,node_id,node_name,raw&route_id=eq.${encodeURIComponent(routeId)}&order=sequence_no.asc`);
 
     if (rows.length > 0) {
-      return rows.map((row) => ({
-        ...row.raw,
-        brtStdid: row.route_id,
-        nodeid: row.node_id ?? row.raw?.nodeid ?? "",
-        nodenm: row.node_name ?? row.raw?.nodenm ?? "",
-        seq: String(row.sequence_no ?? row.raw?.seq ?? ""),
-      }));
+      return rows.map((row) => {
+        const nodeId = row.node_id ?? row.raw?.nodeid ?? row.raw?.stopStandardid ?? row.raw?.stopId ?? "";
+        const nodeName = row.node_name ?? row.raw?.nodenm ?? row.raw?.stopKname ?? "";
+        const seq = String(row.sequence_no ?? row.raw?.seq ?? row.raw?.brnSeqno ?? "");
+        // Supabase 캐시와 전주시 API 필드명을 모두 채워 하위 매퍼가 안정적으로 동작하도록 합니다.
+        return {
+          ...row.raw,
+          brtStdid: row.route_id,
+          // 공통/캐시 필드
+          nodeid: nodeId,
+          nodenm: nodeName,
+          seq,
+          // 전주시 원본 필드 (mapToBusStop 호환)
+          stopStandardid: nodeId || row.raw?.stopStandardid || "",
+          stopId: nodeId || row.raw?.stopId || "",
+          stopKname: nodeName || row.raw?.stopKname || "",
+          brnSeqno: seq || row.raw?.brnSeqno || "",
+        };
+      });
     }
   } catch (error) {
     console.warn("[BUS] Supabase 정류장 캐시 조회 실패, 서버 프록시로 전환", error);
