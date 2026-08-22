@@ -39,7 +39,7 @@ export function CardScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
+    <div className="bg-slate-50">
       <header className="bg-gradient-to-b from-slate-900 to-slate-800 px-5 pt-16 pb-9 text-white">
         <h1 className="text-xl font-bold mb-4">모바일 버스카드</h1>
 
