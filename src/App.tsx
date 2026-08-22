@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppProvider } from "@/store/AppContext";
 import { BottomNav, type TabId } from "@/components/BottomNav";
 import { ToastContainer } from "@/components/Toast";
@@ -19,8 +19,13 @@ function AppContent() {
   const [pendingRouteId, setPendingRouteId] = useState<string | null>(null);
   const [homeRefreshKey, setHomeRefreshKey] = useState(0);
   const [dropoffAlarm, setDropoffAlarm] = useState<DropoffAlarm | null>(null);
+  const mainRef = useRef<HTMLElement>(null);
 
   useDropoffAlertMonitor();
+
+  useEffect(() => {
+       mainRef.current?.scrollTo(0, 0);
+     }, [tab]);
 
   useEffect(() => {
     const onAlarm = (event: Event) => {
@@ -77,7 +82,7 @@ function AppContent() {
         </div>
       )}
 
-      <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain">
+      <main ref={mainRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain">
         {tab === "home" && <HomeScreen key={homeRefreshKey} onNavigate={handleNavigate} />}
         {tab === "bus" && (
           <BusScreen
