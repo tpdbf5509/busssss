@@ -14,17 +14,27 @@ import { supabase } from "@/lib/supabaseClient";
 function AppContent() {
   const [tab, setTab] = useState<TabId>("home");
   const [pendingRouteId, setPendingRouteId] = useState<string | null>(null);
+  const [homeRefreshKey, setHomeRefreshKey] = useState(0);
 
   useDropoffAlertMonitor();
 
+  const handleTabChange = (nextTab: TabId) => {
+    // 다른 탭에서 홈으로 돌아올 때 HomeScreen을 다시 마운트해
+    // 도착 정보와 홈 화면 데이터를 새로 불러오도록 합니다.
+    if (nextTab === "home" && tab !== "home") {
+      setHomeRefreshKey((key) => key + 1);
+    }
+    setTab(nextTab);
+  };
+
   const handleNavigate = (nextTab: TabId, routeId?: string) => {
     if (routeId) setPendingRouteId(routeId);
-    setTab(nextTab);
+    handleTabChange(nextTab);
   };
 
   return (
     <div className="max-w-md mx-auto bg-slate-50 min-h-screen relative">
-      {tab === "home" && <HomeScreen onNavigate={handleNavigate} />}
+      {tab === "home" && <HomeScreen key={homeRefreshKey} onNavigate={handleNavigate} />}
       {tab === "bus" && (
         <BusScreen
           initialRouteId={pendingRouteId ?? undefined}
@@ -34,7 +44,7 @@ function AppContent() {
       {tab === "card" && <CardScreen />}
       {tab === "alert" && <AlertScreen />}
       {tab === "my" && <MyScreen />}
-      <BottomNav active={tab} onChange={setTab} />
+      <BottomNav active={tab} onChange={handleTabChange} />
     </div>
   );
 }
