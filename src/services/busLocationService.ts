@@ -1,6 +1,7 @@
 import { getBusLocationsByRoute } from "@/api/jeonju";
 import { getRouteNoList } from "@/api/tago";
 import type { Route, BusLocation, RouteDirection } from "@/types/route";
+import { resolveJeonjuBrtStdid } from "@/services/routeService";
 
 function firstValue(item: Record<string, string>, keys: string[]): string {
   const entries = Object.entries(item);
@@ -74,20 +75,6 @@ function toBusLocation(item: Record<string, string>, route: Route): BusLocation 
   };
 }
 
-// 전주시 GW가 내려주는 brtStdid가 실제 방향과 어긋나는 일부 노선에 대한
-// 보정 테이블입니다. 노선번호 하나에 if문을 하나씩 추가하는 대신
-// "번호|기점|종점" 키로 관리해 새로운 예외가 생겨도 이 테이블에만
-// 항목을 추가하면 되도록 했습니다.
-// TODO: 전주시 API에서 방향별 brtStdid가 정상적으로 내려오는 것이 확인되면
-// 이 보정 테이블은 제거해도 됩니다.
-const BRT_STDID_OVERRIDES: Record<string, string> = {
-  "104|송천동종점|평화동종점": "305001271",
-};
-
-function resolveJeonjuBrtStdid(route: Route): string {
-  const key = `${route.number}|${normalize(route.start)}|${normalize(route.end)}`;
-  return BRT_STDID_OVERRIDES[key] ?? route.id;
-}
 
 const directionCache = new Map<string, { directions: RouteDirection[]; expiresAt: number }>();
 const locationCache = new Map<string, { locations: BusLocation[]; expiresAt: number }>();
