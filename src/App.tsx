@@ -52,7 +52,7 @@ function AppContent() {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-slate-50 min-h-screen relative">
+    <div className="max-w-md mx-auto bg-slate-50 h-[100dvh] overflow-hidden relative flex flex-col">
       {dropoffAlarm && (
         <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-6">
           <div className="w-full max-w-sm rounded-3xl bg-white shadow-2xl p-7 text-center animate-pulse">
@@ -77,16 +77,18 @@ function AppContent() {
         </div>
       )}
 
-      {tab === "home" && <HomeScreen key={homeRefreshKey} onNavigate={handleNavigate} />}
-      {tab === "bus" && (
-        <BusScreen
-          initialRouteId={pendingRouteId ?? undefined}
-          onConsumeInitialRoute={() => setPendingRouteId(null)}
-        />
-      )}
-      {tab === "card" && <CardScreen />}
-      {tab === "alert" && <AlertScreen />}
-      {tab === "my" && <MyScreen />}
+      <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain">
+        {tab === "home" && <HomeScreen key={homeRefreshKey} onNavigate={handleNavigate} />}
+        {tab === "bus" && (
+          <BusScreen
+            initialRouteId={pendingRouteId ?? undefined}
+            onConsumeInitialRoute={() => setPendingRouteId(null)}
+          />
+        )}
+        {tab === "card" && <CardScreen />}
+        {tab === "alert" && <AlertScreen />}
+        {tab === "my" && <MyScreen />}
+      </main>
       <BottomNav active={tab} onChange={handleTabChange} />
     </div>
   );
@@ -127,7 +129,7 @@ function App() {
 
   if (!authReady) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center text-sm text-slate-400">
+      <div className="h-[100dvh] bg-slate-50 flex items-center justify-center text-sm text-slate-400">
         로그인 상태를 확인하는 중...
       </div>
     );
