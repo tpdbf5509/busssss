@@ -4,7 +4,8 @@ import type { Route } from "@/types/route";
 
 export interface ArrivalInfo {
   minutes: number;
-  stopsAway: number;
+  /** API가 제공하지 않으면 null — UI에서 정거장 문구를 숨김 */
+  stopsAway: number | null;
 }
 
 function normalize(s: string): string {
@@ -184,22 +185,29 @@ function pickNearestArrival(
 
   if (candidates.length === 0) return null;
 
-  type Candidate = { arrtimeSec: number; stopsAway: number };
+  type Candidate = { arrtimeSec: number; stopsAway: number | null };
   const parsed: Candidate[] = [];
 
   for (const item of candidates) {
     const arrtimeSec = Number(item.arrtime1 ?? item.arrtime);
-    const stopsAway = Number(item.arrprevstationcnt1 ?? item.arrprevstationcnt);
+    const rawStops = Number(item.arrprevstationcnt1 ?? item.arrprevstationcnt);
     if (isNaN(arrtimeSec) || arrtimeSec < 0) continue;
-    parsed.push({
-      arrtimeSec,
-      stopsAway: isNaN(stopsAway) ? 0 : Math.max(0, stopsAway),
-    });
+    const stopsAway =
+      item.arrprevstationcnt1 == null && item.arrprevstationcnt == null
+        ? null
+        : isNaN(rawStops)
+          ? null
+          : Math.max(0, rawStops);
+    parsed.push({ arrtimeSec, stopsAway });
   }
 
   if (parsed.length === 0) return null;
 
-  parsed.sort((a, b) => a.arrtimeSec - b.arrtimeSec || a.stopsAway - b.stopsAway);
+  parsed.sort(
+    (a, b) =>
+      a.arrtimeSec - b.arrtimeSec ||
+      (a.stopsAway ?? Number.POSITIVE_INFINITY) - (b.stopsAway ?? Number.POSITIVE_INFINITY)
+  );
   const nearest = parsed[0];
 
   return {
