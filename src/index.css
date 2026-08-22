@@ -6,33 +6,11 @@
   html {
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
-    overscroll-behavior: none;
-    overflow: hidden;
-    height: 100%;
   }
   body {
     font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background-color: #f8fafc;
     touch-action: manipulation;
-    overscroll-behavior: none;
-    overflow: hidden;
-    height: 100%;
-    margin: 0;
-  }
-
-  #root {
-    height: 100%;
-    overflow: hidden;
-  }
-
-  #root > div {
-    height: 100%;
-    overflow-y: auto;
-    overflow-x: hidden;
-    overscroll-behavior-y: contain;
-    -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
-    pointer-events: auto;
   }
 
   input,
