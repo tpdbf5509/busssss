@@ -142,27 +142,43 @@ export async function fetchArrivalInfo(
       const items = await getSttnAcctoArvlPrearngeInfoList(nodeId, routeId);
       const normalizedRouteNumber = normalize(routeNumber ?? "");
 
-      // routeId가 가장 정확한 방향 식별자이므로 먼저 사용합니다.
-      // 같은 버스번호의 반대 방향이 함께 내려오는 경우에도 잘못된 방향의
-      // arrprevstationcnt를 홈 화면에 표시하지 않도록 합니다.
-      const item =
-        items.find((i) => i.routeid === routeId) ??
-        (normalizedRouteNumber
-          ? items.find(
-              (i) => normalize(i.routeno ?? "") === normalizedRouteNumber
-            )
-          : undefined) ??
-        items[0];
+      // 1) 방향이 맞는 후보만 고릅니다 (routeId 우선, 없으면 노선번호).
+      // 2) 그중 가장 가까운 버스(도착 예정 초가 가장 짧은 것)를 선택합니다.
+      //    → 홈 화면 "도착정보"는 항상 가장 먼저 올 버스 기준입니다.
+      const byRouteId = items.filter((i) => i.routeid === routeId);
+      const byRouteNo = normalizedRouteNumber
+        ? items.filter((i) => normalize(i.routeno ?? "") === normalizedRouteNumber)
+        : [];
+      const candidates = byRouteId.length > 0 ? byRouteId : byRouteNo.length > 0 ? byRouteNo : items;
 
-      if (!item) return null;
+      if (candidates.length === 0) return null;
 
-      const arrtime = Number(item.arrtime1 ?? item.arrtime);
-      const stopsAway = Number(item.arrprevstationcnt1 ?? item.arrprevstationcnt);
-      if (!arrtime || isNaN(arrtime)) return null;
+      type Candidate = {
+        arrtimeSec: number;
+        stopsAway: number;
+      };
+
+      const parsed: Candidate[] = [];
+      for (const item of candidates) {
+        const arrtimeSec = Number(item.arrtime1 ?? item.arrtime);
+        const stopsAway = Number(item.arrprevstationcnt1 ?? item.arrprevstationcnt);
+        // arrtime 0초 = 곧 도착. NaN만 제외합니다.
+        if (isNaN(arrtimeSec) || arrtimeSec < 0) continue;
+        parsed.push({
+          arrtimeSec,
+          stopsAway: isNaN(stopsAway) ? 0 : Math.max(0, stopsAway),
+        });
+      }
+
+      if (parsed.length === 0) return null;
+
+      // 가장 가까운 버스: 남은 시간 오름차순 → 동률이면 남은 정류장 수 오름차순
+      parsed.sort((a, b) => a.arrtimeSec - b.arrtimeSec || a.stopsAway - b.stopsAway);
+      const nearest = parsed[0];
 
       return {
-        minutes: Math.max(0, Math.round(arrtime / 60)),
-        stopsAway: isNaN(stopsAway) ? 0 : Math.max(0, stopsAway),
+        minutes: Math.max(0, Math.round(nearest.arrtimeSec / 60)),
+        stopsAway: nearest.stopsAway,
       };
     } catch (error) {
       console.warn("[BUS STOP] Arrival request failed; keeping previous value", {
