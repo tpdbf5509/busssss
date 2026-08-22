@@ -133,7 +133,7 @@ function mapToBusStop(raw: RawRouteField, index: number): BusStop {
 }
 
 // 전주시 GW의 brtStdid를 실시간 위치 조회에 사용하므로 기존 캐시는 폐기합니다.
-const CACHE_KEY = "jeonju_routes_v5";
+const CACHE_KEY = "jeonju_routes_v6";
 const CACHE_TTL = 1000 * 60 * 60 * 24;
 
 let routesCache: Route[] | null = null;
@@ -189,7 +189,7 @@ export async function fetchAllRoutes(): Promise<Route[]> {
  * 키: "노선번호|기점|종점"
  */
 const BRT_STDID_OVERRIDES: Record<string, string> = {
-  "104|송천동종점|평화동종점": "305001271",
+  "104|송천동종점|평화동종점": "305001095", // 송천→평화 (메가월드·동부대로 농수산시장 경유)
 };
 
 function normalizeName(value: string): string {
@@ -247,6 +247,7 @@ export function clearRouteCache() {
   try {
     localStorage.removeItem(CACHE_KEY);
     // 이전 버전 캐시도 정리
+    localStorage.removeItem("jeonju_routes_v5");
     localStorage.removeItem("jeonju_routes_v4");
     localStorage.removeItem("jeonju_routes_v3");
   } catch {}
