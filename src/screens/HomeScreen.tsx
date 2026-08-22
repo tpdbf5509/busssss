@@ -293,7 +293,7 @@ export function HomeScreen({
   
       {/* 이 아래에 기존 즐겨찾기 섹션 그대로 유지 */}
 
-      <section className="px-4 mt-6 flex-1 flex flex-col min-h-0">
+      <section className="px-4 mt-6 flex flex-col min-h-0 overflow-y-auto">
       <div className="flex items-center justify-between mb-3 shrink-0">
         <h3 className="text-sm font-bold text-slate-700">즐겨찾기</h3>
         <div className="flex items-center gap-3">
@@ -330,7 +330,7 @@ export function HomeScreen({
       <p className="text-sm text-slate-400">즐겨찾기를 추가해 보세요</p>
     </div>
   ) : (
-    <div className="flex-1 min-h-0 overflow-y-auto bg-white rounded-2xl border border-slate-100 p-3 space-y-2.5">
+    <div className="max-h-[50vh] overflow-y-auto bg-white rounded-2xl border border-slate-100 p-3 space-y-2.5">
   {state.favorites.map((fav) => {
         const isRoute = fav.type === "route";
         const matchedRoute = isRoute
