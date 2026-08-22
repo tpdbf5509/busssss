@@ -7,6 +7,7 @@ import { showToast } from "@/components/Toast";
 import type { TabId } from "@/components/BottomNav";
 import { MapPin, ChevronDown, Star, Search, X, RefreshCw } from "lucide-react";
 import { useArrivalInfo } from "@/hooks/useArrivalInfo";
+import { formatArrivalText } from "@/lib/formatArrival";
 import { triggerArrivalRefresh } from "@/services/arrivalService";
 import type { Favorite } from "@/types";
 
@@ -191,7 +192,14 @@ function FavoriteArrivalInfo({
   } else if (status === "loading") {
     subtitle = "정거장 확인 중";
   } else if (status === "success" && data) {
-    subtitle = data.stopsAway <= 0 ? "곧 도착 정류장" : `${data.stopsAway}정거장 전`;
+    subtitle =
+      data.stopsAway == null
+        ? data.minutes <= 0
+          ? "곧 도착"
+          : `${data.minutes}분 후`
+        : data.stopsAway <= 0
+          ? "곧 도착"
+          : `${data.stopsAway}정거장 전`;
   } else {
     subtitle = fav.routeNumber ? `${fav.routeNumber}번` : "정류장";
   }
@@ -215,7 +223,7 @@ function FavoriteArrivalInfo({
         )}
         {isStopRoute && data && (
           <p className={`text-sm font-bold ${data.minutes <= 3 ? "text-blue-600" : "text-slate-700"}`}>
-            {data.minutes <= 0 ? "곧 도착" : `${data.minutes}분 후`}
+            {formatArrivalText(data.minutes, data.stopsAway)}
           </p>
         )}
         {isStopRoute && status === "error" && !data && (
