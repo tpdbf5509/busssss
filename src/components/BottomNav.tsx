@@ -27,7 +27,7 @@ export function BottomNav({
             <button
               key={tab.id}
               onClick={() => onChange(tab.id)}
-              className="flex flex-col items-center justify-center py-1.5 gap-0.5 transition-colors"
+              className="flex flex-col items-center justify-center py-2.5 gap-0.5 transition-colors"
             >
               <Icon
                 className={`w-5 h-5 transition-colors ${
