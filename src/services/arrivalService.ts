@@ -127,23 +127,42 @@ export async function resolveRouteId(route: Route): Promise<string | null> {
 }
 
 /** 정류장 도착정보 원본을 한 번만 조회하고 공유합니다. */
-async function fetchStationArrivalItems(nodeId: string) {
+async function fetchStationArrivalItems(nodeId: string, force = false) {
   const now = Date.now();
-  const cached = stationItemsCache.get(nodeId);
-  if (cached && cached.expiresAt > now) return cached.items;
+  if (!force) {
+    const cached = stationItemsCache.get(nodeId);
+    if (cached && cached.expiresAt > now) {
+      console.debug("[CACHE] station HIT", nodeId);
+      return cached.items;
+    }
+  } else {
+    stationItemsCache.delete(nodeId);
+  }
 
   const running = stationItemsInFlight.get(nodeId);
-  if (running) return running;
+  if (running) {
+    console.debug("[CACHE] station IN-FLIGHT", nodeId);
+    return running;
+  }
 
-  const promise = getSttnAcctoArvlPrearngeInfoList(nodeId).then((items) => {
-    stationItemsCache.set(nodeId, {
-      items,
-      expiresAt: Date.now() + ARRIVAL_CACHE_TTL_MS,
+  console.debug("[CACHE] station MISS", nodeId);
+  const startedAt = Date.now();
+  const promise = getSttnAcctoArvlPrearngeInfoList(nodeId)
+    .then((items) => {
+      console.debug("[API] TAGO station response", {
+        nodeId,
+        ms: Date.now() - startedAt,
+        count: items.length,
+      });
+      stationItemsCache.set(nodeId, {
+        items,
+        expiresAt: Date.now() + ARRIVAL_CACHE_TTL_MS,
+      });
+      return items;
+    })
+    .finally(() => {
+      stationItemsInFlight.delete(nodeId);
     });
-    return items;
-  }).finally(() => {
-    stationItemsInFlight.delete(nodeId);
-  });
 
   stationItemsInFlight.set(nodeId, promise);
   return promise;
@@ -196,23 +215,43 @@ export function clearArrivalCache() {
   stationItemsInFlight.clear();
 }
 
+export type FetchArrivalOptions = {
+  /** true면 캐시를 무시하고 최신 데이터를 요청 (수동 새로고침용) */
+  force?: boolean;
+};
+
 export async function fetchArrivalInfo(
   nodeId: string,
   routeId: string,
   routeNumber?: string,
+  options?: FetchArrivalOptions,
 ): Promise<ArrivalInfo | null> {
+  const force = options?.force === true;
   const key = `${nodeId}|${routeId}|${routeNumber ?? ""}`;
   const now = Date.now();
+  const startedAt = Date.now();
 
-  const cached = arrivalCache.get(key);
-  if (cached && cached.expiresAt > now) return cached.value;
+  if (!force) {
+    const cached = arrivalCache.get(key);
+    if (cached && cached.expiresAt > now) {
+      console.debug("[CACHE] arrival HIT", key);
+      return cached.value;
+    }
+  } else {
+    arrivalCache.delete(key);
+  }
 
   const running = arrivalInFlight.get(key);
-  if (running) return running;
+  if (running) {
+    console.debug("[CACHE] arrival IN-FLIGHT", key);
+    return running;
+  }
+
+  console.debug("[CACHE] arrival MISS", key, force ? "(force)" : "");
 
   const request = enqueueArrivalRequest(async (): Promise<ArrivalInfo | null> => {
     try {
-      const items = await fetchStationArrivalItems(nodeId);
+      const items = await fetchStationArrivalItems(nodeId, force);
       return pickNearestArrival(items, routeId, routeNumber);
     } catch (error) {
       console.warn("[BUS STOP] Arrival request failed; keeping previous value", {
@@ -233,8 +272,32 @@ export async function fetchArrivalInfo(
       value,
       expiresAt: Date.now() + ARRIVAL_CACHE_TTL_MS,
     });
+    console.debug("[BUS STOP] Arrival request done", {
+      key,
+      ms: Date.now() - startedAt,
+      minutes: value?.minutes,
+      stopsAway: value?.stopsAway,
+    });
     return value;
   } finally {
     arrivalInFlight.delete(key);
   }
+}
+
+/** 홈 화면 수동 새로고침용: 등록된 모든 도착정보 훅을 한 번에 갱신 */
+type ArrivalRefreshListener = () => Promise<void>;
+const arrivalRefreshListeners = new Set<ArrivalRefreshListener>();
+
+export function subscribeArrivalRefresh(listener: ArrivalRefreshListener): () => void {
+  arrivalRefreshListeners.add(listener);
+  return () => {
+    arrivalRefreshListeners.delete(listener);
+  };
+}
+
+export async function triggerArrivalRefresh(): Promise<void> {
+  // 수동 새로고침: 캐시를 비운 뒤 등록된 모든 구독자에게 최신 요청
+  clearArrivalCache();
+  const tasks = [...arrivalRefreshListeners].map((listener) => listener());
+  await Promise.all(tasks);
 }
