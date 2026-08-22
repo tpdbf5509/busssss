@@ -102,7 +102,7 @@ export function MyScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
+    <div className="bg-slate-50">
       <header className="bg-gradient-to-b from-blue-600 to-blue-500 px-5 pt-16 pb-9 text-white">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl font-bold">
