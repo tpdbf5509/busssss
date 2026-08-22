@@ -11,52 +11,129 @@ function formatTime(raw?: string): string {
   return `${padded.slice(0, 2)}:${padded.slice(2, 4)}`;
 }
 
+function firstValue(item: Record<string, string>, keys: string[]): string {
+  const entries = Object.entries(item);
+  for (const key of keys) {
+    const exact = item[key];
+    if (exact !== undefined && exact !== null && String(exact).trim() !== "") {
+      return String(exact).trim();
+    }
+
+    const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const matched = entries.find(([actualKey, value]) => {
+      const actual = actualKey.toLowerCase().replace(/[^a-z0-9]/g, "");
+      return (
+        actual === normalizedKey &&
+        value !== undefined &&
+        value !== null &&
+        String(value).trim() !== ""
+      );
+    });
+    if (matched) return String(matched[1]).trim();
+  }
+  return "";
+}
+
 function formatRouteNumber(raw: RawRouteField): string {
-  const id = raw.brtId ?? "";
-  const candidates = [raw.brtClass, raw.brtSubid];
-  const branch = candidates.find(
-    (v) => v && v !== "0" && /^\d+$/.test(v)
-  );
+  const id = firstValue(raw, ["brtId", "brt_id", "brtNo", "brt_no"]) || "";
+  const candidates = [
+    firstValue(raw, ["brtClass", "brt_class"]),
+    firstValue(raw, ["brtSubid", "brt_subid", "brtSubId"]),
+  ];
+  const branch = candidates.find((v) => v && v !== "0" && /^\d+$/.test(v));
 
   if (branch) return `${id}-${branch}`;
   return id;
 }
 
 function mapToRoute(raw: RawRouteField): Route {
-  console.log("RAW ROUTE FIELDS:", raw);
   const displayNumber = formatRouteNumber(raw);
 
   return {
-    id: raw.brtStdid ?? "",
+    id: firstValue(raw, ["brtStdid", "brt_stdid", "brtStdId"]) || "",
     number: displayNumber,
-    rawNumber: raw.brtId ?? "",
-    class: raw.brtClass ?? "",
-    subId: raw.brtSubid ?? "",
+    rawNumber: firstValue(raw, ["brtId", "brt_id", "brtNo", "brt_no"]) || "",
+    class: firstValue(raw, ["brtClass", "brt_class"]) || "",
+    subId: firstValue(raw, ["brtSubid", "brt_subid", "brtSubId"]) || "",
     name: `본선${displayNumber}`,
-    start: raw.brtSname ?? "",
-    end: raw.brtEname ?? "",
-    firstBus: formatTime(raw.brtFirsttime),
-    lastBus: formatTime(raw.brtLasttime),
-    interval:
-      raw.brtMininterval && raw.brtMaxinterval
-        ? `${raw.brtMininterval}~${raw.brtMaxinterval}분`
-        : "정보 없음",
-    distance: raw.brtLength
-      ? `${(Number(raw.brtLength) / 1000).toFixed(1)}km`
-      : "-",
+    start:
+      firstValue(raw, [
+        "brtSname",
+        "brtStartNm",
+        "brt_start_nm",
+        "start_name",
+        "startName",
+        "start",
+      ]) || "",
+    end:
+      firstValue(raw, [
+        "brtEname",
+        "brtEndNm",
+        "brt_end_nm",
+        "end_name",
+        "endName",
+        "end",
+      ]) || "",
+    firstBus: formatTime(firstValue(raw, ["brtFirsttime", "brt_firsttime", "firstTime"])),
+    lastBus: formatTime(firstValue(raw, ["brtLasttime", "brt_lasttime", "lastTime"])),
+    interval: (() => {
+      const min = firstValue(raw, ["brtMininterval", "brt_mininterval", "minInterval"]);
+      const max = firstValue(raw, ["brtMaxinterval", "brt_maxinterval", "maxInterval"]);
+      return min && max ? `${min}~${max}분` : "정보 없음";
+    })(),
+    distance: (() => {
+      const len = firstValue(raw, ["brtLength", "brt_length", "length"]);
+      return len ? `${(Number(len) / 1000).toFixed(1)}km` : "-";
+    })(),
   };
 }
 
 function mapToBusStop(raw: RawRouteField, index: number): BusStop {
-  return {
-    id: raw.stopStandardid || raw.stopId || String(index),
-    name: raw.stopKname ?? "",
-    order: Number(raw.brnSeqno) || index + 1,
-  };
+  const id =
+    firstValue(raw, [
+      "stopStandardid",
+      "stopstandardid",
+      "stopId",
+      "stopid",
+      "nodeid",
+      "nodeId",
+      "bnodeId",
+      "bnodeid",
+      "node_id",
+    ]) || String(index);
+
+  const name =
+    firstValue(raw, [
+      "stopKname",
+      "stopkname",
+      "nodenm",
+      "nodeNm",
+      "nodeName",
+      "node_name",
+      "stopName",
+      "stopname",
+      "stationName",
+    ]) || "";
+
+  const orderRaw = firstValue(raw, [
+    "brnSeqno",
+    "brnseqno",
+    "brsSeqno",
+    "brsseqno",
+    "seq",
+    "ord",
+    "sequence_no",
+    "sequenceNo",
+    "nodeord",
+    "nodeOrder",
+  ]);
+  const order = Number(orderRaw) || index + 1;
+
+  return { id, name, order };
 }
 
 // 전주시 GW의 brtStdid를 실시간 위치 조회에 사용하므로 기존 캐시는 폐기합니다.
-const CACHE_KEY = "jeonju_routes_v4";
+const CACHE_KEY = "jeonju_routes_v5";
 const CACHE_TTL = 1000 * 60 * 60 * 24;
 
 let routesCache: Route[] | null = null;
@@ -81,7 +158,9 @@ export async function fetchAllRoutes(): Promise<Route[]> {
   if (!routesPromise) {
     routesPromise = fetchRoutesRaw()
       .then((raw) => {
-        const routes = raw.filter((r) => r.brtStdid).map(mapToRoute);
+        const routes = raw
+          .filter((r) => firstValue(r, ["brtStdid", "brt_stdid", "brtStdId"]))
+          .map(mapToRoute);
         routesCache = routes;
 
         try {
@@ -110,11 +189,14 @@ export async function fetchStopsForRoute(routeId: string): Promise<BusStop[]> {
 
   const raw = await fetchStopsRaw(routeId);
   const stops = raw
-    .filter((s) => s.stopStandardid || s.stopId)
-    .map(mapToBusStop)
+    .map((s, index) => mapToBusStop(s, index))
+    .filter((s) => s.name || s.id) // 이름이나 ID가 있는 정류장만
     .sort((a, b) => a.order - b.order);
 
-  stopsCache.set(routeId, stops);
+  // 빈 결과가 나와도 캐시하지 않아 다음에 다시 시도할 수 있게 합니다.
+  if (stops.length > 0) {
+    stopsCache.set(routeId, stops);
+  }
   return stops;
 }
 
@@ -124,6 +206,9 @@ export function clearRouteCache() {
   stopsCache.clear();
   try {
     localStorage.removeItem(CACHE_KEY);
+    // 이전 버전 캐시도 정리
+    localStorage.removeItem("jeonju_routes_v4");
+    localStorage.removeItem("jeonju_routes_v3");
   } catch {}
   console.log("[Cache] 캐시 삭제됨");
 }
