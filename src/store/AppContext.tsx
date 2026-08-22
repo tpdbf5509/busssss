@@ -143,14 +143,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const routeById = new Map(allRoutes.map((route) => [route.id, route]));
         const directionResults = new Map<string, string | null>();
 
+        // 서로 다른 노선 방향 조회는 병렬로 처리해 초기 로딩을 줄입니다.
+        const uniqueRoutes = new Map<string, typeof allRoutes[number]>();
         for (const favorite of stopFavorites) {
-          if (cancelled) return;
-
           const route = routeById.get(favorite.appRouteId!);
           if (!route) continue;
-
           const cacheKey = `${route.id}|${route.number}|${route.start}|${route.end}`;
-          if (!directionResults.has(cacheKey)) {
+          if (!uniqueRoutes.has(cacheKey)) uniqueRoutes.set(cacheKey, route);
+        }
+
+        await Promise.all(
+          [...uniqueRoutes.entries()].map(async ([cacheKey, route]) => {
             try {
               const directions = await resolveDirections(route);
               const exact = directions.find(
@@ -163,13 +166,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
             } catch {
               directionResults.set(cacheKey, null);
             }
-          }
+          })
+        );
 
+        if (cancelled) return;
+
+        for (const favorite of stopFavorites) {
+          const route = routeById.get(favorite.appRouteId!);
+          if (!route) continue;
+          const cacheKey = `${route.id}|${route.number}|${route.start}|${route.end}`;
           const exactRouteId = directionResults.get(cacheKey);
-          if (
-            exactRouteId &&
-            exactRouteId !== favorite.tagoRouteId
-          ) {
+          if (exactRouteId && exactRouteId !== favorite.tagoRouteId) {
             dispatch({
               type: "SYNC_FAVORITE_ROUTE_ID",
               id: favorite.id,
