@@ -20,7 +20,7 @@ export function BottomNav({
   return (
     <nav
       className="shrink-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200"
-      style={{ paddingBottom: "min(env(safe-area-inset-bottom), 14px)" }}
+      style={{ paddingBottom: "min(env(safe-area-inset-bottom), 8px)" }}
     >
       <div className="max-w-md mx-auto grid grid-cols-5">
         {tabs.map((tab) => {
