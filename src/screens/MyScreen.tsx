@@ -103,7 +103,7 @@ export function MyScreen() {
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-slate-50">
-      <header className="bg-gradient-to-b from-blue-600 to-blue-500 px-5 pt-16 pb-9 text-white sticky top-0 z-30 shrink-0">
+      <header className="bg-gradient-to-b from-blue-600 to-blue-500 px-5 pt-16 pb-9 text-white shrink-0">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl font-bold">
             승
@@ -122,7 +122,7 @@ export function MyScreen() {
         </div>
       </header>
       <div className="flex-1 overflow-y-auto overscroll-contain">
-      <section className="px-4 -mt-3">
+      <section className="px-4 -mt-3 relative z-10">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
           <div className="flex items-center gap-1.5 text-sm font-bold text-slate-700 mb-3">
             <Star className="w-4 h-4 text-amber-400" />

@@ -1,11 +1,11 @@
-import { Bus, Home, CreditCard, Bell, User } from "lucide-react";
+import { Bus, Home, Navigation, Bell, User } from "lucide-react";
 
-export type TabId = "home" | "bus" | "card" | "alert" | "my";
+export type TabId = "home" | "bus" | "route" | "alert" | "my";
 
 const tabs = [
   { id: "home" as const, label: "홈", icon: Home },
   { id: "bus" as const, label: "버스", icon: Bus },
-  { id: "card" as const, label: "카드", icon: CreditCard },
+  { id: "route" as const, label: "길찾기", icon: Navigation },
   { id: "alert" as const, label: "알림", icon: Bell },
   { id: "my" as const, label: "마이", icon: User },
 ];

@@ -58,7 +58,7 @@ export function AlertScreen() {
 
   return (
     <div className="bg-slate-50">
-      <header className="bg-white px-5 pt-14 pb-5 border-b border-slate-100 sticky top-0 z-30">
+      <header className="bg-white px-5 pt-16 pb-5 border-b border-slate-100 sticky top-0 z-30 shrink-0">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-slate-900">알림</h1>

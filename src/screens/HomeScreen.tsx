@@ -240,7 +240,9 @@ export function HomeScreen({
   onNavigate: (tab: TabId, routeId?: string) => void;
 }) {
   const { state, dispatch } = useApp();
+  // 지역 설정은 일시 비활성화 — RegionModal 코드는 유지하여 추후 복원 가능
   const [regionOpen, setRegionOpen] = useState(false);
+  const [regionUnderDevOpen, setRegionUnderDevOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const { data: routes } = useAsync(() => fetchAllRoutes(), []);
@@ -264,7 +266,7 @@ export function HomeScreen({
          <div className="flex items-center justify-between mb-1.5">
           <h1 className="text-2xl font-bold tracking-tight">BUS STOP</h1>
           <button
-            onClick={() => setRegionOpen(true)}
+            onClick={() => setRegionUnderDevOpen(true)}
             className="flex items-center gap-1 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1.5 text-sm font-medium hover:bg-white/25 transition-colors"
           >
             <MapPin className="w-4 h-4" />
@@ -417,15 +419,38 @@ export function HomeScreen({
   )}
 </section>
 
-      <RegionModal
-        open={regionOpen}
-        onClose={() => setRegionOpen(false)}
-        onSelect={(sido, sigungu) => {
-          dispatch({ type: "SET_REGION", sido, sigungu });
-          setRegionOpen(false);
-          showToast(`${sido} ${sigungu}로 설정되었어요`);
-        }}
-      />
+      {regionUnderDevOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setRegionUnderDevOpen(false)}
+          />
+          <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl p-6 animate-slide-up">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-slate-900">지역 설정</h2>
+              <button
+                type="button"
+                onClick={() => setRegionUnderDevOpen(false)}
+                className="p-1.5 rounded-full hover:bg-slate-100"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              이 기능은 현재 개발 중입니다.
+              <br />
+              향후 업데이트에서 이용하실 수 있습니다.
+            </p>
+            <button
+              type="button"
+              onClick={() => setRegionUnderDevOpen(false)}
+              className="mt-6 w-full rounded-2xl bg-blue-600 py-3.5 text-sm font-semibold text-white active:scale-[0.98]"
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

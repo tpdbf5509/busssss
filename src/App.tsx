@@ -4,7 +4,7 @@ import { BottomNav, type TabId } from "@/components/BottomNav";
 import { ToastContainer } from "@/components/Toast";
 import { HomeScreen } from "@/screens/HomeScreen";
 import { BusScreen } from "@/screens/BusScreen";
-import { CardScreen } from "@/screens/CardScreen";
+import { RouteScreen } from "@/screens/RouteScreen";
 import { AlertScreen } from "@/screens/AlertScreen";
 import { MyScreen } from "@/screens/MyScreen";
 import { AuthScreen } from "@/screens/AuthScreen";
@@ -90,7 +90,7 @@ function AppContent() {
             onConsumeInitialRoute={() => setPendingRouteId(null)}
           />
         )}
-        {tab === "card" && <CardScreen />}
+       {tab === "route" && <RouteScreen />}
         {tab === "alert" && <AlertScreen />}
         {tab === "my" && <MyScreen />}
       </main>
