@@ -137,8 +137,8 @@ export function MyScreen() {
             {state.favorites.length === 0 ? (
               <p className="text-sm text-slate-400 text-center py-6">즐겨찾기가 없어요</p>
             ) : (
-              <div className="space-y-2">
-                {state.favorites.map((fav) => (
+              <div className="space-y-2 max-h-60 overflow-y-auto overscroll-contain">
+              {state.favorites.map((fav) => (
                   <div
                     key={fav.id}
                     className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 transition-colors"
