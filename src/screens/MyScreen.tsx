@@ -103,142 +103,160 @@ export function MyScreen() {
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-slate-50">
-      <header className="bg-gradient-to-b from-blue-600 to-blue-500 px-5 pt-16 pb-9 text-white shrink-0">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl font-bold">
-            승
-          </div>
-          <div>
-            <h1 className="text-lg font-bold">승객님</h1>
-            <button
-              onClick={() => setRegionOpen(true)}
-              className="flex items-center gap-1 text-sm text-blue-100 mt-0.5 hover:text-white transition-colors"
-            >
-              <MapPin className="w-3.5 h-3.5" />
-              {state.region.sido} {state.region.sigungu}
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-      </header>
+      {/* 홈과 동일: 파란 헤더 + 즐겨찾기를 같은 스크롤 안에 배치 */}
       <div className="flex-1 overflow-y-auto overscroll-contain">
-      <section className="px-4 -mt-3 relative z-10">
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-          <div className="flex items-center gap-1.5 text-sm font-bold text-slate-700 mb-3">
-            <Star className="w-4 h-4 text-amber-400" />
-            즐겨찾기 관리
-          </div>
-          <p className="text-xs text-slate-400 mb-3">항목을 눌러 이름을 바꿀 수 있어요</p>
-
-          {state.favorites.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-6">즐겨찾기가 없어요</p>
-          ) : (
-            <div className="space-y-2">
-              {state.favorites.map((fav) => (
-                <div
-                  key={fav.id}
-                  className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 transition-colors"
-                >
-                  <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
-                    <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                  </div>
-                  {editingId === fav.id ? (
-                    <div className="flex-1 flex items-center gap-2">
-                      <input
-                        value={editLabel}
-                        onChange={(e) => setEditLabel(e.target.value)}
-                        autoFocus
-                        className="flex-1 px-2.5 py-1.5 bg-slate-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <button onClick={saveEdit} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg">
-                        <Check className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setEditingId(null)}
-                        className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-800 truncate">{fav.name}</p>
-                        <p className="text-[11px] text-slate-400">
-                          {fav.label} · {fav.type === "station" ? "정류장" : "노선"}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => startEdit(fav.id, fav.label)}
-                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          dispatch({ type: "REMOVE_FAVORITE", id: fav.id });
-                          showToast("삭제했어요");
-                        }}
-                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </>
-                  )}
-                </div>
-              ))}
+        <header className="bg-gradient-to-b from-blue-600 to-blue-500 px-5 pt-16 pb-9 text-white">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl font-bold">
+              승
             </div>
-          )}
-        </div>
-      </section>
+            <div>
+              <h1 className="text-lg font-bold">승객님</h1>
+              <button
+                onClick={() => setRegionOpen(true)}
+                className="flex items-center gap-1 text-sm text-blue-100 mt-0.5 hover:text-white transition-colors"
+              >
+                <MapPin className="w-3.5 h-3.5" />
+                {state.region.sido} {state.region.sigungu}
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </header>
 
-      <section className="px-4 mt-4">
-        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-          <SettingRow icon={Bell} label="알림 설정" onClick={handleNotification} />
+        {/* 즐겨찾기 카드 — 파란 헤더 위로 겹침 */}
+        <section className="px-4 -mt-3 relative z-10">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+            <div className="flex items-center gap-1.5 text-sm font-bold text-slate-700 mb-3">
+              <Star className="w-4 h-4 text-amber-400" />
+              즐겨찾기 관리
+            </div>
+            <p className="text-xs text-slate-400 mb-3">항목을 눌러 이름을 바꿀 수 있어요</p>
 
-          <SettingToggle
-            icon={Moon}
-            label="다크모드"
-            checked={settings.darkMode}
-            onChange={(v) => {
-              updateSetting("darkMode", v);
-              showToast(v ? "다크모드를 켰어요" : "다크모드를 껐어요");
-            }}
-          />
-          <SettingToggle
-            icon={Type}
-            label="큰 글씨"
-            checked={settings.largeText}
-            onChange={(v) => {
-              updateSetting("largeText", v);
-              showToast(v ? "큰 글씨를 켰어요" : "큰 글씨를 껐어요");
-            }}
-          />
-          <SettingToggle
-            icon={Eye}
-            label="색약 모드"
-            checked={settings.colorBlind}
-            onChange={(v) => {
-              updateSetting("colorBlind", v);
-              showToast(v ? "색약 모드를 켰어요" : "색약 모드를 껐어요");
-            }}
-          />
-          <SettingToggle
-            icon={Volume2}
-            label="음성 안내"
-            checked={settings.voiceGuide}
-            onChange={(v) => {
-              updateSetting("voiceGuide", v);
-              showToast(v ? "음성 안내를 켰어요" : "음성 안내를 껐어요");
-            }}
-          />
+            {state.favorites.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-6">즐겨찾기가 없어요</p>
+            ) : (
+              <div className="space-y-2">
+                {state.favorites.map((fav) => (
+                  <div
+                    key={fav.id}
+                    className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+                      <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                    </div>
+                    {editingId === fav.id ? (
+                      <div className="flex-1 flex items-center gap-2">
+                        <input
+                          value={editLabel}
+                          onChange={(e) => setEditLabel(e.target.value)}
+                          autoFocus
+                          className="flex-1 px-2.5 py-1.5 bg-slate-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <button
+                          onClick={saveEdit}
+                          className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg"
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setEditingId(null)}
+                          className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-800 truncate">
+                            {fav.name}
+                          </p>
+                          <p className="text-[11px] text-slate-400">
+                            {fav.label} · {fav.type === "station" ? "정류장" : "노선"}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => startEdit(fav.id, fav.label)}
+                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            dispatch({ type: "REMOVE_FAVORITE", id: fav.id });
+                            showToast("삭제했어요");
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
 
-          <SettingRow icon={HelpCircle} label="도움말" onClick={() => setHelpOpen(true)} />
-          <SettingRow icon={LogOut} label="로그아웃" danger onClick={handleLogout} last />
-        </div>
-      </section>
+        <section className="px-4 mt-4 pb-6">
+          <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+            <SettingRow icon={Bell} label="알림 설정" onClick={handleNotification} />
 
-      <p className="text-center text-xs text-slate-300 mt-6">BUS STOP v1.0.0</p>
+            <SettingToggle
+              icon={Moon}
+              label="다크모드"
+              checked={settings.darkMode}
+              onChange={(v) => {
+                updateSetting("darkMode", v);
+                showToast(v ? "다크모드를 켰어요" : "다크모드를 껐어요");
+              }}
+            />
+            <SettingToggle
+              icon={Type}
+              label="큰 글씨"
+              checked={settings.largeText}
+              onChange={(v) => {
+                updateSetting("largeText", v);
+                showToast(v ? "큰 글씨를 켰어요" : "큰 글씨를 껐어요");
+              }}
+            />
+            <SettingToggle
+              icon={Eye}
+              label="색약 모드"
+              checked={settings.colorBlind}
+              onChange={(v) => {
+                updateSetting("colorBlind", v);
+                showToast(v ? "색약 모드를 켰어요" : "색약 모드를 껐어요");
+              }}
+            />
+            <SettingToggle
+              icon={Volume2}
+              label="음성 안내"
+              checked={settings.voiceGuide}
+              onChange={(v) => {
+                updateSetting("voiceGuide", v);
+                showToast(v ? "음성 안내를 켰어요" : "음성 안내를 껐어요");
+              }}
+            />
+
+            <SettingRow
+              icon={HelpCircle}
+              label="도움말"
+              onClick={() => setHelpOpen(true)}
+            />
+            <SettingRow
+              icon={LogOut}
+              label="로그아웃"
+              danger
+              onClick={handleLogout}
+              last
+            />
+          </div>
+        </section>
+
+        <p className="text-center text-xs text-slate-300 pb-6">BUS STOP v1.0.0</p>
       </div>
 
       <RegionModal
@@ -253,7 +271,10 @@ export function MyScreen() {
 
       {helpOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setHelpOpen(false)} />
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setHelpOpen(false)}
+          />
           <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 shadow-2xl">
             <h2 className="text-lg font-bold text-slate-900 mb-3">도움말</h2>
             <ul className="space-y-2 text-sm text-slate-600 leading-relaxed">
@@ -297,7 +318,11 @@ function SettingRow({
       }`}
     >
       <Icon className={`w-4.5 h-4.5 ${danger ? "text-red-500" : "text-slate-500"}`} />
-      <span className={`flex-1 text-left text-sm font-medium ${danger ? "text-red-500" : "text-slate-700"}`}>
+      <span
+        className={`flex-1 text-left text-sm font-medium ${
+          danger ? "text-red-500" : "text-slate-700"
+        }`}
+      >
         {label}
       </span>
       <ChevronRight className="w-4 h-4 text-slate-300" />
