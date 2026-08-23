@@ -170,9 +170,13 @@ function getRouteTypeLabel(number: string, start: string, end: string) {
 export function BusScreen({
   initialRouteId,
   onConsumeInitialRoute,
+  initialStation,
+  onConsumeInitialStation,
 }: {
   initialRouteId?: string;
   onConsumeInitialRoute?: () => void;
+  initialStation?: { id: string; name: string; arsId?: string };
+  onConsumeInitialStation?: () => void;
 } = {}) {
   const [query, setQuery] = useState("");
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
@@ -194,6 +198,20 @@ export function BusScreen({
     }
     onConsumeInitialRoute?.();
   }, [initialRouteId, routes]);
+    // 홈 정류장 즐겨찾기 → 정류장 상세로 바로 이동
+    useEffect(() => {
+      if (!initialStation?.id) return;
+      setSearchTab("station");
+      setSelectedRoute(null);
+      setSelectedStation({
+        id: initialStation.id,
+        name: initialStation.name,
+        arsId: initialStation.arsId ?? "",
+        lat: null,
+        lng: null,
+      });
+      onConsumeInitialStation?.();
+    }, [initialStation]);
     // 검색어로 정류장 검색
     useEffect(() => {
       const q = query.trim();

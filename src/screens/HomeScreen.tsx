@@ -237,7 +237,11 @@ function FavoriteArrivalInfo({
 export function HomeScreen({
   onNavigate,
 }: {
-  onNavigate: (tab: TabId, routeId?: string) => void;
+  oonNavigate: (
+    tab: TabId,
+    routeId?: string,
+    station?: { id: string; name: string; arsId?: string }
+  ) => void;
 }) {
   const { state, dispatch } = useApp();
   // 지역 설정은 일시 비활성화 — RegionModal 코드는 유지하여 추후 복원 가능
@@ -361,7 +365,7 @@ export function HomeScreen({
           matchedRoute?.number ?? fav.name.replace(/번$/, "").trim();
 
           const isStopRoute = fav.type === "stop_route";
-          const targetTab: TabId = isRoute || isStopRoute ? "bus" : "home";
+          const isStation = fav.type === "station";
           const targetId = isStopRoute ? fav.appRouteId : fav.refId;
 
           // stop_route: appRouteId로 실제 노선 방향을 찾아 기점→종점 표시
@@ -375,10 +379,21 @@ export function HomeScreen({
         return (
           <div key={fav.id} className="relative">
             <button
-              onClick={() => { 
-                if (editMode) return;
-                onNavigate(targetTab, targetId);
-              }}
+              onClick={() => {
+              if (editMode) return;
+              if (isStation) {
+                onNavigate("bus", undefined, {
+                  id: fav.refId,
+                  name: fav.name,
+                  arsId: fav.label !== "정류장" ? fav.label : undefined,
+                });
+                return;
+              }
+            if (isRoute || isStopRoute) {
+              onNavigate("bus", targetId);
+              return;
+            }
+          }}              
               className="w-full bg-slate-50 rounded-xl border border-slate-100 px-4 py-5 flex items-center gap-3 text-left hover:bg-blue-50 hover:border-blue-100 transition-all"
             >
               {/* 왼쪽: 본선/분선 글씨 + 색 */}

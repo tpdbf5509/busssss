@@ -17,6 +17,11 @@ type DropoffAlarm = { title: string; body: string };
 function AppContent() {
   const [tab, setTab] = useState<TabId>("home");
   const [pendingRouteId, setPendingRouteId] = useState<string | null>(null);
+  const [pendingStation, setPendingStation] = useState<{
+    id: string;
+    name: string;
+    arsId?: string;
+  } | null>(null);
   const [homeRefreshKey, setHomeRefreshKey] = useState(0);
   const [dropoffAlarm, setDropoffAlarm] = useState<DropoffAlarm | null>(null);
   const mainRef = useRef<HTMLElement>(null);
@@ -51,8 +56,19 @@ function AppContent() {
     setTab(nextTab);
   };
 
-  const handleNavigate = (nextTab: TabId, routeId?: string) => {
-    if (routeId) setPendingRouteId(routeId);
+  const handleNavigate = (
+    nextTab: TabId,
+    routeId?: string,
+    station?: { id: string; name: string; arsId?: string }
+  ) => {
+    if (routeId) {
+      setPendingRouteId(routeId);
+      setPendingStation(null);
+    }
+    if (station) {
+      setPendingStation(station);
+      setPendingRouteId(null);
+    }
     handleTabChange(nextTab);
   };
 
@@ -88,6 +104,8 @@ function AppContent() {
           <BusScreen
             initialRouteId={pendingRouteId ?? undefined}
             onConsumeInitialRoute={() => setPendingRouteId(null)}
+            initialStation={pendingStation ?? undefined}
+            onConsumeInitialStation={() => setPendingStation(null)}
           />
         )}
        {tab === "route" && <RouteScreen />}
