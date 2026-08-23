@@ -211,7 +211,7 @@ export function MyScreen() {
         </section>
 
 
-        <p className="text-center text-xs text-slate-300 pb-6">BUS STOP v1.0.0</p>
+        <p className="text-center text-xs text-slate-300 pt-4 pb-6">BUS STOP v1.0.0</p>
       </div>
 
       <RegionModal

@@ -330,11 +330,14 @@ export function HomeScreen({
           </button>
         </div>
       </div>
-  {state.favorites.length === 0 ? (
-    <div className="bg-white rounded-2xl p-6 text-center border border-slate-100">
+      {state.favorites.length === 0 ? (
+    <button
+      onClick={() => onNavigate("bus")}
+      className="w-full bg-white rounded-2xl p-6 text-center border border-slate-100 hover:border-blue-200 hover:shadow-sm transition-all active:scale-[0.99]"
+    >
       <Star className="w-8 h-8 text-slate-300 mx-auto mb-2" />
       <p className="text-sm text-slate-400">즐겨찾기를 추가해 보세요</p>
-    </div>
+    </button>
   ) : (
     <div className="max-h-[50vh] overflow-y-auto bg-white rounded-2xl border border-slate-100 p-3 space-y-2.5">
   {state.favorites.map((fav) => {
