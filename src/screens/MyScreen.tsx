@@ -60,6 +60,7 @@ export function MyScreen() {
   const [editLabel, setEditLabel] = useState("");
   const [settings, setSettings] = useState<AppSettings>(() => loadSettings());
   const [helpOpen, setHelpOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
     applySettings(settings);
@@ -203,57 +204,75 @@ export function MyScreen() {
 
         <section className="px-4 mt-4 pb-6">
           <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-            <SettingRow icon={Bell} label="알림 설정" onClick={handleNotification} />
+          <SettingRow
+  icon={Bell}
+  label="알림 설정"
+  onClick={handleNotification}
+/>
 
-            <SettingToggle
-              icon={Moon}
-              label="다크모드"
-              checked={settings.darkMode}
-              onChange={(v) => {
-                updateSetting("darkMode", v);
-                showToast(v ? "다크모드를 켰어요" : "다크모드를 껐어요");
-              }}
-            />
-            <SettingToggle
-              icon={Type}
-              label="큰 글씨"
-              checked={settings.largeText}
-              onChange={(v) => {
-                updateSetting("largeText", v);
-                showToast(v ? "큰 글씨를 켰어요" : "큰 글씨를 껐어요");
-              }}
-            />
-            <SettingToggle
-              icon={Eye}
-              label="색약 모드"
-              checked={settings.colorBlind}
-              onChange={(v) => {
-                updateSetting("colorBlind", v);
-                showToast(v ? "색약 모드를 켰어요" : "색약 모드를 껐어요");
-              }}
-            />
-            <SettingToggle
-              icon={Volume2}
-              label="음성 안내"
-              checked={settings.voiceGuide}
-              onChange={(v) => {
-                updateSetting("voiceGuide", v);
-                showToast(v ? "음성 안내를 켰어요" : "음성 안내를 껐어요");
-              }}
-            />
+<SettingToggle
+  icon={Volume2}
+  label="음성 안내"
+  checked={settings.voiceGuide}
+  onChange={(v) => {
+    updateSetting("voiceGuide", v);
+    showToast(v ? "음성 안내를 켰어요" : "음성 안내를 껐어요");
+  }}
+/>
 
-            <SettingRow
-              icon={HelpCircle}
-              label="도움말"
-              onClick={() => setHelpOpen(true)}
-            />
-            <SettingRow
-              icon={LogOut}
-              label="로그아웃"
-              danger
-              onClick={handleLogout}
-              last
-            />
+<SettingToggle
+  icon={Moon}
+  label="다크모드"
+  checked={settings.darkMode}
+  onChange={(v) => {
+    updateSetting("darkMode", v);
+    showToast(v ? "다크모드를 켰어요" : "다크모드를 껐어요");
+  }}
+/>
+
+<SettingRow
+  icon={ChevronRight}
+  label="더보기"
+  onClick={() => setMoreOpen((prev) => !prev)}
+/>
+
+{moreOpen && (
+  <>
+    <SettingToggle
+      icon={Type}
+      label="큰 글씨"
+      checked={settings.largeText}
+      onChange={(v) => {
+        updateSetting("largeText", v);
+        showToast(v ? "큰 글씨를 켰어요" : "큰 글씨를 껐어요");
+      }}
+    />
+
+    <SettingToggle
+      icon={Eye}
+      label="색약 모드"
+      checked={settings.colorBlind}
+      onChange={(v) => {
+        updateSetting("colorBlind", v);
+        showToast(v ? "색약 모드를 켰어요" : "색약 모드를 껐어요");
+      }}
+    />
+
+    <SettingRow
+      icon={HelpCircle}
+      label="도움말"
+      onClick={() => setHelpOpen(true)}
+    />
+  </>
+)}
+
+<SettingRow
+  icon={LogOut}
+  label="로그아웃"
+  danger
+  onClick={handleLogout}
+  last
+/>
           </div>
         </section>
 
