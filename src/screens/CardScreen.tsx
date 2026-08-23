@@ -39,8 +39,8 @@ export function CardScreen() {
   };
 
   return (
-    <div className="bg-slate-50">
-      <header className="bg-gradient-to-b from-slate-900 to-slate-800 px-5 pt-16 pb-9 text-white sticky top-0 z-30">
+    <div className="h-full flex flex-col overflow-hidden bg-slate-50">
+      <header className="bg-gradient-to-b from-slate-900 to-slate-800 px-5 pt-16 pb-9 text-whitesticky top-0 z-30 shrink-0">
         <h1 className="text-xl font-bold mb-4">모바일 버스카드</h1>
 
         <div className="relative bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-400 rounded-2xl p-5 shadow-xl overflow-hidden">
@@ -64,6 +64,7 @@ export function CardScreen() {
           </div>
         </div>
       </header>
+      <div className="flex-1 overflow-y-auto overscroll-contain">
           <section className="px-4 -mt-4 mb-7">
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 px-4 py-4 flex items-start gap-3">
               <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
@@ -252,6 +253,7 @@ export function CardScreen() {
           ))}
         </div>
       </section>
+      </div>
     </div>
   );
 }
