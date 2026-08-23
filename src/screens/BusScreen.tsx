@@ -304,6 +304,7 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
       <StationDetail
         station={selectedStation}
         onBack={() => setSelectedStation(null)}
+        onSelectRoute={(route) => setSelectedRoute(route)}
       />
     );
   }
@@ -537,9 +538,11 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
 function StationDetail({
   station,
   onBack,
+  onSelectRoute,
 }: {
   station: Station;
   onBack: () => void;
+  onSelectRoute: (route: Route) => void;
 }) {
   const { state, dispatch } = useApp();
 
@@ -643,12 +646,21 @@ function StationDetail({
 
   // 실시간 노선 즐겨찾기 여부
   const isArrivalFavorited = (routeNo: string) =>
-    state.favorites.some(
-      (f) =>
-        f.type === "stop_route" &&
-        f.routeNumber === routeNo &&
-        f.stopName === station.name
-    );
+  state.favorites.some(
+    (f) =>
+      f.type === "stop_route" &&
+      f.routeNumber === routeNo &&
+      f.stopName === station.name
+  );
+
+// 전체 경유노선 즐겨찾기 여부
+const isAllRouteFavorited = (route: Route) =>
+  state.favorites.some(
+    (f) =>
+      f.type === "stop_route" &&
+      f.appRouteId === route.id &&
+      f.stopName === station.name
+  );
 
   // 실시간 노선 즐겨찾기
   const handleRouteClick = async (sr: StationRoute) => {
@@ -707,7 +719,7 @@ function StationDetail({
     const existing = state.favorites.find(
       (f) =>
         f.type === "stop_route" &&
-        f.routeNumber === route.number &&
+        f.appRouteId === route.id &&
         f.stopName === station.name
     );
 
@@ -858,10 +870,20 @@ function StationDetail({
                   return (
                     <button
                       key={sr.routeId}
-                      onClick={() => handleRouteClick(sr)}
-                      disabled={
-                        addingRouteNo === sr.routeNo
-                      }
+                      type="button"
+                      onClick={() => {
+                        const appRoute = allRoutes?.find(
+                          (r) =>
+                            r.number === sr.routeNo ||
+                            r.rawNumber === sr.routeNo
+                        );
+                        if (appRoute) {
+                          onSelectRoute(appRoute);
+                        } else {
+                          showToast("노선 정보를 찾을 수 없어요");
+                        }
+                      }}
+                      disabled={addingRouteNo === sr.routeNo}
                       className="w-full bg-white rounded-2xl p-4 border border-slate-100 text-left hover:border-blue-200 hover:shadow-sm transition-all flex items-center gap-3"
                     >
                       <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
@@ -896,13 +918,23 @@ function StationDetail({
                       {addingRouteNo === sr.routeNo ? (
                         <span className="w-4 h-4 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin shrink-0" />
                       ) : (
-                        <Star
-                          className={`w-4 h-4 shrink-0 transition-colors ${
-                            isArrivalFavorited(sr.routeNo)
-                              ? "text-amber-400 fill-amber-400"
-                              : "text-slate-300"
-                          }`}
-                        />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRouteClick(sr);
+                          }}
+                          className="p-1 -m-1 shrink-0 rounded-full hover:bg-slate-50"
+                          aria-label="즐겨찾기"
+                        >
+                          <Star
+                            className={`w-4 h-4 transition-colors ${
+                              isArrivalFavorited(sr.routeNo)
+                                ? "text-amber-400 fill-amber-400"
+                                : "text-slate-300"
+                            }`}
+                          />
+                        </button>
                       )}
                     </button>
                   );
@@ -952,15 +984,13 @@ function StationDetail({
               allViaRoutes.length > 0 && (
                 <div className="space-y-2">
                   {allViaRoutes.map((route) => (
-                    <button
+                    <div
                       key={route.id}
-                      onClick={() =>
-                        handleAllRouteClick(route)
-                      }
-                      disabled={
-                        addingRouteNo === route.number
-                      }
-                      className="w-full bg-white rounded-2xl p-4 border border-slate-100 text-left hover:border-blue-200 hover:shadow-sm transition-all flex items-center gap-3"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => onSelectRoute(route)}
+                      onKeyDown={(e) => e.key === "Enter" && onSelectRoute(route)}
+                      className="w-full bg-white rounded-2xl p-4 border border-slate-100 text-left hover:border-blue-200 hover:shadow-sm transition-all flex items-center gap-3 cursor-pointer"
                     >
                       <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
                         <span className="font-bold text-sm text-emerald-700">
@@ -981,15 +1011,25 @@ function StationDetail({
                       {addingRouteNo === route.number ? (
                         <span className="w-4 h-4 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin shrink-0" />
                       ) : (
-                        <Star
-                          className={`w-4 h-4 shrink-0 transition-colors ${
-                            isArrivalFavorited(route.number)
-                              ? "text-amber-400 fill-amber-400"
-                              : "text-slate-300"
-                          }`}
-                        />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAllRouteClick(route);
+                          }}
+                          className="p-1 -m-1 shrink-0 rounded-full hover:bg-slate-50"
+                          aria-label="즐겨찾기"
+                        >
+                          <Star
+                            className={`w-4 h-4 transition-colors ${
+                              isAllRouteFavorited(route)
+                                ? "text-amber-400 fill-amber-400"
+                                : "text-slate-300"
+                            }`}
+                          />
+                        </button>
                       )}
-                    </button>
+                    </div>
                   ))}
                 </div>
               )}
