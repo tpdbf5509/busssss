@@ -103,8 +103,7 @@ export function MyScreen() {
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-slate-50">
-      {/* 홈과 동일: 파란 헤더 + 즐겨찾기를 같은 스크롤 안에 배치 */}
-      <div className="flex-1 overflow-y-auto overscroll-contain">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <header className="bg-gradient-to-b from-blue-600 to-blue-500 px-5 pt-16 pb-9 text-white">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl font-bold">
@@ -124,6 +123,8 @@ export function MyScreen() {
           </div>
         </header>
 
+        
+        <div className="flex-1 overscroll-contain">
         {/* 즐겨찾기 카드 — 파란 헤더 위로 겹침 */}
         <section className="px-4 -mt-3 relative z-10">
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
@@ -294,6 +295,7 @@ export function MyScreen() {
         </div>
       )}
     </div>
+  </div>
   );
 }
 
