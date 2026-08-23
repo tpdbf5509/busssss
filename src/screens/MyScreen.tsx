@@ -255,13 +255,16 @@ export function MyScreen() {
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setMenuOpen(false)}
           />
-          <div className="relative bg-white w-72 h-full shadow-2xl overflow-y-auto">
+            <div className="relative bg-white w-72 h-full shadow-2xl overflow-y-auto">
+            <div className="pt-[15vh]" />
             <div className="p-4 border-b border-slate-100 flex items-center justify-between">
               <h2 className="font-bold text-slate-900">설정</h2>
               <button onClick={() => setMenuOpen(false)}>
                 <X className="w-5 h-5 text-slate-400" />
               </button>
             </div>
+
+           
 
             <SettingRow
               icon={Bell}
