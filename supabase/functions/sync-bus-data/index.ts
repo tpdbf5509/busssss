@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@Supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { XMLParser } from "https://esm.sh/fast-xml-parser@4.5.0";
 
 const BASE_URL = "https://apis.data.go.kr/4641000/nosun";
