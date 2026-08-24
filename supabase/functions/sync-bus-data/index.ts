@@ -15,6 +15,9 @@ const corsHeaders = {
   "Content-Type": "application/json; charset=utf-8",
 };
 
+const REQUEST_INTERVAL_MS = 350;
+const MAX_BACKOFF_MS = 30_000;
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function asArray<T>(value: T | T[] | undefined | null): T[] {
@@ -22,11 +25,12 @@ function asArray<T>(value: T | T[] | undefined | null): T[] {
   return Array.isArray(value) ? value : [value];
 }
 
+// 403/429(rate limit)에는 지수 백오프(최대 30초)로 재시도합니다.
 async function callJeonju(path: string, params: Record<string, string>, key: string) {
   const qs = new URLSearchParams(params);
   const url = `${BASE_URL}${path}?serviceKey=${encodeURIComponent(key)}&${qs}`;
 
-  for (let retry = 0; retry < 5; retry++) {
+  for (let retry = 0; retry < 8; retry++) {
     const res = await fetch(url);
     const text = await res.text();
     if (res.ok) return text;
@@ -34,7 +38,10 @@ async function callJeonju(path: string, params: Record<string, string>, key: str
     if (res.status !== 403 && res.status !== 429) {
       throw new Error(`전주시 API 오류: HTTP ${res.status}`);
     }
-    await sleep(1000 * (retry + 1));
+
+    const backoff = Math.min(1000 * 2 ** retry, MAX_BACKOFF_MS);
+    console.warn(`rate limited (HTTP ${res.status}), retry ${retry + 1} in ${backoff}ms`, path, params);
+    await sleep(backoff);
   }
 
   throw new Error("전주시 API 요청이 반복해서 실패했습니다.");
@@ -58,6 +65,12 @@ function parseItems(xml: string): Record<string, string>[] {
   return asArray(body.routeList?.list);
 }
 
+type RoutePair = { brtId: string; brtClass: string };
+
+function pairKey(pair: RoutePair) {
+  return `${pair.brtId}-${pair.brtClass ?? ""}`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -74,19 +87,33 @@ Deno.serve(async (req) => {
 
     const db = createClient(supabaseUrl, serviceRole);
 
+    // 1) 지금 이 순간 운행 중인 노선
     const idXml = await callJeonju("/bus_location_all_common", {}, key);
     const idRows = parseItems(idXml);
+    const livePairs: RoutePair[] = idRows
+      .filter((row) => row.brtId)
+      .map((row) => ({ brtId: row.brtId, brtClass: row.brtClass ?? "" }));
+
+    // 2) 예전에 이미 발견해서 캐시에 저장해 둔 노선 (지금 운행 중이 아니어도 유지)
+    //    -> 배차 간격이 길거나 이미 막차가 끊긴 노선이 이번 동기화에서 빠지는 것을 막습니다.
+    const { data: cachedRows, error: cachedError } = await db
+      .from("bus_routes_cache")
+      .select("brt_id, brt_class");
+
+    if (cachedError) throw cachedError;
+
+    const cachedPairs: RoutePair[] = (cachedRows ?? [])
+      .filter((row) => row.brt_id)
+      .map((row) => ({ brtId: row.brt_id as string, brtClass: (row.brt_class as string) ?? "" }));
+
     const uniquePairs = Array.from(
-      new Map(
-        idRows
-          .filter((row) => row.brtId)
-          .map((row) => [`${row.brtId}-${row.brtClass ?? ""}`, row])
-      ).values()
+      new Map([...livePairs, ...cachedPairs].map((pair) => [pairKey(pair), pair])).values()
     );
 
     let routeCount = 0;
     let stopCount = 0;
     let failedRoutes = 0;
+    let skippedEmpty = 0;
 
     for (const pair of uniquePairs) {
       try {
@@ -95,6 +122,10 @@ Deno.serve(async (req) => {
           brtClass: pair.brtClass ?? "",
         }, key);
         const rows = parseItems(detailXml);
+
+        if (rows.length === 0) {
+          skippedEmpty++;
+        }
 
         for (const row of rows) {
           const brtId = row.brtId ?? pair.brtId ?? "";
@@ -167,18 +198,23 @@ Deno.serve(async (req) => {
           }
         }
       } catch (error) {
+        // 특정 노선에서 오류가 나도 전체 동기화를 멈추지 않고 다음 노선으로 넘어갑니다.
         failedRoutes++;
         console.error("route sync failed", pair, error);
       }
 
-      await sleep(250);
+      await sleep(REQUEST_INTERVAL_MS);
     }
 
     return new Response(JSON.stringify({
       ok: true,
+      pairCount: uniquePairs.length,
+      livePairCount: livePairs.length,
+      cachedPairCount: cachedPairs.length,
       routeCount,
       stopCount,
       failedRoutes,
+      skippedEmpty,
       syncedAt: new Date().toISOString(),
     }), { status: 200, headers: corsHeaders });
   } catch (error) {
