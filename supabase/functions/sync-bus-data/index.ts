@@ -285,44 +285,66 @@ Deno.serve(async (req) => {
             const stops = parseItems(stopXml);
 
             if (stops.length > 0) {
-              const stopRows = stops.map(
-                (stop, index) => {
-                  const nodeId =
-                    stop.nodeid ??
-                    stop.nodeId ??
-                    stop.stopStandardid ??
-                    stop.bnodeId ??
-                    stop.stopId ??
-                    "";
-
-                  const nodeName =
-                    stop.nodenm ??
-                    stop.nodeNm ??
-                    stop.stopKname ??
-                    "";
-
-                  const sequence =
-                    Number(
-                      stop.seq ??
-                      stop.ord ??
-                      stop.brnSeqno ??
-                      stop.brsSeqno ??
-                      index + 1
-                    ) || index + 1;
-
-                  return {
-                    route_id: brtStdid,
-                    stop_key:
-                      nodeId ||
-                      `${sequence}-${nodeName}`,
-                    sequence_no: sequence,
-                    node_id: nodeId,
-                    node_name: nodeName,
-                    raw: stop,
-                    updated_at:
-                      new Date().toISOString(),
-                  };
+              const stopMap = new Map<
+                string,
+                {
+                  route_id: string;
+                  stop_key: string;
+                  sequence_no: number;
+                  node_id: string;
+                  node_name: string;
+                  raw: Record<string, string>;
+                  updated_at: string;
                 }
+              >();
+
+              stops.forEach((stop, index) => {
+                const nodeId =
+                  stop.nodeid ??
+                  stop.nodeId ??
+                  stop.stopStandardid ??
+                  stop.bnodeId ??
+                  stop.stopId ??
+                  "";
+
+                const nodeName =
+                  stop.nodenm ??
+                  stop.nodeNm ??
+                  stop.stopKname ??
+                  "";
+
+                const sequence =
+                  Number(
+                    stop.seq ??
+                    stop.ord ??
+                    stop.brnSeqno ??
+                    stop.brsSeqno ??
+                    index + 1
+                  ) || index + 1;
+
+                const stopKey =
+                  nodeId ||
+                  `${sequence}-${nodeName}`;
+
+                const stopRow = {
+                  route_id: brtStdid,
+                  stop_key: stopKey,
+                  sequence_no: sequence,
+                  node_id: nodeId,
+                  node_name: nodeName,
+                  raw: stop,
+                  updated_at:
+                    new Date().toISOString(),
+                };
+
+                stopMap.set(
+                  `${brtStdid}-${stopKey}`,
+                  stopRow
+                );
+              });
+
+              const stopRows = Array.from(
+                stopMap.values()
               );
 
               const {
