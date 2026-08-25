@@ -237,7 +237,7 @@ function FavoriteArrivalInfo({
 export function HomeScreen({
   onNavigate,
 }: {
-  oonNavigate: (
+  onNavigate: (
     tab: TabId,
     routeId?: string,
     station?: { id: string; name: string; arsId?: string }

@@ -99,34 +99,77 @@ export async function getBusLocationsByRoute(brtStdid: string): Promise<RawRoute
 /**
  * 정적 노선 마스터는 Supabase를 단일 소스로 사용합니다.
  * 노선 목록을 만들기 위해 실시간 노선 탐색 API를 호출하지 않습니다.
+ *
+ * bus_routes_master가 "이 노선이 존재한다"는 확정 목록(454개)이고,
+ * bus_routes_cache는 실시간 상세 조회로 채워지는 보강 데이터(brtClass,
+ * 배차간격, 노선길이 등)입니다. master에는 있지만 아직 cache가 못 채운
+ * 노선도 화면에서 빠지면 안 되므로 master를 기준으로 cache를 덧붙입니다.
  */
 export async function getRoutes(): Promise<RawRouteField[]> {
-  const rows = await supabaseFetch<{
-    brt_id: string | null;
-    brt_stdid: string | null;
-    brt_class: string | null;
-    brt_no: string | null;
-    start_name: string | null;
-    end_name: string | null;
-    raw: RawRouteField;
-  }>(
-    "bus_routes_cache",
-    "select=brt_id,brt_stdid,brt_class,brt_no,start_name,end_name,raw&order=brt_no.asc"
-  );
+  const [masterRows, cacheRows] = await Promise.all([
+    supabaseFetch<{
+      brt_stdid: string;
+      route_no: string;
+      category: string | null;
+      start_node: string | null;
+      end_node: string | null;
+      start_time: string | null;
+      end_time: string | null;
+    }>(
+      "bus_routes_master",
+      "select=brt_stdid,route_no,category,start_node,end_node,start_time,end_time&order=route_no.asc"
+    ),
+    supabaseFetch<{
+      brt_id: string | null;
+      brt_stdid: string | null;
+      brt_class: string | null;
+      brt_no: string | null;
+      start_name: string | null;
+      end_name: string | null;
+      raw: RawRouteField;
+    }>(
+      "bus_routes_cache",
+      "select=brt_id,brt_stdid,brt_class,brt_no,start_name,end_name,raw"
+    ),
+  ]);
 
-  if (rows.length === 0) {
+  if (masterRows.length === 0 && cacheRows.length === 0) {
     throw new Error("Supabase에 저장된 전주 버스 노선 데이터가 없습니다.");
   }
 
-  return rows.map((row) => ({
-    ...row.raw,
-    brtId: row.brt_id ?? "",
-    brtStdid: row.brt_stdid ?? "",
-    brtClass: row.brt_class ?? "",
-    brtNo: row.brt_no ?? row.brt_id ?? "",
-    brtStartNm: row.start_name ?? row.raw?.brtStartNm ?? "",
-    brtEndNm: row.end_name ?? row.raw?.brtEndNm ?? "",
-  }));
+  const cacheByStdid = new Map(
+    cacheRows.filter((row) => row.brt_stdid).map((row) => [row.brt_stdid as string, row])
+  );
+
+  const fromMaster = masterRows.map((row) => {
+    const cached = cacheByStdid.get(row.brt_stdid);
+    return {
+      ...(cached?.raw ?? {}),
+      brtId: cached?.brt_id ?? "",
+      brtStdid: row.brt_stdid,
+      brtClass: cached?.brt_class ?? "",
+      brtNo: row.route_no,
+      brtStartNm: cached?.start_name || row.start_node || "",
+      brtEndNm: cached?.end_name || row.end_node || "",
+      brtFirsttime: row.start_time ?? "",
+      brtLasttime: row.end_time ?? "",
+    };
+  });
+
+  const masterStdids = new Set(masterRows.map((row) => row.brt_stdid));
+  const cacheOnly = cacheRows
+    .filter((row) => row.brt_stdid && !masterStdids.has(row.brt_stdid))
+    .map((row) => ({
+      ...row.raw,
+      brtId: row.brt_id ?? "",
+      brtStdid: row.brt_stdid ?? "",
+      brtClass: row.brt_class ?? "",
+      brtNo: row.brt_no ?? row.brt_id ?? "",
+      brtStartNm: row.start_name ?? row.raw?.brtStartNm ?? "",
+      brtEndNm: row.end_name ?? row.raw?.brtEndNm ?? "",
+    }));
+
+  return [...fromMaster, ...cacheOnly];
 }
 
 /**

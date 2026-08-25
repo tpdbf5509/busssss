@@ -33,23 +33,16 @@ function asArray<T>(value: T | T[] | undefined | null): T[] {
 // 노선 시드 리스트 (2.1)
 // bus_location_all_common 은 "현재 운행 중인" 버스의 노선만 반환하므로,
 // 배차 간격이 길거나 요청 시점에 운행 중이 아닌 노선은 라이브 API만으로는
-// 절대 캐시에 들어오지 못한다. 아래 시드를 bus_location1_common 으로
-// 개별 조회해서 캐시를 채운다.
+// 절대 캐시에 들어오지 못한다. bus_routes_master(정적 노선 확정 목록)의
+// 노선번호 전체를 bus_location1_common 으로 개별 조회해서 캐시를 채운다.
 // ─────────────────────────────────────────────
 
-const SEED_RANGE_CIRCULAR: [number, number] = [1, 9]; // 순환노선
-const SEED_RANGE_GENERAL: [number, number] = [10, 100]; // 시내 일반노선
-const SEED_RANGE_REGIONAL: [number, number] = [200, 610]; // 혁신도시·삼례·구이·봉동고산·금구 방면
-const SEED_RANGE_SOYANG: [number, number] = [800, 899]; // 소양 방면
-
-const SEED_SINGLE_IDS = [
+// bus_routes_master 조회가 실패하거나 아직 못 채운 노선이 있을 때를 대비한
+// 수작업 백업 시드. 캐시 누락이 계속 발견되면 여기에 추가한다. (예: "4-3")
+const SEED_FALLBACK_IDS = [
   "752", // 상관·관촌(임실군) 방면
   "970", // 구이(모악산) 방면
   "999", // 명품버스
-];
-
-// 2022년 2월 노선개편으로 신설된 10분 배차 간선급행 노선
-const SEED_TRUNK_IDS = [
   "1001",
   "1002",
   "2000",
@@ -60,11 +53,6 @@ const SEED_TRUNK_IDS = [
   "5002",
   "6001",
   "6002",
-];
-
-// 부번(-1/-2 등)이 붙는 순환·지선 노선. 숫자 범위만으로는 잡히지 않으므로
-// 별도 관리한다. 캐시 누락이 계속 발견되면 여기에 추가한다. (예: "4-3")
-const SEED_BRANCH_IDS = [
   "3-1",
   "3-2",
   "6-1",
@@ -73,24 +61,22 @@ const SEED_BRANCH_IDS = [
   "9-1",
 ];
 
-function buildRouteSeedPairs(): RoutePair[] {
-  const ids = new Set<string>();
+async function buildRouteSeedPairs(
+  db: ReturnType<typeof createClient>
+): Promise<RoutePair[]> {
+  const ids = new Set<string>(SEED_FALLBACK_IDS);
 
-  const addRange = (range: [number, number]) => {
-    const [start, end] = range;
-    for (let n = start; n <= end; n++) {
-      ids.add(String(n));
+  const { data, error } = await db
+    .from("bus_routes_master")
+    .select("route_no");
+
+  if (error) {
+    console.error("bus_routes_master 조회 실패, 백업 시드만 사용", error);
+  } else {
+    for (const row of data ?? []) {
+      if (row.route_no) ids.add(row.route_no as string);
     }
-  };
-
-  addRange(SEED_RANGE_CIRCULAR);
-  addRange(SEED_RANGE_GENERAL);
-  addRange(SEED_RANGE_REGIONAL);
-  addRange(SEED_RANGE_SOYANG);
-
-  for (const id of SEED_SINGLE_IDS) ids.add(id);
-  for (const id of SEED_TRUNK_IDS) ids.add(id);
-  for (const id of SEED_BRANCH_IDS) ids.add(id);
+  }
 
   return Array.from(ids).map((brtId) => ({
     brtId,
@@ -262,7 +248,7 @@ Deno.serve(async (req) => {
       [...livePairs, ...cachedPairs].map((pair) => pair.brtId)
     );
 
-    const seedPairs = buildRouteSeedPairs().filter(
+    const seedPairs = (await buildRouteSeedPairs(db)).filter(
       (pair) => !knownBrtIds.has(pair.brtId)
     );
 
@@ -274,12 +260,66 @@ Deno.serve(async (req) => {
       ).values()
     );
 
+    // ─────────────────────────────────────────────
+    // 배치 처리 (2.2)
+    // 노선 수가 늘어나면서 한 번의 호출로 uniquePairs 전체를 순회하면
+    // Edge Function의 컴퓨트 한도(WORKER_RESOURCE_LIMIT)에 걸린다.
+    // bus_sync_state.last_route_id에 커서를 저장해두고, 매 호출마다
+    // batchSize만큼만 처리한 뒤 이어서 다음 구간을 처리하도록 한다.
+    // cron은 3시간마다 파라미터 없이 호출하므로 기본값으로도 안전해야 한다.
+    // ─────────────────────────────────────────────
+    const sortedPairs = [...uniquePairs].sort((a, b) =>
+      pairKey(a).localeCompare(pairKey(b))
+    );
+
+    const url = new URL(req.url);
+    let batchSize = 30;
+    const batchSizeParam = url.searchParams.get("batchSize");
+    if (batchSizeParam && Number(batchSizeParam) > 0) {
+      batchSize = Math.floor(Number(batchSizeParam));
+    } else {
+      try {
+        const bodyText = await req.clone().text();
+        const body = bodyText ? JSON.parse(bodyText) : null;
+        if (body?.batchSize && Number(body.batchSize) > 0) {
+          batchSize = Math.floor(Number(body.batchSize));
+        }
+      } catch {
+        // 본문이 없거나 JSON이 아니면 기본값을 사용한다.
+      }
+    }
+    batchSize = Math.min(batchSize, 200);
+
+    const { data: stateRow } = await db
+      .from("bus_sync_state")
+      .select("last_route_id")
+      .eq("id", 1)
+      .maybeSingle();
+
+    const cursor = stateRow?.last_route_id ?? null;
+
+    let startIndex = 0;
+    if (cursor && sortedPairs.length > 0) {
+      const idx = sortedPairs.findIndex(
+        (pair) => pairKey(pair) > cursor
+      );
+      startIndex = idx === -1 ? 0 : idx;
+    }
+
+    const batch = sortedPairs.slice(startIndex, startIndex + batchSize);
+    if (batch.length < batchSize && startIndex > 0) {
+      // 끝까지 처리했으니 다음 사이클을 처음부터 이어서 채운다.
+      batch.push(
+        ...sortedPairs.slice(0, batchSize - batch.length)
+      );
+    }
+
     let routeCount = 0;
     let stopCount = 0;
     let failedRoutes = 0;
     let skippedEmpty = 0;
 
-    for (const pair of uniquePairs) {
+    for (const pair of batch) {
       try {
         const detailXml = await callJeonju(
           "/bus_location1_common",
@@ -463,6 +503,17 @@ Deno.serve(async (req) => {
       await sleep(REQUEST_INTERVAL_MS);
     }
 
+    const nextCursor =
+      batch.length > 0 ? pairKey(batch[batch.length - 1]) : cursor;
+
+    if (nextCursor) {
+      await db.from("bus_sync_state").upsert({
+        id: 1,
+        last_route_id: nextCursor,
+        updated_at: new Date().toISOString(),
+      });
+    }
+
     return new Response(
       JSON.stringify({
         ok: true,
@@ -470,6 +521,10 @@ Deno.serve(async (req) => {
         livePairCount: livePairs.length,
         cachedPairCount: cachedPairs.length,
         seedPairCount: seedPairs.length,
+        batchSize,
+        batchCount: batch.length,
+        startIndex,
+        cursor: nextCursor,
         routeCount,
         stopCount,
         failedRoutes,

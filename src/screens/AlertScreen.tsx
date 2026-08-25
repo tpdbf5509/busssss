@@ -344,7 +344,7 @@ function AddAlertModal({
             )}
             {routesStatus === "success" && (
               <div className="space-y-1 max-h-[50vh] overflow-y-auto">
-                {filteredRoutes.slice(0, 50).map((route) => (
+                {filteredRoutes.map((route) => (
                   <button
                     key={`${route.id}-${route.number}`}
                     onClick={() => {
