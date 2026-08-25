@@ -5,7 +5,7 @@ import { fetchAllRoutes } from "@/services/routeService";
 import { RegionModal } from "@/components/RegionModal";
 import { showToast } from "@/components/Toast";
 import type { TabId } from "@/components/BottomNav";
-import { MapPin, ChevronDown, Star, Search, X, RefreshCw, Home, Building2 } from "lucide-react";
+import { MapPin, ChevronDown, Star, Search, X, RefreshCw } from "lucide-react";
 import { useArrivalInfo } from "@/hooks/useArrivalInfo";
 import { formatArrivalText } from "@/lib/formatArrival";
 import { triggerArrivalRefresh } from "@/services/arrivalService";
@@ -204,62 +204,31 @@ function FavoriteArrivalInfo({
     subtitle = fav.routeNumber ? `${fav.routeNumber}번` : "정류장";
   }
 
-  let badgeText: string;
-  let badgeClasses: string;
-  if (!isStopRoute) {
-    badgeText = "준비중";
-    badgeClasses = "bg-slate-100 text-slate-600";
-  } else if (status === "loading" && !data) {
-    badgeText = "조회 중";
-    badgeClasses = "bg-slate-100 text-slate-600";
-  } else if (data) {
-    badgeText = formatArrivalText(data.minutes, data.stopsAway);
-    badgeClasses = data.minutes <= 3 ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-700";
-  } else if (status === "error") {
-    badgeText = "정보 없음";
-    badgeClasses = "bg-slate-100 text-slate-500";
-  } else {
-    badgeText = "-";
-    badgeClasses = "bg-slate-100 text-slate-500";
-  }
-
-  const showPlaceTag =
-    !isRoute &&
-    !isStopRoute &&
-    fav.label &&
-    !["정류장", "집", "회사"].includes(fav.label);
-
   return (
     <>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <p
-            className={
-              isRoute
-                ? "text-base font-extrabold text-blue-700 truncate"
-                : "text-sm font-semibold text-slate-800 truncate"
-            }
-          >
-            {isRoute ? `${routeNumber}번` : fav.name}
-          </p>
-          {showPlaceTag && (
-            <span className="shrink-0 text-[10px] font-medium text-slate-500 bg-slate-100 rounded-full px-1.5 py-0.5">
-              {fav.label}
-            </span>
-          )}
-        </div>
+        <p className="text-sm font-semibold text-slate-800 truncate">
+          {isRoute ? `${routeNumber}번` : fav.name}
+        </p>
         <p className="text-xs text-slate-400 mt-0.5 truncate">{subtitle}</p>
       </div>
 
       <div className="text-right shrink-0">
-        <p className="text-[11px] font-medium text-slate-400 mb-1">
+        <p className="text-xs font-medium text-slate-300">
           {isStopRoute && isRefreshing ? "갱신 중" : "도착정보"}
         </p>
-        <span
-          className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-bold ${badgeClasses}`}
-        >
-          {badgeText}
-        </span>
+        {!isStopRoute && <p className="text-sm font-semibold text-slate-400">준비중</p>}
+        {isStopRoute && status === "loading" && !data && (
+          <p className="text-sm font-semibold text-slate-300">조회 중</p>
+        )}
+        {isStopRoute && data && (
+          <p className={`text-sm font-bold ${data.minutes <= 3 ? "text-blue-600" : "text-slate-700"}`}>
+            {formatArrivalText(data.minutes, data.stopsAway)}
+          </p>
+        )}
+        {isStopRoute && status === "error" && !data && (
+          <p className="text-sm font-semibold text-slate-300">정보 없음</p>
+        )}
       </div>
     </>
   );
@@ -374,7 +343,7 @@ export function HomeScreen({
       <p className="text-sm text-slate-400">즐겨찾기를 추가해 보세요</p>
     </button>
   ) : (
-    <div className="max-h-[50vh] overflow-y-auto space-y-2 pb-1">
+    <div className="max-h-[50vh] overflow-y-auto bg-white rounded-2xl card-shadow p-3 space-y-2.5">
   {state.favorites.map((fav) => {
         const isRoute = fav.type === "route";
         const matchedRoute = isRoute
@@ -388,10 +357,16 @@ export function HomeScreen({
             ) === "본선"
           : true;
 
-        const routeBadgeBg = isMain
-          ? "bg-gradient-to-br from-blue-50 to-blue-100"
-          : "bg-gradient-to-br from-emerald-50 to-emerald-100";
-        const routeBadgeText = isMain ? "text-blue-700" : "text-emerald-700";
+        const badgeBg = isRoute
+          ? isMain
+            ? "bg-gradient-to-br from-blue-50 to-blue-100"
+            : "bg-gradient-to-br from-emerald-50 to-emerald-100"
+          : "bg-gradient-to-br from-blue-50 to-blue-100";
+        const badgeText = isRoute
+          ? isMain
+            ? "text-blue-700"
+            : "text-emerald-700"
+          : "text-blue-700";
 
         const routeNumber =
           matchedRoute?.number ?? fav.name.replace(/번$/, "").trim();
@@ -399,8 +374,6 @@ export function HomeScreen({
           const isStopRoute = fav.type === "stop_route";
           const isStation = fav.type === "station";
           const targetId = isStopRoute ? fav.appRouteId : fav.refId;
-          const PlaceIcon =
-            fav.label === "집" ? Home : fav.label === "회사" ? Building2 : MapPin;
 
           // stop_route: appRouteId로 실제 노선 방향을 찾아 기점→종점 표시
           const stopRoute = isStopRoute && fav.appRouteId
@@ -427,29 +400,19 @@ export function HomeScreen({
               onNavigate("bus", targetId);
               return;
             }
-          }}
-              className="w-full bg-white rounded-xl px-4 py-3.5 flex items-center gap-3 text-left shadow-sm hover:shadow-md active:scale-[0.99] transition-all"
+          }}              
+              className="w-full bg-slate-50/80 rounded-xl px-4 py-5 flex items-center gap-3 text-left hover:bg-blue-50 active:scale-[0.99] transition-all"
             >
-              {/* 왼쪽: 노선 종류/번호 또는 장소 아이콘 */}
-              {isRoute ? (
-                <div
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${routeBadgeBg}`}
+              {/* 왼쪽: 본선/분선 글씨 + 색 */}
+              <div
+                className={`min-w-[64px] h-11 rounded-xl flex items-center justify-center shrink-0 px-2 ${badgeBg}`}
+              >
+                <span
+                  className={`font-bold text-sm leading-tight text-center truncate ${badgeText}`}
                 >
-                  <span className={`font-bold text-xs leading-tight text-center ${routeBadgeText}`}>
-                    {isMain ? "본선" : "분선"}
-                  </span>
-                </div>
-              ) : isStopRoute ? (
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center shrink-0">
-                  <span className="font-extrabold text-xs text-blue-700 truncate px-1">
-                    {routeNumber}
-                  </span>
-                </div>
-              ) : (
-                <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-                  <PlaceIcon className="w-4 h-4 text-slate-500" />
-                </div>
-              )}
+                  {isRoute ? (isMain ? "본선" : "분선") : fav.label}
+                </span>
+              </div>
 
             {/* 가운데: 정류장명 + 노선 방향 / 오른쪽: 도착정보 배지 */}
             <FavoriteArrivalInfo
