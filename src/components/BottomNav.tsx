@@ -33,8 +33,8 @@ export function BottomNav({
               className="flex flex-col items-center justify-center py-1.5 gap-0.5 transition-colors"
             >
               <Icon
-                className={`w-5 h-5 transition-all duration-200 ${
-                  isActive ? "text-blue-600 scale-110" : "text-slate-400 scale-100"
+                className={`w-5 h-5 transition-colors ${
+                  isActive ? "text-blue-600" : "text-slate-400"
                 }`}
                 strokeWidth={isActive ? 2.5 : 2}
               />
