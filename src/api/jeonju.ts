@@ -27,24 +27,6 @@ async function supabaseFetch<T>(table: string, query = ""): Promise<T[]> {
   return res.json() as Promise<T[]>;
 }
 
-async function callApi(path: string, params: Record<string, string> = {}): Promise<RawRouteField[]> {
-  if (!SUPABASE_URL) throw new Error("VITE_SUPABASE_URL이 설정되지 않았습니다.");
-  const search = new URLSearchParams({ path, ...params });
-  const url = `${SUPABASE_URL.replace(/\/$/, "")}/functions/v1/jeonju-proxy?${search.toString()}`;
-  const res = await fetch(url, {
-    headers: SUPABASE_ANON_KEY
-      ? { Authorization: `Bearer ${SUPABASE_ANON_KEY}`, apikey: SUPABASE_ANON_KEY }
-      : undefined,
-  });
-  const text = await res.text().catch(() => "");
-  if (!res.ok) throw new Error(text || `전주시 API 요청 실패 (HTTP ${res.status})`);
-  const json = parseXml<ApiEnvelope>(text);
-  const body = json.RFC30;
-  if (!body) throw new Error("응답 형식 오류");
-  if (body.code && body.code !== "000") throw new Error(body.msg || `오류 코드: ${body.code}`);
-  return body.routeList?.list ?? [];
-}
-
 function collectObjects(value: unknown, out: RawRouteField[] = []): RawRouteField[] {
   if (!value || typeof value !== "object") return out;
 
@@ -96,13 +78,7 @@ export async function getBusLocationsByRoute(brtStdid: string): Promise<RawRoute
   if (!res.ok) throw new Error(text || `전주시 실시간 위치 요청 실패 (HTTP ${res.status})`);
 
   const parsed = parseXml<unknown>(text);
-  const records = collectObjects(parsed).filter(
-    (item) => !Object.prototype.hasOwnProperty.call(item, "?xml"),
-  );
-
-  // 중요: 이 API의 routeList는 '정류장 목록'이며 모든 정류장이 반환됩니다.
-  // 실제 운행 중인 버스는 busNo(또는 BNo)가 채워진 정류장에만 표시됩니다.
-  // 따라서 records.length를 버스 대수로 사용하면 56개 정류장이 모두 버스로 잘못 인식됩니다.
+  const records = collectObjects(parsed);
   const liveBuses = records.filter((item) => {
     const vehicleNo = String(
       item.busNo ?? item.BNo ?? item.vehicleNo ?? item.vehicleid ?? "",
@@ -122,10 +98,7 @@ export async function getBusLocationsByRoute(brtStdid: string): Promise<RawRoute
 
 /**
  * 정적 노선 마스터는 Supabase를 단일 소스로 사용합니다.
- *
- * 중요: 노선 목록을 만들기 위해 실시간 bus_location_all_common / bus_location1_common을
- * 호출하지 않습니다. 따라서 운행 중인 차량이 없거나 배차 간격이 긴 노선도 목록에서
- * 사라지지 않으며, 앱의 노선 목록 조회가 전주시 실시간 API rate limit에 영향을 주지 않습니다.
+ * 노선 목록을 만들기 위해 실시간 노선 탐색 API를 호출하지 않습니다.
  */
 export async function getRoutes(): Promise<RawRouteField[]> {
   const rows = await supabaseFetch<{
@@ -156,38 +129,40 @@ export async function getRoutes(): Promise<RawRouteField[]> {
   }));
 }
 
+/**
+ * 정류장 순서도 Supabase 캐시를 단일 소스로 사용합니다.
+ * 정류장 데이터가 없는 경우 앱에서 실시간 API를 대신 호출하지 않습니다.
+ * 누락된 정류장 데이터는 sync-bus-data 유지보수 작업으로 채웁니다.
+ */
 export async function getRouteStops(routeId: string): Promise<RawRouteField[]> {
-  try {
-    const rows = await supabaseFetch<{
-      route_id: string;
-      sequence_no: number | null;
-      node_id: string | null;
-      node_name: string | null;
-      raw: RawRouteField;
-    }>("bus_route_stops_cache", `select=route_id,sequence_no,node_id,node_name,raw&route_id=eq.${encodeURIComponent(routeId)}&order=sequence_no.asc`);
+  if (!routeId) return [];
 
-    if (rows.length > 0) {
-      return rows.map((row) => {
-        const nodeId = row.node_id ?? row.raw?.nodeid ?? row.raw?.stopStandardid ?? row.raw?.stopId ?? "";
-        const nodeName = row.node_name ?? row.raw?.nodenm ?? row.raw?.stopKname ?? "";
-        const seq = String(row.sequence_no ?? row.raw?.seq ?? row.raw?.brnSeqno ?? "");
-        // Supabase 캐시와 전주시 API 필드명을 모두 채워 하위 매퍼가 안정적으로 동작하도록 합니다.
-        return {
-          ...row.raw,
-          brtStdid: row.route_id,
-          nodeid: nodeId,
-          nodenm: nodeName,
-          seq,
-          stopStandardid: nodeId || row.raw?.stopStandardid || "",
-          stopId: nodeId || row.raw?.stopId || "",
-          stopKname: nodeName || row.raw?.stopKname || "",
-          brnSeqno: seq || row.raw?.brnSeqno || "",
-        };
-      });
-    }
-  } catch (error) {
-    console.warn("[BUS] Supabase 정류장 캐시 조회 실패, 서버 프록시로 전환", error);
-  }
+  const rows = await supabaseFetch<{
+    route_id: string;
+    sequence_no: number | null;
+    node_id: string | null;
+    node_name: string | null;
+    raw: RawRouteField;
+  }>(
+    "bus_route_stops_cache",
+    `select=route_id,sequence_no,node_id,node_name,raw&route_id=eq.${encodeURIComponent(routeId)}&order=sequence_no.asc`
+  );
 
-  return callApi("/bus_location_busstop_list_common", { brtStdid: routeId });
+  return rows.map((row) => {
+    const nodeId = row.node_id ?? row.raw?.nodeid ?? row.raw?.stopStandardid ?? row.raw?.stopId ?? "";
+    const nodeName = row.node_name ?? row.raw?.nodenm ?? row.raw?.stopKname ?? "";
+    const seq = String(row.sequence_no ?? row.raw?.seq ?? row.raw?.brnSeqno ?? "");
+
+    return {
+      ...row.raw,
+      brtStdid: row.route_id,
+      nodeid: nodeId,
+      nodenm: nodeName,
+      seq,
+      stopStandardid: nodeId || row.raw?.stopStandardid || "",
+      stopId: nodeId || row.raw?.stopId || "",
+      stopKname: nodeName || row.raw?.stopKname || "",
+      brnSeqno: seq || row.raw?.brnSeqno || "",
+    };
+  });
 }
