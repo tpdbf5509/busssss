@@ -454,8 +454,12 @@ Deno.serve(async (req) => {
                     new Date().toISOString(),
                 };
 
+                // node_id가 실제 정류장 식별자이므로 이걸 기준으로 묶는다.
+                // stop_key는 과거 버전에서 형식이 바뀐 적이 있어 더 이상
+                // 유일성 기준으로 쓰지 않는다(같은 정류장이 두 번 쌓이는
+                // 원인이었음).
                 stopMap.set(
-                  `${brtStdid}-${stopKey}`,
+                  `${brtStdid}-${nodeId || stopKey}`,
                   stopRow
                 );
               });
@@ -472,7 +476,7 @@ Deno.serve(async (req) => {
                   stopRows,
                   {
                     onConflict:
-                      "route_id,stop_key",
+                      "route_id,node_id",
                   }
                 );
 
