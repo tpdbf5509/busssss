@@ -99,18 +99,36 @@ function AppContent() {
       )}
 
       <main ref={mainRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain">
-        {tab === "home" && <HomeScreen key={homeRefreshKey} onNavigate={handleNavigate} />}
-        {tab === "bus" && (
-          <BusScreen
-            initialRouteId={pendingRouteId ?? undefined}
-            onConsumeInitialRoute={() => setPendingRouteId(null)}
-            initialStation={pendingStation ?? undefined}
-            onConsumeInitialStation={() => setPendingStation(null)}
-          />
+        {tab === "home" && (
+          <div className="animate-tab-in">
+            <HomeScreen key={homeRefreshKey} onNavigate={handleNavigate} />
+          </div>
         )}
-       {tab === "route" && <RouteScreen />}
-        {tab === "alert" && <AlertScreen />}
-        {tab === "my" && <MyScreen />}
+        {tab === "bus" && (
+          <div className="animate-tab-in">
+            <BusScreen
+              initialRouteId={pendingRouteId ?? undefined}
+              onConsumeInitialRoute={() => setPendingRouteId(null)}
+              initialStation={pendingStation ?? undefined}
+              onConsumeInitialStation={() => setPendingStation(null)}
+            />
+          </div>
+        )}
+        {tab === "route" && (
+          <div className="animate-tab-in">
+            <RouteScreen />
+          </div>
+        )}
+        {tab === "alert" && (
+          <div className="animate-tab-in">
+            <AlertScreen />
+          </div>
+        )}
+        {tab === "my" && (
+          <div className="animate-tab-in">
+            <MyScreen />
+          </div>
+        )}
       </main>
       <BottomNav active={tab} onChange={handleTabChange} />
     </div>
