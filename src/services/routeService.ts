@@ -47,7 +47,11 @@ function formatRouteNumber(raw: RawRouteField): string {
   const branch = candidates.find((v) => v && v !== "0" && /^\d+$/.test(v));
 
   if (routeNumber) {
-    return branch ? `${routeNumber}-${branch}` : routeNumber;
+    // bus_routes_master의 route_no("103-1"처럼 분기 번호가 이미 포함된 값)를
+    // 쓸 때는 brtClass를 또 붙이면 "103-1-1"처럼 중복된다. routeNumber에
+    // 이미 "-숫자" 형태의 분기 표기가 있으면 다시 붙이지 않는다.
+    const hasBranchSuffix = /-\d+$/.test(routeNumber);
+    return !hasBranchSuffix && branch ? `${routeNumber}-${branch}` : routeNumber;
   }
 
   if (branch) return `${id}-${branch}`;
