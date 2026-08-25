@@ -120,47 +120,40 @@ export async function getBusLocationsByRoute(brtStdid: string): Promise<RawRoute
   return liveBuses;
 }
 
+/**
+ * 정적 노선 마스터는 Supabase를 단일 소스로 사용합니다.
+ *
+ * 중요: 노선 목록을 만들기 위해 실시간 bus_location_all_common / bus_location1_common을
+ * 호출하지 않습니다. 따라서 운행 중인 차량이 없거나 배차 간격이 긴 노선도 목록에서
+ * 사라지지 않으며, 앱의 노선 목록 조회가 전주시 실시간 API rate limit에 영향을 주지 않습니다.
+ */
 export async function getRoutes(): Promise<RawRouteField[]> {
-  try {
-    const rows = await supabaseFetch<{
-      brt_id: string | null;
-      brt_stdid: string | null;
-      brt_class: string | null;
-      brt_no: string | null;
-      start_name: string | null;
-      end_name: string | null;
-      raw: RawRouteField;
-    }>("bus_routes_cache", "select=brt_id,brt_stdid,brt_class,brt_no,start_name,end_name,raw&order=brt_no.asc");
+  const rows = await supabaseFetch<{
+    brt_id: string | null;
+    brt_stdid: string | null;
+    brt_class: string | null;
+    brt_no: string | null;
+    start_name: string | null;
+    end_name: string | null;
+    raw: RawRouteField;
+  }>(
+    "bus_routes_cache",
+    "select=brt_id,brt_stdid,brt_class,brt_no,start_name,end_name,raw&order=brt_no.asc"
+  );
 
-    if (rows.length > 0) {
-      return rows.map((row) => ({
-        ...row.raw,
-        brtId: row.brt_id ?? "",
-        brtStdid: row.brt_stdid ?? "",
-        brtClass: row.brt_class ?? "",
-        brtNo: row.brt_no ?? "",
-        brtStartNm: row.start_name ?? row.raw?.brtStartNm ?? "",
-        brtEndNm: row.end_name ?? row.raw?.brtEndNm ?? "",
-      }));
-    }
-  } catch (error) {
-    console.warn("[BUS] Supabase 노선 캐시 조회 실패, 서버 프록시로 전환", error);
+  if (rows.length === 0) {
+    throw new Error("Supabase에 저장된 전주 버스 노선 데이터가 없습니다.");
   }
 
-  const idList = await callApi("/bus_location_all_common");
-  const uniquePairs = Array.from(
-    new Map(idList.filter((r) => r.brtId).map((r) => [`${r.brtId}-${r.brtClass}`, r])).values()
-  );
-  const results = await Promise.all(
-    uniquePairs.map(async (pair) => {
-      try {
-        return await callApi("/bus_location1_common", { brtId: pair.brtId, brtClass: pair.brtClass });
-      } catch {
-        return [] as RawRouteField[];
-      }
-    })
-  );
-  return results.flat();
+  return rows.map((row) => ({
+    ...row.raw,
+    brtId: row.brt_id ?? "",
+    brtStdid: row.brt_stdid ?? "",
+    brtClass: row.brt_class ?? "",
+    brtNo: row.brt_no ?? row.brt_id ?? "",
+    brtStartNm: row.start_name ?? row.raw?.brtStartNm ?? "",
+    brtEndNm: row.end_name ?? row.raw?.brtEndNm ?? "",
+  }));
 }
 
 export async function getRouteStops(routeId: string): Promise<RawRouteField[]> {
@@ -182,11 +175,9 @@ export async function getRouteStops(routeId: string): Promise<RawRouteField[]> {
         return {
           ...row.raw,
           brtStdid: row.route_id,
-          // 공통/캐시 필드
           nodeid: nodeId,
           nodenm: nodeName,
           seq,
-          // 전주시 원본 필드 (mapToBusStop 호환)
           stopStandardid: nodeId || row.raw?.stopStandardid || "",
           stopId: nodeId || row.raw?.stopId || "",
           stopKname: nodeName || row.raw?.stopKname || "",
