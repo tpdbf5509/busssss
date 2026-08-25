@@ -98,11 +98,7 @@ function AppContent() {
         </div>
       )}
 
-      <main
-        ref={mainRef}
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain"
-        style={{ paddingBottom: "calc(4.75rem + env(safe-area-inset-bottom))" }}
-      >
+      <main ref={mainRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain">
         {tab === "home" && (
           <div className="animate-tab-in">
             <HomeScreen key={homeRefreshKey} onNavigate={handleNavigate} />

@@ -65,10 +65,7 @@ export function CardScreen() {
           </div>
         </div>
       </header>
-      <div
-        className="flex-1 overflow-y-auto overscroll-contain"
-        style={{ paddingBottom: "calc(4.75rem + env(safe-area-inset-bottom))" }}
-      >
+      <div className="flex-1 overflow-y-auto overscroll-contain">
           <section className="px-4 -mt-4 mb-7">
             <div className="bg-white rounded-2xl card-shadow px-4 py-4 flex items-start gap-3">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100 flex items-center justify-center shrink-0">
