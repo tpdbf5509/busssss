@@ -246,7 +246,10 @@ export function RouteScreen() {
         </button>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-6">
+      <div
+        className="flex-1 overflow-y-auto px-4 pt-4 pb-6"
+        style={{ paddingBottom: "calc(4.75rem + env(safe-area-inset-bottom))" }}
+      >
         {!result && (
           <>
             <p className="text-xs font-semibold text-slate-500 mb-2 px-0.5">

@@ -370,7 +370,10 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
               )}
             </header>
 
-            <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4">
+            <div
+              className="flex-1 overflow-y-auto overscroll-contain px-4 py-4"
+              style={{ paddingBottom: "calc(4.75rem + env(safe-area-inset-bottom))" }}
+            >
         {searchTab === "route" && (
           <>
             {status === "loading" && (

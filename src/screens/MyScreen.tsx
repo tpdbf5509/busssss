@@ -134,7 +134,10 @@ export function MyScreen() {
         </header>
 
         
-        <div className="flex-1 overscroll-contain">
+        <div
+          className="flex-1 overscroll-contain"
+          style={{ paddingBottom: "calc(4.75rem + env(safe-area-inset-bottom))" }}
+        >
         {/* 즐겨찾기 카드 — 파란 헤더 위로 겹침 */}
         <section className="px-4 -mt-5 relative z-10">
           <div className="bg-white rounded-2xl card-shadow-lg p-4">
