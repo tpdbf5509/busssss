@@ -397,7 +397,7 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                     tabIndex={0}
                     onClick={() => setSelectedRoute(route)}
                     onKeyDown={(e) => e.key === "Enter" && setSelectedRoute(route)}
-                    className="w-full bg-white rounded-2xl p-4 border border-slate-100 text-left hover:border-blue-200 hover:shadow-sm transition-all cursor-pointer"
+                    className="w-full bg-white rounded-2xl p-4 card-shadow text-left hover:-translate-y-0.5 transition-all cursor-pointer active:scale-[0.99] active:translate-y-0"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
@@ -407,7 +407,9 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                           return (
                             <div
                               className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
-                                isMain ? "bg-blue-50" : "bg-emerald-50"
+                                isMain
+                                  ? "bg-gradient-to-br from-blue-50 to-blue-100"
+                                  : "bg-gradient-to-br from-emerald-50 to-emerald-100"
                               }`}
                             >
                               <span
@@ -497,9 +499,9 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                     tabIndex={0}
                     onClick={() => setSelectedStation(station)}
                     onKeyDown={(e) => e.key === "Enter" && setSelectedStation(station)}
-                    className="w-full bg-white rounded-2xl p-4 border border-slate-100 flex items-center gap-3 cursor-pointer hover:border-blue-200 hover:shadow-sm transition-all"
+                    className="w-full bg-white rounded-2xl p-4 card-shadow flex items-center gap-3 cursor-pointer hover:-translate-y-0.5 transition-all active:scale-[0.99] active:translate-y-0"
                   >
-                    <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center shrink-0">
                       <MapPin className="w-5 h-5 text-emerald-600" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -884,9 +886,9 @@ const isAllRouteFavorited = (route: Route) =>
                         }
                       }}
                       disabled={addingRouteNo === sr.routeNo}
-                      className="w-full bg-white rounded-2xl p-4 border border-slate-100 text-left hover:border-blue-200 hover:shadow-sm transition-all flex items-center gap-3"
+                      className="w-full bg-white rounded-2xl p-4 card-shadow text-left hover:-translate-y-0.5 transition-all flex items-center gap-3 active:scale-[0.99] active:translate-y-0"
                     >
-                      <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center shrink-0">
                         <span className="font-bold text-sm text-blue-700">
                           {sr.routeNo}
                         </span>
@@ -990,9 +992,9 @@ const isAllRouteFavorited = (route: Route) =>
                       tabIndex={0}
                       onClick={() => onSelectRoute(route)}
                       onKeyDown={(e) => e.key === "Enter" && onSelectRoute(route)}
-                      className="w-full bg-white rounded-2xl p-4 border border-slate-100 text-left hover:border-blue-200 hover:shadow-sm transition-all flex items-center gap-3 cursor-pointer"
+                      className="w-full bg-white rounded-2xl p-4 card-shadow text-left hover:-translate-y-0.5 transition-all flex items-center gap-3 cursor-pointer active:scale-[0.99] active:translate-y-0"
                     >
-                      <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center shrink-0">
                         <span className="font-bold text-sm text-emerald-700">
                           {route.number}
                         </span>
@@ -1430,7 +1432,7 @@ function DispatchScheduleModal({
                   const isPast = depMin < nowMin;
                   const isNext = depMin >= nowMin && depMin <= nowMin + (intervalInfo?.min ?? 15);
                   const cls = isNext
-                    ? "bg-blue-600 text-white font-bold"
+                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold shadow-md shadow-blue-500/25"
                     : isPast
                     ? "bg-slate-50 text-slate-300"
                     : "bg-slate-50 text-slate-600";
@@ -1472,7 +1474,7 @@ function DispatchScheduleModal({
                     const isPast = depMin < nowMin;
                     const isNext = depMin >= nowMin && depMin <= nowMin + (intervalInfo?.min ?? 15);
                     const cls = isNext
-                      ? "bg-blue-600 text-white font-bold"
+                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold shadow-md shadow-blue-500/25"
                       : isPast
                       ? "bg-slate-50 text-slate-300"
                       : "bg-slate-50 text-slate-600";

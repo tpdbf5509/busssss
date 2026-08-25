@@ -107,15 +107,16 @@ export function MyScreen() {
   return (
     <div className="h-full flex flex-col overflow-hidden bg-slate-50">
       <div className="flex-1 overflow-hidden overscroll-contain">
-      <header className="relative bg-gradient-to-b from-blue-600 to-blue-500 px-5 pt-16 pb-9 text-white">
+      <header className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-600 to-indigo-600 px-5 pt-16 pb-11 text-white">
+          <div className="pointer-events-none absolute -right-10 -top-16 w-56 h-56 rounded-full bg-white/10 blur-2xl" />
           <button
             onClick={() => setMenuOpen(true)}
-            className="absolute top-14 right-4 p-2 text-white"
+            className="absolute top-14 right-4 p-2 text-white rounded-full hover:bg-white/10 active:scale-90 transition-all"
           >
             <Menu className="w-6 h-6" />
           </button>
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl font-bold">
+          <div className="relative flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm ring-2 ring-white/30 flex items-center justify-center text-2xl font-bold">
               승
             </div>
             <div>
@@ -135,8 +136,8 @@ export function MyScreen() {
         
         <div className="flex-1 overscroll-contain">
         {/* 즐겨찾기 카드 — 파란 헤더 위로 겹침 */}
-        <section className="px-4 -mt-3 relative z-10">
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+        <section className="px-4 -mt-5 relative z-10">
+          <div className="bg-white rounded-2xl card-shadow-lg p-4">
             <div className="flex items-center gap-1.5 text-sm font-bold text-slate-700 mb-3">
               <Star className="w-4 h-4 text-amber-400" />
               즐겨찾기 관리
@@ -152,7 +153,7 @@ export function MyScreen() {
                     key={fav.id}
                     className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 transition-colors"
                   >
-                    <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+                    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-50 to-amber-100 flex items-center justify-center shrink-0">
                       <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
                     </div>
                     {editingId === fav.id ? (
@@ -241,7 +242,7 @@ export function MyScreen() {
             </ul>
             <button
               onClick={() => setHelpOpen(false)}
-              className="mt-5 w-full py-3 bg-blue-600 text-white rounded-2xl font-semibold text-sm"
+              className="mt-5 w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-semibold text-sm shadow-lg shadow-blue-500/25 active:scale-[0.99] transition-all"
             >
               확인
             </button>
@@ -255,11 +256,14 @@ export function MyScreen() {
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setMenuOpen(false)}
           />
-            <div className="relative bg-white w-72 h-full shadow-2xl overflow-y-auto">
+            <div className="relative bg-white w-72 h-full shadow-2xl overflow-y-auto animate-slide-in-right">
             <div className="pt-[15vh]" />
             <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="font-bold text-slate-900">설정</h2>
-              <button onClick={() => setMenuOpen(false)}>
+              <h2 className="font-bold text-slate-900 text-lg">설정</h2>
+              <button
+                onClick={() => setMenuOpen(false)}
+                className="p-1.5 rounded-full hover:bg-slate-100 transition-colors"
+              >
                 <X className="w-5 h-5 text-slate-400" />
               </button>
             </div>
@@ -359,11 +363,17 @@ function SettingRow({
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors ${
+      className={`w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 active:bg-slate-100 transition-colors ${
         !last ? "border-b border-slate-50" : ""
       }`}
     >
-      <Icon className={`w-4.5 h-4.5 ${danger ? "text-red-500" : "text-slate-500"}`} />
+      <span
+        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+          danger ? "bg-red-50" : "bg-slate-100"
+        }`}
+      >
+        <Icon className={`w-4 h-4 ${danger ? "text-red-500" : "text-slate-500"}`} />
+      </span>
       <span
         className={`flex-1 text-left text-sm font-medium ${
           danger ? "text-red-500" : "text-slate-700"
@@ -389,7 +399,9 @@ function SettingToggle({
 }) {
   return (
     <div className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-slate-50">
-      <Icon className="w-4.5 h-4.5 text-slate-500" />
+      <span className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+        <Icon className="w-4 h-4 text-slate-500" />
+      </span>
       <span className="flex-1 text-left text-sm font-medium text-slate-700">{label}</span>
       <Toggle checked={checked} onChange={onChange} />
     </div>

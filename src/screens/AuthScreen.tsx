@@ -33,14 +33,16 @@ export function AuthScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-600 to-blue-500 px-5 py-16 flex items-center justify-center">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-blue-600 via-blue-600 to-indigo-700 px-5 py-16 flex items-center justify-center">
+      <div className="pointer-events-none absolute -right-20 -top-24 w-72 h-72 rounded-full bg-white/10 blur-3xl" />
+      <div className="pointer-events-none absolute -left-24 -bottom-20 w-72 h-72 rounded-full bg-white/10 blur-3xl" />
+      <div className="relative w-full max-w-md bg-white rounded-[28px] card-shadow-lg p-7">
         <div className="text-center mb-7">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mb-4">
-            <LockKeyhole className="w-7 h-7 text-blue-600" />
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mb-4 shadow-lg shadow-blue-500/30">
+            <LockKeyhole className="w-7 h-7 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">BUS STOP</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">BUS STOP</h1>
+          <p className="text-sm text-slate-500 mt-1.5">
             {mode === "login" ? "로그인하고 버스 정보를 이용해 주세요" : "BUS STOP 계정을 만들어 주세요"}
           </p>
         </div>
@@ -48,7 +50,7 @@ export function AuthScreen() {
         <form onSubmit={handleSubmit} className="space-y-3">
           <label className="block">
             <span className="text-xs font-semibold text-slate-600">이메일</span>
-            <div className="mt-1.5 flex items-center gap-2 rounded-xl bg-slate-100 px-3">
+            <div className="mt-1.5 flex items-center gap-2 rounded-xl bg-slate-100 px-3 ring-1 ring-transparent focus-within:ring-2 focus-within:ring-blue-500 focus-within:bg-white transition-all">
               <Mail className="w-4 h-4 text-slate-400" />
               <input
                 type="email"
@@ -63,7 +65,7 @@ export function AuthScreen() {
 
           <label className="block">
             <span className="text-xs font-semibold text-slate-600">비밀번호</span>
-            <div className="mt-1.5 rounded-xl bg-slate-100 px-3">
+            <div className="mt-1.5 rounded-xl bg-slate-100 px-3 ring-1 ring-transparent focus-within:ring-2 focus-within:ring-blue-500 focus-within:bg-white transition-all">
               <input
                 type="password"
                 required
@@ -85,7 +87,7 @@ export function AuthScreen() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-blue-600 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+            className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-blue-500/35 active:scale-[0.99] disabled:opacity-50"
           >
             {loading ? "처리 중..." : mode === "login" ? "로그인" : "회원가입"}
           </button>
@@ -97,7 +99,7 @@ export function AuthScreen() {
             setMode(mode === "login" ? "signup" : "login");
             setMessage("");
           }}
-          className="w-full mt-4 py-2 text-sm font-medium text-blue-600"
+          className="w-full mt-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
         >
           {mode === "login" ? "처음이신가요? 회원가입" : "이미 계정이 있나요? 로그인"}
         </button>

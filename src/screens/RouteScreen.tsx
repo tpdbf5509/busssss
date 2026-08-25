@@ -240,7 +240,7 @@ export function RouteScreen() {
           type="button"
           onClick={() => handleSearch()}
           disabled={searching || !query.trim()}
-          className="mt-3 w-full rounded-2xl bg-blue-600 text-white text-sm font-semibold py-3 disabled:opacity-40 active:scale-[0.99] transition-all"
+          className="mt-3 w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold py-3 shadow-lg shadow-blue-500/25 disabled:opacity-40 disabled:shadow-none active:scale-[0.99] transition-all"
         >
           {searching ? "검색 중..." : "경로 검색"}
         </button>
@@ -266,7 +266,7 @@ export function RouteScreen() {
             </div>
 
             {/* 알림 빈 상태와 비슷한 안내 카드 */}
-            <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center shadow-sm">
+            <div className="bg-white rounded-2xl p-8 text-center card-shadow">
               <div className="mx-auto mb-4 h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center">
                 <Navigation className="w-7 h-7 text-slate-400" />
               </div>
@@ -285,7 +285,7 @@ export function RouteScreen() {
         {result && (
           <div className="space-y-3">
             {/* 목적지 요약 카드 */}
-            <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
+            <div className="bg-white rounded-2xl p-4 card-shadow">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs text-slate-400 mb-0.5">목적지</p>
@@ -304,7 +304,7 @@ export function RouteScreen() {
             </div>
 
             {/* 단계별 경로 카드 */}
-            <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+            <div className="bg-white rounded-2xl overflow-hidden card-shadow">
               <div className="px-4 py-3 border-b border-slate-50">
                 <p className="text-sm font-semibold text-slate-800">추천 경로</p>
                 <p className="text-xs text-slate-400 mt-0.5">
@@ -347,7 +347,7 @@ export function RouteScreen() {
             <button
               type="button"
               onClick={clearResult}
-              className="w-full rounded-2xl border border-slate-100 bg-white py-3.5 text-sm font-medium text-slate-600 hover:bg-slate-50 active:scale-[0.99] shadow-sm transition-all"
+              className="w-full rounded-2xl bg-white py-3.5 text-sm font-medium text-slate-600 hover:bg-slate-50 active:scale-[0.99] card-shadow transition-all"
             >
               다른 목적지 검색
             </button>
