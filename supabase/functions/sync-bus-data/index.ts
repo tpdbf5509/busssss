@@ -19,6 +19,7 @@ const corsHeaders = {
 
 const REQUEST_INTERVAL_MS = 350;
 const MAX_BACKOFF_MS = 30_000;
+const MAX_RETRIES = 6;
 
 const sleep = (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, ms));
@@ -26,6 +27,75 @@ const sleep = (ms: number) =>
 function asArray<T>(value: T | T[] | undefined | null): T[] {
   if (value == null) return [];
   return Array.isArray(value) ? value : [value];
+}
+
+// ─────────────────────────────────────────────
+// 노선 시드 리스트 (2.1)
+// bus_location_all_common 은 "현재 운행 중인" 버스의 노선만 반환하므로,
+// 배차 간격이 길거나 요청 시점에 운행 중이 아닌 노선은 라이브 API만으로는
+// 절대 캐시에 들어오지 못한다. 아래 시드를 bus_location1_common 으로
+// 개별 조회해서 캐시를 채운다.
+// ─────────────────────────────────────────────
+
+const SEED_RANGE_CIRCULAR: [number, number] = [1, 9]; // 순환노선
+const SEED_RANGE_GENERAL: [number, number] = [10, 100]; // 시내 일반노선
+const SEED_RANGE_REGIONAL: [number, number] = [200, 610]; // 혁신도시·삼례·구이·봉동고산·금구 방면
+const SEED_RANGE_SOYANG: [number, number] = [800, 899]; // 소양 방면
+
+const SEED_SINGLE_IDS = [
+  "752", // 상관·관촌(임실군) 방면
+  "970", // 구이(모악산) 방면
+  "999", // 명품버스
+];
+
+// 2022년 2월 노선개편으로 신설된 10분 배차 간선급행 노선
+const SEED_TRUNK_IDS = [
+  "1001",
+  "1002",
+  "2000",
+  "3001",
+  "3002",
+  "4000",
+  "5001",
+  "5002",
+  "6001",
+  "6002",
+];
+
+// 부번(-1/-2 등)이 붙는 순환·지선 노선. 숫자 범위만으로는 잡히지 않으므로
+// 별도 관리한다. 캐시 누락이 계속 발견되면 여기에 추가한다. (예: "4-3")
+const SEED_BRANCH_IDS = [
+  "3-1",
+  "3-2",
+  "6-1",
+  "8-1",
+  "8-2",
+  "9-1",
+];
+
+function buildRouteSeedPairs(): RoutePair[] {
+  const ids = new Set<string>();
+
+  const addRange = (range: [number, number]) => {
+    const [start, end] = range;
+    for (let n = start; n <= end; n++) {
+      ids.add(String(n));
+    }
+  };
+
+  addRange(SEED_RANGE_CIRCULAR);
+  addRange(SEED_RANGE_GENERAL);
+  addRange(SEED_RANGE_REGIONAL);
+  addRange(SEED_RANGE_SOYANG);
+
+  for (const id of SEED_SINGLE_IDS) ids.add(id);
+  for (const id of SEED_TRUNK_IDS) ids.add(id);
+  for (const id of SEED_BRANCH_IDS) ids.add(id);
+
+  return Array.from(ids).map((brtId) => ({
+    brtId,
+    brtClass: "",
+  }));
 }
 
 async function callJeonju(
@@ -37,7 +107,7 @@ async function callJeonju(
   const url =
     `${BASE_URL}${path}?serviceKey=${encodeURIComponent(key)}&${qs}`;
 
-  for (let retry = 0; retry < 3; retry++) {
+  for (let retry = 0; retry < MAX_RETRIES; retry++) {
     const res = await fetch(url);
     const text = await res.text();
 
@@ -53,30 +123,26 @@ async function callJeonju(
       response: text.slice(0, 2000),
     });
 
-    if (res.status === 403) {
-      throw new Error(
-        `전주시 API HTTP 403: ${text.slice(0, 1000)}`
-      );
-    }
-
-    if (res.status === 429) {
+    // 403(요청 제한 초과)과 429(Too Many Requests) 모두 즉시 실패시키지
+    // 않고, 지수 백오프로 재시도한다. 서비스 키 자체가 잘못된 경우에도
+    // 403이 반복되므로, 재시도를 모두 소진하면 결국 에러로 빠진다.
+    if (res.status === 403 || res.status === 429) {
       const retryAfter = res.headers.get("Retry-After");
-
       const retryAfterMs = retryAfter
         ? Number(retryAfter) * 1000
-        : Math.min(2000 * 2 ** retry, MAX_BACKOFF_MS);
+        : NaN;
 
       const backoff = Math.min(
         Number.isFinite(retryAfterMs)
           ? retryAfterMs
-          : 2000,
+          : 2000 * 2 ** retry,
         MAX_BACKOFF_MS
       );
 
       console.warn(
-        `전주시 API rate limit (HTTP 429), retry ${
+        `전주시 API rate limit (HTTP ${res.status}), retry ${
           retry + 1
-        } in ${backoff}ms`,
+        }/${MAX_RETRIES} in ${backoff}ms`,
         path,
         params
       );
@@ -91,7 +157,7 @@ async function callJeonju(
   }
 
   throw new Error(
-    "전주시 API 요청이 반복해서 실패했습니다."
+    `전주시 API 요청이 ${MAX_RETRIES}회 재시도 후에도 반복해서 실패했습니다. (${path})`
   );
 }
 
@@ -189,9 +255,20 @@ Deno.serve(async (req) => {
           (row.brt_class as string) ?? "",
       }));
 
+    // 이미 라이브/캐시에서 brtClass까지 알고 있는 노선은 그대로 두고,
+    // 시드는 brtId 기준으로 "아직 한 번도 확인되지 않은" 노선만 보충한다.
+    // (시드 노선은 정확한 brtClass를 모르므로 빈 문자열로 조회한다.)
+    const knownBrtIds = new Set(
+      [...livePairs, ...cachedPairs].map((pair) => pair.brtId)
+    );
+
+    const seedPairs = buildRouteSeedPairs().filter(
+      (pair) => !knownBrtIds.has(pair.brtId)
+    );
+
     const uniquePairs = Array.from(
       new Map(
-        [...livePairs, ...cachedPairs].map(
+        [...livePairs, ...cachedPairs, ...seedPairs].map(
           (pair) => [pairKey(pair), pair]
         )
       ).values()
@@ -392,6 +469,7 @@ Deno.serve(async (req) => {
         pairCount: uniquePairs.length,
         livePairCount: livePairs.length,
         cachedPairCount: cachedPairs.length,
+        seedPairCount: seedPairs.length,
         routeCount,
         stopCount,
         failedRoutes,
