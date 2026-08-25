@@ -35,12 +35,20 @@ function firstValue(item: Record<string, string>, keys: string[]): string {
 }
 
 function formatRouteNumber(raw: RawRouteField): string {
-  const id = firstValue(raw, ["brtId", "brt_id", "brtNo", "brt_no"]) || "";
+  // 중요: 표시용 노선번호는 brt_id가 아니라 DB에 저장된 brt_no를 우선 사용합니다.
+  // brt_id는 전주시 내부 노선 식별자이므로 화면에 그대로 표시하면 안 됩니다.
+  const routeNumber = firstValue(raw, ["brtNo", "brt_no"]);
+  const id = firstValue(raw, ["brtId", "brt_id"]) || routeNumber || "";
+
   const candidates = [
     firstValue(raw, ["brtClass", "brt_class"]),
     firstValue(raw, ["brtSubid", "brt_subid", "brtSubId"]),
   ];
   const branch = candidates.find((v) => v && v !== "0" && /^\d+$/.test(v));
+
+  if (routeNumber) {
+    return branch ? `${routeNumber}-${branch}` : routeNumber;
+  }
 
   if (branch) return `${id}-${branch}`;
   return id;
@@ -52,7 +60,7 @@ function mapToRoute(raw: RawRouteField): Route {
   return {
     id: firstValue(raw, ["brtStdid", "brt_stdid", "brtStdId"]) || "",
     number: displayNumber,
-    rawNumber: firstValue(raw, ["brtId", "brt_id", "brtNo", "brt_no"]) || "",
+    rawNumber: firstValue(raw, ["brtNo", "brt_no", "brtId", "brt_id"]) || "",
     class: firstValue(raw, ["brtClass", "brt_class"]) || "",
     subId: firstValue(raw, ["brtSubid", "brt_subid", "brtSubId"]) || "",
     name: `본선${displayNumber}`,
@@ -132,28 +140,14 @@ function mapToBusStop(raw: RawRouteField, index: number): BusStop {
   return { id, name, order };
 }
 
-// 전주시 GW의 brtStdid를 실시간 위치 조회에 사용하므로 기존 캐시는 폐기합니다.
-const CACHE_KEY = "jeonju_routes_v6";
-const CACHE_TTL = 1000 * 60 * 60 * 24;
-
+// Supabase를 정적 노선 데이터의 단일 소스로 사용합니다.
+// 브라우저 localStorage에 별도의 노선 목록을 저장하지 않아 DB 변경이 즉시 반영됩니다.
 let routesCache: Route[] | null = null;
 let routesPromise: Promise<Route[]> | null = null;
 const stopsCache = new Map<string, BusStop[]>();
 
 export async function fetchAllRoutes(): Promise<Route[]> {
   if (routesCache) return routesCache;
-
-  try {
-    const cached = localStorage.getItem(CACHE_KEY);
-    if (cached) {
-      const { data, timestamp } = JSON.parse(cached);
-      if (Date.now() - timestamp < CACHE_TTL && Array.isArray(data) && data.length > 0) {
-        console.log(`[Cache] localStorage에서 노선 ${data.length}개 로드`);
-        routesCache = data;
-        return data;
-      }
-    }
-  } catch {}
 
   if (!routesPromise) {
     routesPromise = fetchRoutesRaw()
@@ -162,20 +156,12 @@ export async function fetchAllRoutes(): Promise<Route[]> {
           .filter((r) => firstValue(r, ["brtStdid", "brt_stdid", "brtStdId"]))
           .map(mapToRoute);
         routesCache = routes;
-
-        try {
-          localStorage.setItem(
-            CACHE_KEY,
-            JSON.stringify({ data: routes, timestamp: Date.now() })
-          );
-          console.log(`[Cache] 노선 ${routes.length}개 저장 완료`);
-        } catch {}
-
+        console.log(`[DB] Supabase에서 노선 ${routes.length}개 로드`);
         return routes;
       })
       .catch((err) => {
         routesPromise = null;
-        console.error("[API] 노선 조회 실패:", err.message);
+        console.error("[DB] 노선 조회 실패:", err.message);
         throw err;
       });
   }
@@ -189,7 +175,7 @@ export async function fetchAllRoutes(): Promise<Route[]> {
  * 키: "노선번호|기점|종점"
  */
 const BRT_STDID_OVERRIDES: Record<string, string> = {
-  "104|송천동종점|평화동종점": "305001095", // 송천→평화 (메가월드·동부대로 농수산시장 경유)
+  "104|송천동종점|평화동종점": "305001095",
 };
 
 function normalizeName(value: string): string {
@@ -205,14 +191,12 @@ export function resolveJeonjuBrtStdid(route: Pick<Route, "id" | "number" | "star
 /**
  * 노선 경유 정류장 목록을 조회합니다.
  * Route 객체를 넘기면 방향별 brtStdid 보정이 적용됩니다.
- * (하위 호환: 문자열 routeId만 넘겨도 캐시에서 방향 정보를 찾아 보정)
  */
 export async function fetchStopsForRoute(
   routeOrId: string | Pick<Route, "id" | "number" | "start" | "end">,
 ): Promise<BusStop[]> {
   let routeId: string;
   if (typeof routeOrId === "string") {
-    // id만 넘어온 경우: 캐시된 노선에서 방향 정보를 찾아 보정 시도
     const fromCache = routesCache?.find((r) => r.id === routeOrId);
     routeId = fromCache ? resolveJeonjuBrtStdid(fromCache) : routeOrId;
   } else {
@@ -233,7 +217,6 @@ export async function fetchStopsForRoute(
     .filter((s) => s.name || s.id)
     .sort((a, b) => a.order - b.order);
 
-  // 빈 결과가 나와도 캐시하지 않아 다음에 다시 시도할 수 있게 합니다.
   if (stops.length > 0) {
     stopsCache.set(cacheKey, stops);
   }
@@ -244,12 +227,5 @@ export function clearRouteCache() {
   routesCache = null;
   routesPromise = null;
   stopsCache.clear();
-  try {
-    localStorage.removeItem(CACHE_KEY);
-    // 이전 버전 캐시도 정리
-    localStorage.removeItem("jeonju_routes_v5");
-    localStorage.removeItem("jeonju_routes_v4");
-    localStorage.removeItem("jeonju_routes_v3");
-  } catch {}
-  console.log("[Cache] 캐시 삭제됨");
+  console.log("[DB] 메모리 노선 캐시 삭제됨");
 }
