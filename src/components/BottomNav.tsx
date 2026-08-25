@@ -38,8 +38,8 @@ export function BottomNav({
                 }`}
               />
               <Icon
-                className={`w-5 h-5 transition-colors duration-200 ${
-                  isActive ? "text-blue-600" : "text-slate-400"
+                className={`w-5 h-5 transition-all duration-200 ${
+                  isActive ? "text-blue-600 scale-110 -translate-y-0.5" : "text-slate-400 scale-100"
                 }`}
                 strokeWidth={isActive ? 2.5 : 2}
               />
