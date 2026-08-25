@@ -81,7 +81,7 @@ export function RegionModal({
           </div>
           <button
             onClick={() => onSelect(selectedSido, selectedSigungu)}
-            className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-semibold text-sm shadow-lg shadow-blue-500/25 active:scale-[0.99] transition-all flex items-center justify-center gap-1"
+            className="w-full py-3.5 bg-blue-600 text-white rounded-2xl font-semibold text-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-1"
           >
             이 지역으로 설정
             <ChevronRight className="w-4 h-4" />

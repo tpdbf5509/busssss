@@ -266,29 +266,27 @@ export function HomeScreen({
 
   return (
     <div className="flex flex-col bg-slate-50">
-       <header className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-600 to-indigo-600 text-white px-5 pt-16 pb-11 shrink-0">
-        <div className="pointer-events-none absolute -right-10 -top-16 w-56 h-56 rounded-full bg-white/10 blur-2xl" />
-        <div className="pointer-events-none absolute -left-14 bottom-0 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
-         <div className="relative flex items-center justify-between mb-1.5">
-          <h1 className="text-2xl font-extrabold tracking-tight">BUS STOP</h1>
+       <header className="bg-gradient-to-b from-blue-600 to-blue-500 text-white px-5 pt-16 pb-9 shrink-0">
+         <div className="flex items-center justify-between mb-1.5">
+          <h1 className="text-2xl font-bold tracking-tight">BUS STOP</h1>
           <button
             onClick={() => setRegionUnderDevOpen(true)}
-            className="flex items-center gap-1 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1.5 text-sm font-medium hover:bg-white/25 active:scale-95 transition-all"
+            className="flex items-center gap-1 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1.5 text-sm font-medium hover:bg-white/25 transition-colors"
           >
             <MapPin className="w-4 h-4" />
             <span>{state.region.sigungu}</span>
             <ChevronDown className="w-3.5 h-3.5" />
           </button>
         </div>
-        <p className="relative text-blue-100 text-sm">전주시 버스 노선 정보</p>
+        <p className="text-blue-100 text-sm">전주시 버스 노선 정보</p>
       </header>
-
-      <section className="px-4 -mt-5 shrink-0 relative z-10">
+  
+      <section className="px-4 -mt-3 shrink-0">
         <button
           onClick={() => onNavigate("bus")}
-          className="w-full bg-white rounded-2xl card-shadow-lg px-4 py-3.5 flex items-center gap-3 hover:-translate-y-0.5 transition-all active:scale-[0.99] active:translate-y-0"
+          className="w-full bg-white rounded-2xl border border-slate-200 shadow-sm px-4 py-3.5 flex items-center gap-3 hover:border-blue-300 hover:shadow transition-all active:scale-[0.99]"
         >
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
             <Search className="w-5 h-5 text-blue-600" />
           </div>
           <div className="text-left flex-1">
@@ -335,15 +333,13 @@ export function HomeScreen({
       {state.favorites.length === 0 ? (
     <button
       onClick={() => onNavigate("bus")}
-      className="w-full bg-white rounded-2xl p-7 text-center card-shadow hover:-translate-y-0.5 transition-all active:scale-[0.99] active:translate-y-0"
+      className="w-full bg-white rounded-2xl p-6 text-center border border-slate-100 hover:border-blue-200 hover:shadow-sm transition-all active:scale-[0.99]"
     >
-      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-50 to-amber-100 flex items-center justify-center mx-auto mb-3">
-        <Star className="w-6 h-6 text-amber-400" />
-      </div>
+      <Star className="w-8 h-8 text-slate-300 mx-auto mb-2" />
       <p className="text-sm text-slate-400">즐겨찾기를 추가해 보세요</p>
     </button>
   ) : (
-    <div className="max-h-[50vh] overflow-y-auto bg-white rounded-2xl card-shadow p-3 space-y-2.5">
+    <div className="max-h-[50vh] overflow-y-auto bg-white rounded-2xl border border-slate-100 p-3 space-y-2.5">
   {state.favorites.map((fav) => {
         const isRoute = fav.type === "route";
         const matchedRoute = isRoute
@@ -359,9 +355,9 @@ export function HomeScreen({
 
         const badgeBg = isRoute
           ? isMain
-            ? "bg-gradient-to-br from-blue-50 to-blue-100"
-            : "bg-gradient-to-br from-emerald-50 to-emerald-100"
-          : "bg-gradient-to-br from-blue-50 to-blue-100";
+            ? "bg-blue-50"
+            : "bg-emerald-50"
+          : "bg-blue-50";
         const badgeText = isRoute
           ? isMain
             ? "text-blue-700"
@@ -401,7 +397,7 @@ export function HomeScreen({
               return;
             }
           }}              
-              className="w-full bg-slate-50/80 rounded-xl px-4 py-5 flex items-center gap-3 text-left hover:bg-blue-50 active:scale-[0.99] transition-all"
+              className="w-full bg-slate-50 rounded-xl border border-slate-100 px-4 py-5 flex items-center gap-3 text-left hover:bg-blue-50 hover:border-blue-100 transition-all"
             >
               {/* 왼쪽: 본선/분선 글씨 + 색 */}
               <div
@@ -466,7 +462,7 @@ export function HomeScreen({
             <button
               type="button"
               onClick={() => setRegionUnderDevOpen(false)}
-              className="mt-6 w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 active:scale-[0.98] transition-all"
+              className="mt-6 w-full rounded-2xl bg-blue-600 py-3.5 text-sm font-semibold text-white active:scale-[0.98]"
             >
               확인
             </button>

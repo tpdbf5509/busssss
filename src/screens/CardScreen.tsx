@@ -40,13 +40,12 @@ export function CardScreen() {
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-slate-50">
-      <header className="bg-gradient-to-b from-slate-900 to-slate-800 px-5 pt-16 pb-9 text-white sticky top-0 z-30 shrink-0">
-        <h1 className="text-xl font-bold mb-4 tracking-tight">모바일 버스카드</h1>
+      <header className="bg-gradient-to-b from-slate-900 to-slate-800 px-5 pt-16 pb-9 text-whitesticky top-0 z-30 shrink-0">
+        <h1 className="text-xl font-bold mb-4">모바일 버스카드</h1>
 
-        <div className="relative bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-400 rounded-2xl p-5 card-shadow-lg overflow-hidden">
+        <div className="relative bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-400 rounded-2xl p-5 shadow-xl overflow-hidden">
           <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full" />
           <div className="absolute -right-4 -bottom-10 w-24 h-24 bg-white/10 rounded-full" />
-          <div className="absolute inset-0 opacity-[0.07] [background-image:radial-gradient(circle_at_1px_1px,white_1px,transparent_0)] [background-size:16px_16px]" />
           <div className="relative">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-2">
@@ -67,8 +66,8 @@ export function CardScreen() {
       </header>
       <div className="flex-1 overflow-y-auto overscroll-contain">
           <section className="px-4 -mt-4 mb-7">
-            <div className="bg-white rounded-2xl card-shadow px-4 py-4 flex items-start gap-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100 flex items-center justify-center shrink-0">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 px-4 py-4 flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
                 <CreditCard className="w-4 h-4 text-amber-500" />
               </div>
               <div>
@@ -84,7 +83,7 @@ export function CardScreen() {
           <section className="px-4 mt-1"></section>
 
       <section className="px-4 -mt-4">
-        <div className="bg-white rounded-2xl card-shadow p-4">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-bold text-slate-700">충전하기</h2>
             <button
@@ -104,9 +103,9 @@ export function CardScreen() {
                 <button
                   key={amt}
                   onClick={() => setAmount(amt)}
-                  className={`py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${
+                  className={`py-2.5 rounded-xl text-sm font-medium transition-colors ${
                     amount === amt
-                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25"
+                      ? "bg-blue-600 text-white"
                       : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                   }`}
                 >
@@ -167,7 +166,7 @@ export function CardScreen() {
           <button
             onClick={handleCharge}
             disabled={charging || amount <= 0}
-            className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-semibold text-sm shadow-lg shadow-blue-500/25 hover:shadow-blue-500/35 active:scale-[0.99] transition-all disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
+            className="w-full py-3.5 bg-blue-600 text-white rounded-2xl font-semibold text-sm hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {charging ? (
               <>
@@ -186,7 +185,7 @@ export function CardScreen() {
 
       <section className="px-4 mt-4">
         <div className="grid grid-cols-2 gap-2">
-          <div className="bg-white rounded-2xl p-4 card-shadow">
+          <div className="bg-white rounded-2xl p-4 border border-slate-100">
             <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
               <TrendingUp className="w-3.5 h-3.5" />
               이번 주
@@ -196,7 +195,7 @@ export function CardScreen() {
               <span className="text-sm text-slate-400 ml-0.5">원</span>
             </p>
           </div>
-          <div className="bg-white rounded-2xl p-4 card-shadow">
+          <div className="bg-white rounded-2xl p-4 border border-slate-100">
             <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
               <TrendingUp className="w-3.5 h-3.5" />
               이번 달
@@ -214,7 +213,7 @@ export function CardScreen() {
           <Receipt className="w-4 h-4" />
           이용 내역
         </div>
-        <div className="bg-white rounded-2xl card-shadow overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
           {card.history.map((h, i) => (
             <div
               key={h.id}

@@ -73,9 +73,9 @@ export function AlertScreen() {
         </div>
       </header>
         {notifPermission !== "granted" && (
-          <div className="mx-4 mt-4 p-4 bg-white rounded-2xl flex items-center justify-between gap-3 card-shadow">
+          <div className="mx-4 mt-4 p-4 bg-white border border-slate-100 rounded-2xl flex items-center justify-between gap-3 shadow-sm">
             <div className="flex items-start gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
                 <Bell className="w-4 h-4 text-blue-600" />
               </div>
               <p className="text-xs text-slate-500 leading-relaxed pt-1">
@@ -104,10 +104,8 @@ export function AlertScreen() {
         </div>
 
         {state.alerts.length === 0 ? (
-          <div className="bg-white rounded-2xl card-shadow p-7 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center mx-auto mb-3">
-              <Bell className="w-6 h-6 text-blue-400" />
-            </div>
+          <div className="bg-white rounded-2xl border border-slate-100 p-6 text-center">
+            <Bell className="w-8 h-8 text-slate-300 mx-auto mb-2" />
             <p className="text-sm text-slate-400">설정된 하차 알림이 없어요</p>
             <button
               onClick={() => setShowAdd(true)}
@@ -138,7 +136,7 @@ export function AlertScreen() {
         {records.length === 0 ? (
           <EmptyState icon={BellIcon} title="알림이 없어요" />
         ) : (
-          <div className="bg-white rounded-2xl card-shadow overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
             {records.map((r, i) => (
               <div
                 key={r.id}
@@ -203,7 +201,7 @@ function AlertCard({
   onRemove: () => void;
 }) {
   return (
-    <div className="bg-white rounded-2xl p-4 card-shadow">
+    <div className="bg-white rounded-2xl p-4 border border-slate-100">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
@@ -355,7 +353,7 @@ function AddAlertModal({
                     }}
                     className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 text-left"
                   >
-                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
                       <span className="text-blue-700 font-bold text-xs">{route.number}</span>
                     </div>
                     <div className="flex-1 min-w-0">
@@ -470,7 +468,7 @@ function AddAlertModal({
               </button>
               <button
                 onClick={handleSave}
-                className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-semibold text-sm shadow-lg shadow-blue-500/25 active:scale-[0.99] transition-all"
+                className="flex-1 py-3 bg-blue-600 text-white rounded-2xl font-semibold text-sm"
               >
                 설정 완료
               </button>
