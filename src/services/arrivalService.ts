@@ -173,15 +173,14 @@ async function fetchStationArrivalItems(nodeId: string, force = false) {
 function pickNearestArrival(
   items: Awaited<ReturnType<typeof getSttnAcctoArvlPrearngeInfoList>>,
   routeId: string,
-  routeNumber?: string,
 ): ArrivalInfo | null {
-  const normalizedRouteNumber = normalize(routeNumber ?? "");
-
-  const byRouteId = items.filter((i) => i.routeid === routeId);
-  const byRouteNo = normalizedRouteNumber
-    ? items.filter((i) => normalize(i.routeno ?? "") === normalizedRouteNumber)
-    : [];
-  const candidates = byRouteId.length > 0 ? byRouteId : byRouteNo.length > 0 ? byRouteNo : [];
+  // routeno(노선번호)만으로 후보를 고르면 안 된다. 같은 정류장에 A→B/B→A
+  // 양방향이 같은 번호로 같이 걸리는 경우, routeId(방향별 고유 ID)가
+  // 일치하지 않을 때 routeno로만 폴백하면 반대 방향 버스의 도착정보를
+  // 잘못 보여주게 된다(즐겨찾기한 노선과 실제 표시가 어긋나는 버그였음).
+  // TAGO 응답에는 방향을 구분할 다른 필드가 없으므로, routeId가 정확히
+  // 일치하는 항목이 없으면 정보 없음으로 처리한다.
+  const candidates = items.filter((i) => i.routeid === routeId);
 
   if (candidates.length === 0) return null;
 
@@ -260,7 +259,7 @@ export async function fetchArrivalInfo(
   const request = enqueueArrivalRequest(async (): Promise<ArrivalInfo | null> => {
     try {
       const items = await fetchStationArrivalItems(nodeId, force);
-      return pickNearestArrival(items, routeId, routeNumber);
+      return pickNearestArrival(items, routeId);
     } catch (error) {
       console.warn("[BUS STOP] Arrival request failed; keeping previous value", {
         nodeId,
