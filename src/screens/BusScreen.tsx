@@ -848,10 +848,12 @@ const isAllRouteFavorited = (route: Route) =>
   }, [routes]);
 
   const HERO_COUNT = 2;
+  // "실시간 도착" 탭은 지금 실제로 다가오고 있는 버스만 보여주는 탭이다.
+  // 정류장을 지나는 노선 전체 목록은 "전체 경유노선" 탭의 몫이므로,
+  // 여기서는 도착정보가 있는 노선만 남긴다.
   const routesWithInfo = sortedRoutes.filter((r) => r.arrtime != null);
-  const routesWithoutInfo = sortedRoutes.filter((r) => r.arrtime == null);
   const heroRoutes = routesWithInfo.slice(0, HERO_COUNT);
-  const restRoutes = [...routesWithInfo.slice(HERO_COUNT), ...routesWithoutInfo];
+  const restRoutes = routesWithInfo.slice(HERO_COUNT);
 
   return (
     <div className="bg-slate-50">
@@ -934,15 +936,15 @@ const isAllRouteFavorited = (route: Route) =>
               </p>
             )}
 
-            {status === "success" && routes.length === 0 && (
+            {status === "success" && routesWithInfo.length === 0 && (
               <EmptyState
                 icon={BusIcon}
-                title="경유 노선이 없어요"
-                subtitle="운행 중인 버스가 없거나 정보가 없을 수 있어요"
+                title="지금 도착 예정인 버스가 없어요"
+                subtitle="배차 간격이 길거나 운행 시간이 아닐 수 있어요"
               />
             )}
 
-            {status === "success" && routes.length > 0 && (
+            {status === "success" && routesWithInfo.length > 0 && (
               <div className="space-y-2">
                 {heroRoutes.length > 0 && (
                   <>
