@@ -11,7 +11,7 @@ import { LoadingSkeleton, ErrorState, EmptyState } from "@/components/ui";
 import { showToast } from "@/components/Toast";
 import type { Station } from "@/types/route";
 import { MapPin } from "lucide-react";
-import { resolveNodeId, resolveRouteId } from "@/services/arrivalService";
+import { resolveNodeId, resolveNodeIdForRoute, resolveRouteId } from "@/services/arrivalService";
 import { searchStations, fetchRoutesForStation, type StationRoute } from "@/services/stationService";
 
 const MAIN_LINES: { number: string; start: string; end: string }[] = [
@@ -1086,11 +1086,18 @@ const handleStopClick = async (stop: BusStop) => {
 
   setAddingStopId(stop.id);
   try {
-    const [nodeId, routeId] = await Promise.all([
-      resolveNodeId(stop.name),
-      resolveRouteId(route),
-    ]);
-    if (!nodeId || !routeId) {
+    const routeId = await resolveRouteId(route);
+    if (!routeId) {
+      showToast("이 정류장은 아직 실시간 도착정보를 지원하지 않아요");
+      return;
+    }
+    // 이 노선(방향)이 실제로 경유하는 정류장 목록에서 이름을 찾아 nodeId를
+    // 정한다. 정류장명만으로 도시 전체를 검색하면 반대 방향의 같은 이름
+    // 정류장을 잘못 골라 도착정보가 항상 "정보 없음"으로 나올 수 있다.
+    const nodeId =
+      (await resolveNodeIdForRoute(stop.name, routeId)) ??
+      (await resolveNodeId(stop.name));
+    if (!nodeId) {
       showToast("이 정류장은 아직 실시간 도착정보를 지원하지 않아요");
       return;
     }

@@ -4,6 +4,7 @@ import { FAVORITES, ALERT_SETTINGS, CARD_INFO } from "@/data/mock";
 import { fetchRoutesForStation } from "@/services/stationService";
 import { fetchAllRoutes } from "@/services/routeService";
 import { resolveDirections } from "@/services/busLocationService";
+import { resolveNodeIdForRoute } from "@/services/arrivalService";
 
 interface AppState {
   region: { sido: string; sigungu: string };
@@ -18,6 +19,7 @@ type Action =
   | { type: "REMOVE_FAVORITE"; id: string }
   | { type: "RENAME_FAVORITE"; id: string; label: string }
   | { type: "SYNC_FAVORITE_ROUTE_ID"; id: string; tagoRouteId: string }
+  | { type: "SYNC_FAVORITE_NODE_ID"; id: string; tagoNodeId: string }
   | { type: "CHARGE_CARD"; amount: number }
   | { type: "PAY_CARD"; amount: number }
   | { type: "ADD_ALERT"; alert: AlertSetting }
@@ -77,6 +79,13 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         favorites: state.favorites.map((f) =>
           f.id === action.id ? { ...f, tagoRouteId: action.tagoRouteId } : f
+        ),
+      };
+    case "SYNC_FAVORITE_NODE_ID":
+      return {
+        ...state,
+        favorites: state.favorites.map((f) =>
+          f.id === action.id ? { ...f, tagoNodeId: action.tagoNodeId } : f
         ),
       };
     case "CHARGE_CARD":
@@ -186,6 +195,48 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       } catch {
         // 방향 보정 실패는 기존 즐겨찾기를 변경하지 않습니다.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [state.favorites]);
+
+  // 즐겨찾기의 tagoNodeId도 tagoRouteId처럼 잘못 저장돼 있을 수 있습니다.
+  // 같은 이름의 정류장이 방향별로 다른 물리적 위치(다른 nodeId)에 있는
+  // 경우, 정류장명만으로 도시 전체를 검색하면 반대 방향 정류장을 잘못
+  // 고를 수 있고, 그러면 실제로 버스가 오고 있어도 도착정보가 "정보
+  // 없음"으로 나옵니다. 이 노선이 실제로 경유하는 정류장 목록에서 다시
+  // 조회해 저장된 값과 다르면 보정합니다.
+  useEffect(() => {
+    const stopFavorites = state.favorites.filter(
+      (favorite) =>
+        favorite.type === "stop_route" && favorite.tagoRouteId && favorite.stopName
+    );
+
+    if (stopFavorites.length === 0) return;
+
+    let cancelled = false;
+
+    (async () => {
+      for (const favorite of stopFavorites) {
+        if (cancelled) return;
+        try {
+          const nodeId = await resolveNodeIdForRoute(
+            favorite.stopName!,
+            favorite.tagoRouteId!
+          );
+          if (!cancelled && nodeId && nodeId !== favorite.tagoNodeId) {
+            dispatch({
+              type: "SYNC_FAVORITE_NODE_ID",
+              id: favorite.id,
+              tagoNodeId: nodeId,
+            });
+          }
+        } catch {
+          // 보정 실패는 기존 즐겨찾기를 변경하지 않습니다.
+        }
       }
     })();
 

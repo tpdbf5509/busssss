@@ -74,6 +74,15 @@ export async function getRouteAcctoBusLcList(routeId: string, cityCode: string =
   });
 }
 
+export async function getRouteAcctoThrghSttnList(routeId: string, cityCode: string = JEONJU_CITY_CODE) {
+  return callTagoApi("/BusRouteInfoInqireService/getRouteAcctoThrghSttnList", {
+    cityCode,
+    routeId,
+    numOfRows: "100",
+    pageNo: "1",
+  });
+}
+
 export async function getSttnNoList(nodeNm: string, cityCode: string = JEONJU_CITY_CODE) {
   if (!nodeNm.trim()) return [];
   return callTagoApi("/BusSttnInfoInqireService/getSttnNoList", {
