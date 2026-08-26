@@ -1,4 +1,4 @@
-import { getSttnNoList, getSttnAcctoArvlPrearngeInfoList } from "@/api/tago";
+import { getSttnNoList, getSttnAcctoArvlPrearngeInfoList, getRouteAcctoThrghSttnList } from "@/api/tago";
 import { resolveDirections } from "@/services/busLocationService";
 import type { Route } from "@/types/route";
 
@@ -97,6 +97,50 @@ export async function resolveNodeId(stopName: string): Promise<string | null> {
 
   nodeIdCache.set(key, matched.nodeid);
   return matched.nodeid;
+}
+
+const routeStopsCache = new Map<string, { items: Awaited<ReturnType<typeof getRouteAcctoThrghSttnList>>; expiresAt: number }>();
+const routeStopsInFlight = new Map<string, Promise<Awaited<ReturnType<typeof getRouteAcctoThrghSttnList>>>>();
+const ROUTE_STOPS_CACHE_TTL_MS = 5 * 60_000;
+
+/**
+ * 같은 이름의 정류장이 방향별로 다른 물리적 위치(= 다른 nodeId)에 있는
+ * 경우가 있다(예: 104번 평화동↔송천동 양방향). 정류장명만으로 전체
+ * 도시 기준 nodeId를 검색하면(resolveNodeId) 반대 방향 정류장을 잘못
+ * 골라 실제로는 버스가 오고 있어도 도착정보가 "정보 없음"으로 나오는
+ * 버그가 있었다. 노선(routeId)이 실제로 경유하는 정류장 목록에서 이름을
+ * 찾으면 이 노선·방향에 해당하는 nodeId를 정확히 얻을 수 있다.
+ *
+ * 같은 노선의 즐겨찾기 정류장 여러 개가 동시에 이 함수를 호출할 수 있으므로
+ * (예: 앱 기동 시 즐겨찾기 일괄 보정), 캐시가 아직 없을 때도 같은 routeId에
+ * 대한 요청은 하나만 실제로 나가도록 in-flight 요청을 공유한다.
+ */
+export async function resolveNodeIdForRoute(stopName: string, routeId: string): Promise<string | null> {
+  const key = normalize(stopName);
+  if (!key || !routeId) return null;
+
+  const now = Date.now();
+  const cached = routeStopsCache.get(routeId);
+
+  let items: Awaited<ReturnType<typeof getRouteAcctoThrghSttnList>>;
+  if (cached && cached.expiresAt > now) {
+    items = cached.items;
+  } else {
+    const running = routeStopsInFlight.get(routeId);
+    if (running) {
+      items = await running;
+    } else {
+      const request = getRouteAcctoThrghSttnList(routeId).finally(() => {
+        routeStopsInFlight.delete(routeId);
+      });
+      routeStopsInFlight.set(routeId, request);
+      items = await request;
+      routeStopsCache.set(routeId, { items, expiresAt: Date.now() + ROUTE_STOPS_CACHE_TTL_MS });
+    }
+  }
+
+  const matched = items.find((s) => normalize(s.nodenm ?? "") === key);
+  return matched?.nodeid ?? null;
 }
 
 export async function resolveRouteId(route: Route): Promise<string | null> {
