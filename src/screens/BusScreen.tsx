@@ -3,7 +3,7 @@ import { Search, X, Star, ArrowLeft, Bus as BusIcon, RadioTower, Navigation, Clo
 import { useAsync } from "@/hooks/useAsync";
 import { useBusLocations } from "@/hooks/useBusLocations";
 import { useApp } from "@/store/AppContext";
-import { fetchAllRoutes, fetchStopsForRoute } from "@/services/routeService";
+import { fetchAllRoutes, fetchStopsForRoute, fetchRoutesForStop } from "@/services/routeService";
 import { fetchBisTimeInfo, type BisTimeInfo } from "@/api/jeonjuBis";
 import type { Route, BusStop } from "@/types/route";
 import type { Favorite } from "@/types";
@@ -584,65 +584,35 @@ function StationDetail({
   }, [station.id]);
 
   // 전체 경유노선 불러오기
+  //
+  // 예전에는 노선 454개를 하나씩 순서대로(await) 조회하면서 정류장 이름이
+  // 일치하는지 확인했다 - 정류장 하나 보려고 수백 번 API를 순차 호출하는
+  // 셈이라 느렸고, 정류장명만 비교하다 보니 같은 이름의 다른 위치 정류장과
+  // 섞일 위험도 있었다. 정류장(node_id) 기준으로 노선-정류장 관계를 한 번에
+  // 조회하면 두 문제가 한 번에 해결된다.
   useEffect(() => {
     if (detailTab !== "all") return;
-    if (!allRoutes || allRoutes.length === 0) return;
 
     let cancelled = false;
 
     setAllStatus("loading");
 
-    const normalize = (s: string) =>
-      (s ?? "")
-        .replace(/\s+/g, "")
-        .replace(/\(.*?\)/g, "")
-        .trim();
+    const jeonjuNodeId = station.id.replace(/^[A-Za-z]+/, "");
 
-    const target = normalize(station.name);
-
-    (async () => {
-      try {
-        const matched: Route[] = [];
-
-        for (const route of allRoutes) {
-          if (cancelled) return;
-
-          try {
-            const stops = await fetchStopsForRoute(route.id);
-
-            const hit = stops.some(
-              (st) => normalize(st.name) === target
-            );
-
-            if (hit) {
-              matched.push(route);
-            }
-          } catch {
-            // 한 노선 조회 실패해도 다른 노선은 계속 조회
-          }
-        }
-
+    fetchRoutesForStop(jeonjuNodeId)
+      .then((matched) => {
         if (cancelled) return;
-
-        matched.sort((a, b) =>
-          a.number.localeCompare(b.number, undefined, {
-            numeric: true,
-          })
-        );
-
         setAllViaRoutes(matched);
         setAllStatus("success");
-      } catch {
-        if (!cancelled) {
-          setAllStatus("error");
-        }
-      }
-    })();
+      })
+      .catch(() => {
+        if (!cancelled) setAllStatus("error");
+      });
 
     return () => {
       cancelled = true;
     };
-  }, [detailTab, station.name, allRoutes]);
+  }, [detailTab, station.id]);
 
   // 실시간 노선 즐겨찾기 여부
   const isArrivalFavorited = (routeNo: string) =>

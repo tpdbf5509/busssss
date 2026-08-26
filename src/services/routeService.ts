@@ -1,6 +1,7 @@
 import {
   getRoutes as fetchRoutesRaw,
   getRouteStops as fetchStopsRaw,
+  getRouteIdsForStop,
   type RawRouteField,
 } from "@/api/jeonju";
 import type { Route, BusStop } from "@/types/route";
@@ -171,6 +172,26 @@ export async function fetchAllRoutes(): Promise<Route[]> {
   }
 
   return routesPromise;
+}
+
+/**
+ * 이 정류장을 지나는 모든 노선을 정적 캐시에서 조회합니다(실시간 API 미사용).
+ * nodeId는 전주시 표준 노드ID(bus_route_stops_cache.node_id)와 같은 숫자
+ * 스킴이어야 합니다. TAGO의 nodeid("JUB..." 접두사)를 넘길 경우 호출부에서
+ * 접두사를 제거해서 넘겨야 합니다.
+ */
+export async function fetchRoutesForStop(nodeId: string): Promise<Route[]> {
+  if (!nodeId) return [];
+
+  const [routeIds, allRoutes] = await Promise.all([
+    getRouteIdsForStop(nodeId),
+    fetchAllRoutes(),
+  ]);
+
+  const idSet = new Set(routeIds);
+  return allRoutes
+    .filter((route) => idSet.has(route.id))
+    .sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
 }
 
 /**

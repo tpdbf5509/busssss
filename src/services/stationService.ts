@@ -1,4 +1,5 @@
-import { getSttnNoList } from "@/api/tago";
+import { getSttnNoList, getSttnAcctoArvlPrearngeInfoList } from "@/api/tago";
+import { fetchRoutesForStop } from "@/services/routeService";
 import type { Station } from "@/types/route";
 
 function mapToStation(raw: Record<string, string>): Station {
@@ -18,8 +19,6 @@ export async function searchStations(query: string): Promise<Station[]> {
     .map(mapToStation);
 }
 
-import { getSttnAcctoArvlPrearngeInfoList } from "@/api/tago";
-
 export interface StationRoute {
   routeId: string;
   routeNo: string;
@@ -28,40 +27,64 @@ export interface StationRoute {
   arrprevstationcnt?: number;
 }
 
+/** TAGO nodeid/routeid("JUB305001094")에서 우리 앱의 brtStdid 숫자만 뽑아낸다. */
+function stripCityPrefix(id: string): string {
+  return (id ?? "").replace(/^[A-Za-z]+/, "");
+}
+
+/**
+ * 이 정류장을 경유하는 노선 목록을 반환합니다.
+ *
+ * 예전에는 TAGO 실시간 도착정보 응답에서 노선 목록을 역으로 추출했습니다.
+ * 그 순간 다가오는 버스가 없는 노선(배차간격이 길거나 운행 시간이 아닌
+ * 노선)은 응답 자체에 안 잡히므로 목록에서 통째로 빠지는 문제가 있었습니다.
+ *
+ * 노선-정류장 경유 관계는 정적 캐시(bus_route_stops_cache)에 이미 완전하게
+ * 저장돼 있으므로, 목록 자체는 거기서 만들고, 실시간 도착정보는 있으면
+ * 붙이는 "보강" 용도로만 사용합니다. 도착정보가 없는 노선도 목록에는 남고
+ * 도착 문구만 "도착정보 없음"으로 표시됩니다.
+ */
 export async function fetchRoutesForStation(nodeId: string): Promise<StationRoute[]> {
-  const items = await getSttnAcctoArvlPrearngeInfoList(nodeId);
+  const jeonjuNodeId = stripCityPrefix(nodeId);
 
-  // 같은 버스번호라도 TAGO routeId가 다르면 서로 다른 방향의 노선입니다.
-  // 기존에는 routeNo만 key로 사용해서 104번의 양방향을 하나로 합쳐버렸습니다.
-  const map = new Map<string, StationRoute>();
+  const [staticRoutes, arrivalItems] = await Promise.all([
+    fetchRoutesForStop(jeonjuNodeId),
+    getSttnAcctoArvlPrearngeInfoList(nodeId).catch(() => []),
+  ]);
 
-  for (const item of items) {
-    const routeId = item.routeid ?? "";
-    const routeNo = item.routeno ?? "";
-    if (!routeId || !routeNo) continue;
+  // TAGO의 routeid("JUB<brtStdid>")는 접두사만 다를 뿐 우리 앱의
+  // route.id(brtStdid)와 같은 숫자를 쓰므로, 접두사를 떼면 정확한 방향의
+  // 도착정보만 매칭된다(같은 번호라도 방향이 다르면 routeid도 다름).
+  const arrivalByRouteId = new Map<
+    string,
+    { routeTp: string; arrtime?: number; arrprevstationcnt?: number }
+  >();
 
-    const key = `${routeNo}|${routeId}`;
-    const existing = map.get(key);
+  for (const item of arrivalItems) {
+    const routeId = stripCityPrefix(item.routeid ?? "");
+    if (!routeId) continue;
+
     const arrtime = Number(item.arrtime1 ?? item.arrtime);
-    const prevStationCount = Number(
-      item.arrprevstationcnt1 ?? item.arrprevstationcnt
-    );
+    const prevStationCount = Number(item.arrprevstationcnt1 ?? item.arrprevstationcnt);
+    const existing = arrivalByRouteId.get(routeId);
 
-    if (!existing || (arrtime && arrtime < (existing.arrtime ?? Infinity))) {
-      map.set(key, {
-        routeId,
-        routeNo,
+    if (!existing || (!isNaN(arrtime) && arrtime < (existing.arrtime ?? Infinity))) {
+      arrivalByRouteId.set(routeId, {
         routeTp: item.routetp ?? "",
         arrtime: isNaN(arrtime) ? undefined : arrtime,
-        arrprevstationcnt: isNaN(prevStationCount)
-          ? undefined
-          : prevStationCount,
+        arrprevstationcnt: isNaN(prevStationCount) ? undefined : prevStationCount,
       });
     }
   }
 
-  return Array.from(map.values()).sort((a, b) =>
-    a.routeNo.localeCompare(b.routeNo, undefined, { numeric: true }) ||
-    a.routeId.localeCompare(b.routeId)
-  );
+  return staticRoutes.map((route) => {
+    const live = arrivalByRouteId.get(route.id);
+    return {
+      routeId: `JUB${route.id}`,
+      routeNo: route.number,
+      routeTp: live?.routeTp ?? "",
+      arrtime: live?.arrtime,
+      arrprevstationcnt: live?.arrprevstationcnt,
+    };
+  });
 }

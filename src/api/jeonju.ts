@@ -209,3 +209,20 @@ export async function getRouteStops(routeId: string): Promise<RawRouteField[]> {
     };
   });
 }
+
+/**
+ * 이 정류장(node_id)을 지나는 모든 노선의 route_id를 정적 캐시에서 조회합니다.
+ * TAGO 실시간 도착정보로 "경유노선 목록"을 만들면, 그 순간 다가오는 버스가
+ * 없는 노선은 목록에서 통째로 빠집니다. 노선-정류장 관계는 자주 안 바뀌는
+ * 정적 데이터이므로, 이 관계를 실시간 API가 아니라 캐시에서 직접 구합니다.
+ */
+export async function getRouteIdsForStop(nodeId: string): Promise<string[]> {
+  if (!nodeId) return [];
+
+  const rows = await supabaseFetch<{ route_id: string }>(
+    "bus_route_stops_cache",
+    `select=route_id&node_id=eq.${encodeURIComponent(nodeId)}`
+  );
+
+  return Array.from(new Set(rows.map((row) => row.route_id).filter(Boolean)));
+}
