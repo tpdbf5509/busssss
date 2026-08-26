@@ -1325,10 +1325,14 @@ const handleStopClick = async (stop: BusStop) => {
                 return (
                   <div key={`${stop.order}-${stop.id}`} className="relative flex items-start gap-3">
                     <div
-                      className={`relative z-10 mt-3 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
-                        hasBus ? "bg-blue-500 border-blue-500" : "bg-white border-slate-300"
+                      className={`relative z-10 mt-3 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-500 ease-out ${
+                        hasBus ? "bg-blue-500 border-blue-500 scale-125" : "bg-white border-slate-300 scale-100"
                       }`}
                     >
+                      {/* B2. 버스가 지금 이 정류장에 있다는 걸 은은한 펄스로 전달 — 장식이 아니라 실시간 상태 신호입니다 */}
+                      {hasBus && (
+                        <span className="absolute inset-0 rounded-full bg-blue-400 animate-ping opacity-60" />
+                      )}
                       <span className="sr-only">{stop.order}</span>
                     </div>
                     <button
@@ -1342,7 +1346,10 @@ const handleStopClick = async (stop: BusStop) => {
                         </span>
                         <span className="text-sm font-medium text-slate-700">{stop.name}</span>
                         {hasBus && (
-                          <span className="flex items-center gap-1 bg-blue-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
+                          <span
+                            key={stopBuses[0].vehicleNo}
+                            className="flex items-center gap-1 bg-blue-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full animate-stop-badge-in"
+                          >
                             <Navigation className="w-2.5 h-2.5" />
                             {stopBuses[0].vehicleNo || "버스"}
                             {stopBuses.length > 1 && ` +${stopBuses.length - 1}`}
