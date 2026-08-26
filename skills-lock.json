@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "senior-frontend": {
+      "source": "davila7/claude-code-templates",
+      "sourceType": "github",
+      "skillPath": "cli-tool/components/skills/development/senior-frontend/SKILL.md",
+      "computedHash": "9614baf7a44e6c233d5af3aa77c013cfec7fa71eee5e0bfea3951b955eb92ba7"
+    }
+  }
+}
