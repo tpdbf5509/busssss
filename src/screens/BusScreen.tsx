@@ -7,12 +7,14 @@ import { fetchAllRoutes, fetchStopsForRoute } from "@/services/routeService";
 import { fetchBisTimeInfo, type BisTimeInfo } from "@/api/jeonjuBis";
 import type { Route, BusStop } from "@/types/route";
 import type { Favorite } from "@/types";
-import { LoadingSkeleton, ErrorState, EmptyState } from "@/components/ui";
+import { LoadingSkeleton, ErrorState, EmptyState, ReliabilityTag } from "@/components/ui";
+import type { ReliabilityState } from "@/lib/reliability";
 import { showToast } from "@/components/Toast";
 import type { Station } from "@/types/route";
 import { MapPin } from "lucide-react";
 import { resolveNodeId, resolveRouteId } from "@/services/arrivalService";
 import { searchStations, fetchRoutesForStation, type StationRoute } from "@/services/stationService";
+import { parseInterval, parseTimeToMinutes } from "@/lib/interval";
 
 const MAIN_LINES: { number: string; start: string; end: string }[] = [
   { number: "2", start: "평화동종점", end: "평화동종점" },
@@ -535,6 +537,102 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
   );
 }
 
+/** B1. 정류장 도착 노선 카드 — hero(임박한 1~2개)는 크게, 나머지는 압축된 형태로 재사용합니다. */
+function StationRouteCard({
+  sr,
+  hero = false,
+  isFavorited,
+  isAdding,
+  onSelect,
+  onToggleFavorite,
+}: {
+  sr: StationRoute;
+  hero?: boolean;
+  isFavorited: boolean;
+  isAdding: boolean;
+  onSelect: () => void;
+  onToggleFavorite: () => void;
+}) {
+  const minutes = sr.arrtime != null ? Math.max(0, Math.round(sr.arrtime / 60)) : null;
+  // 이 목록은 화면을 열 때마다 새로 조회하는 단일 스냅샷이라 지연 추적은 하지 않고,
+  // 값이 있으면 항상 "실시간"으로 표시합니다(A1).
+  const reliability: ReliabilityState =
+    minutes != null ? { source: "realtime", delayed: false } : { source: "unknown", delayed: false };
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      disabled={isAdding}
+      className={`w-full bg-white rounded-2xl border border-slate-100 text-left hover:border-blue-200 hover:shadow-sm transition-all flex items-center gap-3 ${
+        hero ? "p-5" : "p-3"
+      }`}
+    >
+      <div
+        className={`relative rounded-xl bg-blue-50 flex items-center justify-center shrink-0 ${
+          hero ? "w-14 h-14" : "w-10 h-10"
+        }`}
+      >
+        <span className={`font-bold text-blue-700 ${hero ? "text-base" : "text-xs"}`}>
+          {sr.routeNo}
+        </span>
+        {isFavorited && (
+          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center ring-2 ring-white">
+            <Star className="w-2.5 h-2.5 text-white fill-white" />
+          </span>
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <p className={`font-semibold text-slate-800 ${hero ? "text-base" : "text-sm"}`}>
+          {sr.routeNo}번
+          {sr.routeTp ? (
+            <span className="text-xs font-normal text-slate-400 ml-1.5">{sr.routeTp}</span>
+          ) : null}
+        </p>
+
+        <div className="mt-0.5 flex items-baseline gap-1.5">
+          <p className={hero ? "text-2xl font-bold text-blue-600" : "text-xs font-semibold text-slate-500"}>
+            {minutes == null ? "도착정보 없음" : minutes <= 0 ? "곧 도착" : `${minutes}분${hero ? " 후" : ""}`}
+          </p>
+          {minutes != null && sr.arrprevstationcnt != null && (
+            <span className="text-xs text-slate-400">
+              {hero ? "" : "· "}
+              {sr.arrprevstationcnt}정거장 전
+            </span>
+          )}
+        </div>
+
+        {minutes != null && (
+          <div className="mt-1">
+            <ReliabilityTag reliability={reliability} />
+          </div>
+        )}
+      </div>
+
+      {isAdding ? (
+        <span className="w-4 h-4 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin shrink-0" />
+      ) : (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite();
+          }}
+          className="p-1 -m-1 shrink-0 rounded-full hover:bg-slate-50"
+          aria-label={isFavorited ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+        >
+          <Star
+            className={`w-4 h-4 transition-colors ${
+              isFavorited ? "text-amber-400 fill-amber-400" : "text-slate-300"
+            }`}
+          />
+        </button>
+      )}
+    </button>
+  );
+}
+
 function StationDetail({
   station,
   onBack,
@@ -553,6 +651,7 @@ function StationDetail({
   const { data: allRoutes } = useAsync(() => fetchAllRoutes(), []);
 
   const [detailTab, setDetailTab] = useState<"arrival" | "all">("arrival");
+  const [showMoreRoutes, setShowMoreRoutes] = useState(false);
   const [allViaRoutes, setAllViaRoutes] = useState<Route[]>([]);
   const [allStatus, setAllStatus] = useState<
     "idle" | "loading" | "success" | "error"
@@ -767,6 +866,23 @@ const isAllRouteFavorited = (route: Route) =>
     }
   };
 
+  // B1. 차분한 인터페이스: 지금 임박한 버스 1~2개만 크게 강조하고 나머지는 접어둡니다.
+  // 즐겨찾기 여부가 아니라 "지금 이 순간 가장 급한 버스"를 최우선으로 정렬합니다.
+  const sortedRoutes = useMemo(() => {
+    return [...routes].sort((a, b) => {
+      const aKey = a.arrtime ?? Infinity;
+      const bKey = b.arrtime ?? Infinity;
+      if (aKey !== bKey) return aKey - bKey;
+      return (a.arrprevstationcnt ?? Infinity) - (b.arrprevstationcnt ?? Infinity);
+    });
+  }, [routes]);
+
+  const HERO_COUNT = 2;
+  const routesWithInfo = sortedRoutes.filter((r) => r.arrtime != null);
+  const routesWithoutInfo = sortedRoutes.filter((r) => r.arrtime == null);
+  const heroRoutes = routesWithInfo.slice(0, HERO_COUNT);
+  const restRoutes = [...routesWithInfo.slice(HERO_COUNT), ...routesWithoutInfo];
+
   return (
     <div className="bg-slate-50">
       <header className="bg-white px-4 pt-14 pb-5 border-b border-slate-100 sticky top-0 z-30">
@@ -858,87 +974,66 @@ const isAllRouteFavorited = (route: Route) =>
 
             {status === "success" && routes.length > 0 && (
               <div className="space-y-2">
-                {routes.map((sr) => {
-                  const minutes =
-                    sr.arrtime != null
-                      ? Math.max(
-                          0,
-                          Math.round(sr.arrtime / 60)
-                        )
-                      : null;
-
-                  return (
-                    <button
-                      key={sr.routeId}
-                      type="button"
-                      onClick={() => {
-                        const appRoute = allRoutes?.find(
-                          (r) =>
-                            r.number === sr.routeNo ||
-                            r.rawNumber === sr.routeNo
-                        );
-                        if (appRoute) {
-                          onSelectRoute(appRoute);
-                        } else {
-                          showToast("노선 정보를 찾을 수 없어요");
-                        }
-                      }}
-                      disabled={addingRouteNo === sr.routeNo}
-                      className="w-full bg-white rounded-2xl p-4 border border-slate-100 text-left hover:border-blue-200 hover:shadow-sm transition-all flex items-center gap-3"
-                    >
-                      <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-                        <span className="font-bold text-sm text-blue-700">
-                          {sr.routeNo}
-                        </span>
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-slate-800">
-                          {sr.routeNo}번
-
-                          {sr.routeTp ? (
-                            <span className="text-xs font-normal text-slate-400 ml-1.5">
-                              {sr.routeTp}
-                            </span>
-                          ) : null}
-                        </p>
-
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          {minutes == null
-                            ? "도착정보 없음"
-                            : minutes <= 0
-                            ? "곧 도착"
-                            : `${minutes}분 후` +
-                              (sr.arrprevstationcnt != null
-                                ? ` · ${sr.arrprevstationcnt}정거장 전`
-                                : "")}
-                        </p>
-                      </div>
-
-                      {addingRouteNo === sr.routeNo ? (
-                        <span className="w-4 h-4 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin shrink-0" />
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRouteClick(sr);
+                {heroRoutes.length > 0 && (
+                  <>
+                    <p className="text-[11px] font-semibold text-blue-600 mb-1">
+                      지금 타야 할 버스
+                    </p>
+                    <div className="space-y-2.5 mb-5">
+                      {heroRoutes.map((sr) => (
+                        <StationRouteCard
+                          key={sr.routeId}
+                          sr={sr}
+                          hero
+                          isFavorited={isArrivalFavorited(sr.routeNo)}
+                          isAdding={addingRouteNo === sr.routeNo}
+                          onSelect={() => {
+                            const appRoute = allRoutes?.find(
+                              (r) => r.number === sr.routeNo || r.rawNumber === sr.routeNo
+                            );
+                            if (appRoute) onSelectRoute(appRoute);
+                            else showToast("노선 정보를 찾을 수 없어요");
                           }}
-                          className="p-1 -m-1 shrink-0 rounded-full hover:bg-slate-50"
-                          aria-label="즐겨찾기"
-                        >
-                          <Star
-                            className={`w-4 h-4 transition-colors ${
-                              isArrivalFavorited(sr.routeNo)
-                                ? "text-amber-400 fill-amber-400"
-                                : "text-slate-300"
-                            }`}
-                          />
-                        </button>
-                      )}
-                    </button>
-                  );
-                })}
+                          onToggleFavorite={() => handleRouteClick(sr)}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {restRoutes.length > 0 && heroRoutes.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowMoreRoutes((v) => !v)}
+                    className="w-full flex items-center justify-center gap-1 py-2.5 text-xs font-medium text-slate-400 hover:text-slate-600"
+                  >
+                    {showMoreRoutes ? "접기" : `다른 노선 보기 (${restRoutes.length})`}
+                    <ChevronDown
+                      className={`w-3.5 h-3.5 transition-transform ${showMoreRoutes ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                )}
+
+                {(showMoreRoutes || heroRoutes.length === 0) && (
+                  <div className="space-y-1.5">
+                    {restRoutes.map((sr) => (
+                      <StationRouteCard
+                        key={sr.routeId}
+                        sr={sr}
+                        isFavorited={isArrivalFavorited(sr.routeNo)}
+                        isAdding={addingRouteNo === sr.routeNo}
+                        onSelect={() => {
+                          const appRoute = allRoutes?.find(
+                            (r) => r.number === sr.routeNo || r.rawNumber === sr.routeNo
+                          );
+                          if (appRoute) onSelectRoute(appRoute);
+                          else showToast("노선 정보를 찾을 수 없어요");
+                        }}
+                        onToggleFavorite={() => handleRouteClick(sr)}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </>
@@ -1279,23 +1374,6 @@ const handleStopClick = async (stop: BusStop) => {
       )}
     </div>
   );
-}
-
-function parseInterval(interval: string): { min: number; max: number } | null {
-  const match = interval.match(/(\d+)~(\d+)분/);
-  if (match) return { min: parseInt(match[1], 10), max: parseInt(match[2], 10) };
-  const single = interval.match(/(\d+)분/);
-  if (single) {
-    const val = parseInt(single[1], 10);
-    return { min: val, max: val };
-  }
-  return null;
-}
-
-function parseTimeToMinutes(time: string): number {
-  const parts = time.split(":");
-  if (parts.length !== 2) return NaN;
-  return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
 }
 
 function generateTimetable(firstBus: string, lastBus: string, interval: string): string[] {
