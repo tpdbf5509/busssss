@@ -9,6 +9,7 @@ import { MapPin, ChevronDown, Star, Search, X, RefreshCw } from "lucide-react";
 import { useArrivalInfo } from "@/hooks/useArrivalInfo";
 import { formatArrivalText } from "@/lib/formatArrival";
 import { ReliabilityTag } from "@/components/ui";
+import { Modal } from "@/components/Modal";
 import { triggerArrivalRefresh } from "@/services/arrivalService";
 import type { Favorite } from "@/types";
 
@@ -457,17 +458,17 @@ export function HomeScreen({
 </section>
 
       {regionUnderDevOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setRegionUnderDevOpen(false)}
-          />
-          <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl p-6 animate-slide-up">
+        <Modal
+          onClose={() => setRegionUnderDevOpen(false)}
+          labelledBy="region-dev-title"
+          className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl p-6 animate-slide-up"
+        >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-slate-900">지역 설정</h2>
+              <h2 id="region-dev-title" className="text-lg font-bold text-slate-900">지역 설정</h2>
               <button
                 type="button"
                 onClick={() => setRegionUnderDevOpen(false)}
+                aria-label="닫기"
                 className="p-1.5 rounded-full hover:bg-slate-100"
               >
                 <X className="w-5 h-5 text-slate-500" />
@@ -485,8 +486,7 @@ export function HomeScreen({
             >
               확인
             </button>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

@@ -1,5 +1,6 @@
 import { Share, PlusSquare, MapPin } from "lucide-react";
 import type { Favorite } from "@/types";
+import { Modal } from "@/components/Modal";
 
 /**
  * B4. iOS는 PWA에 네이티브 홈 화면/잠금화면 위젯을 허용하지 않습니다(WidgetKit은
@@ -22,15 +23,17 @@ export function AddShortcutSheet({
   })();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl p-6 animate-slide-up">
+    <Modal
+      onClose={onClose}
+      labelledBy="add-shortcut-title"
+      className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl p-6 animate-slide-up"
+    >
         <div className="flex items-center gap-3 mb-5">
           <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
             <MapPin className="w-5 h-5 text-blue-600" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-base font-bold text-slate-900 truncate">{favorite.name} 바로가기 추가</h2>
+            <h2 id="add-shortcut-title" className="text-base font-bold text-slate-900 truncate">{favorite.name} 바로가기 추가</h2>
             <p className="text-xs text-slate-400 mt-0.5">앱을 열지 않고 도착정보를 바로 확인해요</p>
           </div>
         </div>
@@ -80,7 +83,6 @@ export function AddShortcutSheet({
         >
           나중에 하기
         </button>
-      </div>
-    </div>
+    </Modal>
   );
 }

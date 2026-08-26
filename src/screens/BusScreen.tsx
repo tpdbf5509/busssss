@@ -8,6 +8,7 @@ import { fetchBisTimeInfo, type BisTimeInfo } from "@/api/jeonjuBis";
 import type { Route, BusStop } from "@/types/route";
 import type { Favorite } from "@/types";
 import { LoadingSkeleton, ErrorState, EmptyState, ReliabilityTag } from "@/components/ui";
+import { Modal } from "@/components/Modal";
 import type { ReliabilityState } from "@/lib/reliability";
 import { showToast } from "@/components/Toast";
 import type { Station } from "@/types/route";
@@ -1419,15 +1420,17 @@ function DispatchScheduleModal({
   
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl animate-slide-up">
+    <Modal
+      onClose={onClose}
+      labelledBy="dispatch-schedule-title"
+      className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl animate-slide-up"
+    >
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <div className="flex items-center gap-2">
             <Clock className="w-5 h-5 text-blue-600" />
-            <h2 className="text-lg font-bold text-slate-900">배차시간</h2>
+            <h2 id="dispatch-schedule-title" className="text-lg font-bold text-slate-900">배차시간</h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-slate-100">
+          <button onClick={onClose} aria-label="닫기" className="p-1.5 rounded-full hover:bg-slate-100">
             <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
@@ -1565,8 +1568,7 @@ function DispatchScheduleModal({
             </>
           )}
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
               

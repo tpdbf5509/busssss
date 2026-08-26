@@ -21,6 +21,7 @@ import { useApp } from "@/store/AppContext";
 import { RegionModal } from "@/components/RegionModal";
 import { AddShortcutSheet } from "@/components/AddShortcutSheet";
 import { Toggle } from "@/components/ui";
+import { Modal } from "@/components/Modal";
 import { showToast } from "@/components/Toast";
 import { requestNotificationPermission } from "@/services/alertMonitorService";
 import { supabase } from "@/lib/supabaseClient";
@@ -114,6 +115,7 @@ export function MyScreen() {
       <header className="relative bg-gradient-to-b from-blue-600 to-blue-500 px-5 pt-16 pb-9 text-white">
           <button
             onClick={() => setMenuOpen(true)}
+            aria-label="설정 메뉴 열기"
             className="absolute top-14 right-4 p-2 text-white"
           >
             <Menu className="w-6 h-6" />
@@ -243,13 +245,12 @@ export function MyScreen() {
       )}
 
       {helpOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setHelpOpen(false)}
-          />
-          <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 shadow-2xl">
-            <h2 className="text-lg font-bold text-slate-900 mb-3">도움말</h2>
+        <Modal
+          onClose={() => setHelpOpen(false)}
+          labelledBy="help-modal-title"
+          className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 shadow-2xl"
+        >
+            <h2 id="help-modal-title" className="text-lg font-bold text-slate-900 mb-3">도움말</h2>
             <ul className="space-y-2 text-sm text-slate-600 leading-relaxed">
               <li>· 홈에서 즐겨찾기를 관리하고 도착 정보를 확인해요.</li>
               <li>· 버스 탭에서 노선을 검색하고 실시간 위치를 볼 수 있어요.</li>
@@ -263,21 +264,20 @@ export function MyScreen() {
             >
               확인
             </button>
-          </div>
-          </div>
+        </Modal>
       )}
 
       {menuOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setMenuOpen(false)}
-          />
-            <div className="relative bg-white w-72 h-full shadow-2xl overflow-y-auto">
+        <Modal
+          onClose={() => setMenuOpen(false)}
+          labelledBy="settings-menu-title"
+          align="right"
+          className="bg-white w-72 h-full shadow-2xl overflow-y-auto"
+        >
             <div className="pt-[15vh]" />
             <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="font-bold text-slate-900">설정</h2>
-              <button onClick={() => setMenuOpen(false)}>
+              <h2 id="settings-menu-title" className="font-bold text-slate-900">설정</h2>
+              <button onClick={() => setMenuOpen(false)} aria-label="닫기">
                 <X className="w-5 h-5 text-slate-400" />
               </button>
             </div>
@@ -353,8 +353,7 @@ export function MyScreen() {
               onClick={handleLogout}
               last
             />
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   </div>

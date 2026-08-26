@@ -16,6 +16,7 @@ import { useApp } from "@/store/AppContext";
 import { useAsync } from "@/hooks/useAsync";
 import { fetchAllRoutes, fetchStopsForRoute } from "@/services/routeService";
 import { Toggle, EmptyState, LoadingSkeleton } from "@/components/ui";
+import { Modal } from "@/components/Modal";
 import { showToast } from "@/components/Toast";
 import type { AlertSetting, AlertRecord } from "@/types";
 import type { Route, BusStop } from "@/types/route";
@@ -290,9 +291,11 @@ function AddAlertModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-2xl">
+    <Modal
+      onClose={onClose}
+      labelledBy="add-alert-title"
+      className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-2xl"
+    >
         <div className="px-5 py-4 border-b border-slate-100 sticky top-0 bg-white z-10 flex items-center gap-2">
           {step !== "route" && (
             <button
@@ -304,12 +307,13 @@ function AddAlertModal({
                   setSelectedStop(null);
                 }
               }}
+              aria-label="이전 단계로"
               className="p-1 -ml-1 rounded-full hover:bg-slate-100"
             >
               <ArrowLeft className="w-5 h-5 text-slate-600" />
             </button>
           )}
-          <h2 className="text-lg font-bold text-slate-900">
+          <h2 id="add-alert-title" className="text-lg font-bold text-slate-900">
             {step === "route" && "노선 선택"}
             {step === "stop" && "하차 정류장 선택"}
             {step === "options" && "알림 설정"}
@@ -329,6 +333,7 @@ function AddAlertModal({
               {query && (
                 <button
                   onClick={() => setQuery("")}
+                  aria-label="검색어 지우기"
                   className="absolute right-3 top-1/2 -translate-y-1/2"
                 >
                   <X className="w-4 h-4 text-slate-400" />
@@ -426,6 +431,7 @@ function AddAlertModal({
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setStopsBefore((s) => Math.max(1, s - 1))}
+                  aria-label="한 정거장 줄이기"
                   className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-lg font-bold"
                 >
                   -
@@ -435,6 +441,7 @@ function AddAlertModal({
                 </span>
                 <button
                   onClick={() => setStopsBefore((s) => Math.min(10, s + 1))}
+                  aria-label="한 정거장 늘리기"
                   className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-lg font-bold"
                 >
                   +
@@ -475,7 +482,6 @@ function AddAlertModal({
             </div>
           </div>
         )}
-      </div>
-    </div>
+    </Modal>
   );
 }

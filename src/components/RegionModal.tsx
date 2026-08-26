@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X, ChevronRight, MapPin, Check } from "lucide-react";
 import { REGIONS } from "@/data/mock";
+import { Modal } from "@/components/Modal";
 
 export function RegionModal({
   open,
@@ -20,15 +21,14 @@ export function RegionModal({
   const currentRegion = REGIONS.find((r) => r.sido === selectedSido);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl animate-slide-up">
+    <Modal
+      onClose={onClose}
+      labelledBy="region-modal-title"
+      className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl animate-slide-up"
+    >
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <h2 className="text-lg font-bold text-slate-900">지역 선택</h2>
-          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-slate-100">
+          <h2 id="region-modal-title" className="text-lg font-bold text-slate-900">지역 선택</h2>
+          <button onClick={onClose} aria-label="닫기" className="p-1.5 rounded-full hover:bg-slate-100">
             <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
@@ -87,7 +87,6 @@ export function RegionModal({
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

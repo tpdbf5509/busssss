@@ -53,10 +53,11 @@ export function AuthScreen() {
               <input
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="이메일을 입력하세요"
-                className="w-full bg-transparent py-3 text-sm outline-none"
+                className="w-full bg-transparent py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg"
               />
             </div>
           </label>
@@ -68,10 +69,11 @@ export function AuthScreen() {
                 type="password"
                 required
                 minLength={6}
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="6자 이상 입력하세요"
-                className="w-full bg-transparent py-3 text-sm outline-none"
+                className="w-full bg-transparent py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg"
               />
             </div>
           </label>
@@ -87,7 +89,7 @@ export function AuthScreen() {
             disabled={loading}
             className="w-full rounded-xl bg-blue-600 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
           >
-            {loading ? "처리 중..." : mode === "login" ? "로그인" : "회원가입"}
+            {loading ? "처리 중…" : mode === "login" ? "로그인" : "회원가입"}
           </button>
         </form>
 
