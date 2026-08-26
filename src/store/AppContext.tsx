@@ -219,9 +219,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     let cancelled = false;
 
-    (async () => {
-      for (const favorite of stopFavorites) {
-        if (cancelled) return;
+    // 즐겨찾기 개수만큼 순서대로(await) 기다리면 그만큼 홈 화면 도착정보가
+    // 늦게 뜬다. 같은 노선의 정류장 목록은 resolveNodeIdForRoute 내부에서
+    // 캐시/in-flight 공유로 중복 호출을 막으므로, 여기서는 병렬로 처리한다.
+    Promise.all(
+      stopFavorites.map(async (favorite) => {
         try {
           const nodeId = await resolveNodeIdForRoute(
             favorite.stopName!,
@@ -237,8 +239,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         } catch {
           // 보정 실패는 기존 즐겨찾기를 변경하지 않습니다.
         }
-      }
-    })();
+      })
+    );
 
     return () => {
       cancelled = true;
