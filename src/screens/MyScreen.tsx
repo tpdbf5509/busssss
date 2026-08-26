@@ -15,13 +15,16 @@ import {
   Check,
   X,
   Menu,
+  Smartphone,
 } from "lucide-react";
 import { useApp } from "@/store/AppContext";
 import { RegionModal } from "@/components/RegionModal";
+import { AddShortcutSheet } from "@/components/AddShortcutSheet";
 import { Toggle } from "@/components/ui";
 import { showToast } from "@/components/Toast";
 import { requestNotificationPermission } from "@/services/alertMonitorService";
 import { supabase } from "@/lib/supabaseClient";
+import type { Favorite } from "@/types";
 
 const SETTINGS_KEY = "busssss_settings_v1";
 
@@ -63,6 +66,7 @@ export function MyScreen() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [shortcutFavorite, setShortcutFavorite] = useState<Favorite | null>(null);
 
   useEffect(() => {
     applySettings(settings);
@@ -187,6 +191,13 @@ export function MyScreen() {
                           </p>
                         </div>
                         <button
+                          onClick={() => setShortcutFavorite(fav)}
+                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          aria-label="홈 화면 바로가기 추가"
+                        >
+                          <Smartphone className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => startEdit(fav.id, fav.label)}
                           className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                         >
@@ -223,6 +234,13 @@ export function MyScreen() {
           showToast(`${sido} ${sigungu}로 설정되었어요`);
         }}
       />
+
+      {shortcutFavorite && (
+        <AddShortcutSheet
+          favorite={shortcutFavorite}
+          onClose={() => setShortcutFavorite(null)}
+        />
+      )}
 
       {helpOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">

@@ -1,5 +1,6 @@
-import { Loader2, AlertTriangle, Inbox } from "lucide-react";
+import { Loader2, AlertTriangle, Inbox, Radio, Clock3 } from "lucide-react";
 import { formatArrivalText } from "@/lib/formatArrival";
+import type { ReliabilityState } from "@/lib/reliability";
 
 export function LoadingSkeleton({ className = "" }: { className?: string }) {
   return (
@@ -87,6 +88,40 @@ export function ArrivalBadge({
       className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${color}`}
     >
       {formatArrivalText(minutes, stopsAway)}
+    </span>
+  );
+}
+
+/**
+ * A1. 도착정보 신뢰도 태그.
+ * 색상만이 아니라 아이콘/문구로도 구분해서(B3 접근성) 실시간 GPS 기반인지
+ * 배차표 기반 추정인지, 그리고 지연이 의심되는지를 알려줍니다.
+ */
+export function ReliabilityTag({ reliability }: { reliability: ReliabilityState }) {
+  if (reliability.source === "unknown") return null;
+
+  if (reliability.delayed) {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-600">
+        <AlertTriangle className="w-2.5 h-2.5" />
+        지연 의심
+      </span>
+    );
+  }
+
+  if (reliability.source === "realtime") {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-emerald-600">
+        <Radio className="w-2.5 h-2.5" />
+        실시간
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-slate-400">
+      <Clock3 className="w-2.5 h-2.5" />
+      확인 중
     </span>
   );
 }

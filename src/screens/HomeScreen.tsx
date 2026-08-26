@@ -8,6 +8,7 @@ import type { TabId } from "@/components/BottomNav";
 import { MapPin, ChevronDown, Star, Search, X, RefreshCw } from "lucide-react";
 import { useArrivalInfo } from "@/hooks/useArrivalInfo";
 import { formatArrivalText } from "@/lib/formatArrival";
+import { ReliabilityTag } from "@/components/ui";
 import { triggerArrivalRefresh } from "@/services/arrivalService";
 import type { Favorite } from "@/types";
 
@@ -167,18 +168,22 @@ function FavoriteArrivalInfo({
   isRoute,
   routeNumber,
   directionLabel,
+  routeInterval,
 }: {
   fav: Favorite;
   isRoute: boolean;
   routeNumber: string;
   /** stop_route일 때 기점 → 종점 표시용 */
   directionLabel?: string;
+  /** A1 지연 판정 기준(배차간격) 계산용 */
+  routeInterval?: string;
 }) {
   const isStopRoute = fav.type === "stop_route";
-  const { data, status, isRefreshing } = useArrivalInfo(
+  const { data, status, isRefreshing, reliability } = useArrivalInfo(
     isStopRoute ? fav.tagoNodeId : undefined,
     isStopRoute ? fav.tagoRouteId : undefined,
     isStopRoute ? (fav.routeNumber ?? routeNumber) : undefined,
+    isStopRoute ? routeInterval : undefined,
   );
 
   let subtitle: string;
@@ -222,9 +227,22 @@ function FavoriteArrivalInfo({
           <p className="text-sm font-semibold text-slate-300">조회 중</p>
         )}
         {isStopRoute && data && (
-          <p className={`text-sm font-bold ${data.minutes <= 3 ? "text-blue-600" : "text-slate-700"}`}>
-            {formatArrivalText(data.minutes, data.stopsAway)}
-          </p>
+          <>
+            <p
+              className={`text-sm font-bold ${
+                reliability.delayed
+                  ? "text-amber-600"
+                  : data.minutes <= 3
+                    ? "text-blue-600"
+                    : "text-slate-700"
+              }`}
+            >
+              {formatArrivalText(data.minutes, data.stopsAway)}
+            </p>
+            <div className="mt-0.5 flex justify-end">
+              <ReliabilityTag reliability={reliability} />
+            </div>
+          </>
         )}
         {isStopRoute && status === "error" && !data && (
           <p className="text-sm font-semibold text-slate-300">정보 없음</p>
@@ -416,6 +434,7 @@ export function HomeScreen({
               isRoute={isRoute}
               routeNumber={routeNumber}
               directionLabel={directionLabel}
+              routeInterval={stopRoute?.interval}
             />
             </button>
 

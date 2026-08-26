@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AppProvider } from "@/store/AppContext";
+import { AppProvider, useApp } from "@/store/AppContext";
 import { BottomNav, type TabId } from "@/components/BottomNav";
 import { ToastContainer } from "@/components/Toast";
 import { HomeScreen } from "@/screens/HomeScreen";
@@ -11,10 +11,12 @@ import { AuthScreen } from "@/screens/AuthScreen";
 import { useDropoffAlertMonitor } from "@/hooks/useDropoffAlertMonitor";
 import { stopDropoffAlarm } from "@/services/alertMonitorService";
 import { supabase } from "@/lib/supabaseClient";
+import { X } from "lucide-react";
 
 type DropoffAlarm = { title: string; body: string };
 
 function AppContent() {
+  const { state } = useApp();
   const [tab, setTab] = useState<TabId>("home");
   const [pendingRouteId, setPendingRouteId] = useState<string | null>(null);
   const [pendingStation, setPendingStation] = useState<{
@@ -24,13 +26,47 @@ function AppContent() {
   } | null>(null);
   const [homeRefreshKey, setHomeRefreshKey] = useState(0);
   const [dropoffAlarm, setDropoffAlarm] = useState<DropoffAlarm | null>(null);
+  const [quickViewBanner, setQuickViewBanner] = useState<string | null>(null);
   const mainRef = useRef<HTMLElement>(null);
+  const deepLinkHandledRef = useRef(false);
 
   useDropoffAlertMonitor();
 
   useEffect(() => {
        mainRef.current?.scrollTo(0, 0);
      }, [tab]);
+
+  // B4. 즐겨찾기 바로가기 딥링크(?favorite=<id>) — 홈 화면에 개별 추가된
+  // 아이콘으로 들어오면, 탭 이동 없이 바로 그 정류장/노선 화면으로 진입합니다.
+  useEffect(() => {
+    if (deepLinkHandledRef.current) return;
+    const favoriteId = new URLSearchParams(window.location.search).get("favorite");
+    if (!favoriteId) return;
+
+    const fav = state.favorites.find((f) => f.id === favoriteId);
+    if (!fav) return;
+
+    deepLinkHandledRef.current = true;
+
+    if (fav.type === "station") {
+      setPendingStation({
+        id: fav.refId,
+        name: fav.name,
+        arsId: fav.label !== "정류장" ? fav.label : undefined,
+      });
+    } else {
+      const targetId = fav.type === "stop_route" ? fav.appRouteId : fav.refId;
+      if (targetId) setPendingRouteId(targetId);
+    }
+    setTab("bus");
+    document.title = `${fav.name} - BUS STOP`;
+    setQuickViewBanner(fav.name);
+
+    // URL은 정리하되(공유 시 매번 딥링크가 새로 뜨는 걸 방지), 히스토리는 남기지 않습니다.
+    const url = new URL(window.location.href);
+    url.searchParams.delete("favorite");
+    window.history.replaceState(null, "", url.toString());
+  }, [state.favorites]);
 
   useEffect(() => {
     const onAlarm = (event: Event) => {
@@ -95,6 +131,23 @@ function AppContent() {
               알람 끄기
             </button>
           </div>
+        </div>
+      )}
+
+      {quickViewBanner && (
+        <div className="shrink-0 z-20 bg-blue-600 text-white px-4 py-2.5 flex items-center gap-2 text-xs">
+          <span className="flex-1">
+            지금 화면을 <strong className="font-semibold">Safari 공유 → 홈 화면에 추가</strong>로 저장하면,
+            다음부터 앱을 열지 않고 "{quickViewBanner}" 도착정보를 바로 볼 수 있어요.
+          </span>
+          <button
+            type="button"
+            onClick={() => setQuickViewBanner(null)}
+            className="p-1 -m-1 shrink-0 rounded-full hover:bg-white/10"
+            aria-label="닫기"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
 

@@ -4,14 +4,26 @@ import {
   subscribeArrivalRefresh,
   type ArrivalInfo,
 } from "@/services/arrivalService";
+import { ArrivalReliabilityTracker, type ReliabilityState } from "@/lib/reliability";
 
 const REFRESH_INTERVAL_MS = 20_000;
 
-export function useArrivalInfo(nodeId?: string, routeId?: string, routeNumber?: string) {
+const UNKNOWN_RELIABILITY: ReliabilityState = { source: "unknown", delayed: false };
+
+export function useArrivalInfo(
+  nodeId?: string,
+  routeId?: string,
+  routeNumber?: string,
+  interval?: string,
+) {
   const [data, setData] = useState<ArrivalInfo | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [reliability, setReliability] = useState<ReliabilityState>(UNKNOWN_RELIABILITY);
   const hasDataRef = useRef(false);
+  const trackerRef = useRef(new ArrivalReliabilityTracker());
+  const intervalRef = useRef(interval);
+  intervalRef.current = interval;
   const visibleRef = useRef(
     typeof document === "undefined" ? true : document.visibilityState !== "hidden"
   );
@@ -27,6 +39,8 @@ export function useArrivalInfo(nodeId?: string, routeId?: string, routeNumber?: 
         const info = await fetchArrivalInfo(nodeId, routeId, routeNumber, {
           force: opts?.force,
         });
+
+        setReliability(trackerRef.current.update(info?.minutes ?? null, intervalRef.current));
 
         if (info) {
           setData(info);
@@ -50,10 +64,14 @@ export function useArrivalInfo(nodeId?: string, routeId?: string, routeNumber?: 
       setStatus("idle");
       setData(null);
       hasDataRef.current = false;
+      trackerRef.current.reset();
+      setReliability(UNKNOWN_RELIABILITY);
       return;
     }
 
     hasDataRef.current = false;
+    trackerRef.current.reset();
+    setReliability(UNKNOWN_RELIABILITY);
     setData(null);
     setStatus("loading");
     load();
@@ -92,6 +110,7 @@ export function useArrivalInfo(nodeId?: string, routeId?: string, routeNumber?: 
     data,
     status,
     isRefreshing,
+    reliability,
     refresh: () => load({ quiet: hasDataRef.current, force: true }),
   };
 }
