@@ -2,14 +2,6 @@ import { parseXml } from "./xml";
 
 export type RawRouteField = Record<string, string>;
 
-interface ApiEnvelope {
-  RFC30?: {
-    code?: string;
-    msg?: string;
-    routeList?: { list?: RawRouteField[] };
-  };
-}
-
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 

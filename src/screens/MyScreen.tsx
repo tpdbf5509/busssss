@@ -22,7 +22,7 @@ import { useApp } from "@/store/AppContext";
 import { RegionModal } from "@/components/RegionModal";
 import { AddShortcutSheet } from "@/components/AddShortcutSheet";
 import { Toggle } from "@/components/ui";
-import { showToast } from "@/components/Toast";
+import { showToast } from "@/lib/toastStore";
 import { requestNotificationPermission } from "@/services/alertMonitorService";
 import { supabase } from "@/lib/supabaseClient";
 import type { Favorite } from "@/types";
@@ -47,7 +47,9 @@ function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (raw) return { ...defaultSettings, ...JSON.parse(raw) };
-  } catch {}
+  } catch (err) {
+    console.warn("[MyScreen] 설정 로드 실패:", err);
+  }
   return { ...defaultSettings };
 }
 
@@ -74,7 +76,9 @@ export function MyScreen() {
     applySettings(settings);
     try {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-    } catch {}
+    } catch (err) {
+      console.warn("[MyScreen] 설정 저장 실패:", err);
+    }
   }, [settings]);
 
   const updateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {

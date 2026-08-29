@@ -2,8 +2,7 @@ import { useState } from "react";
 import { useApp } from "@/store/AppContext";
 import { useAsync } from "@/hooks/useAsync";
 import { fetchAllRoutes } from "@/services/routeService";
-import { RegionModal } from "@/components/RegionModal";
-import { showToast } from "@/components/Toast";
+import { showToast } from "@/lib/toastStore";
 import type { TabId } from "@/components/BottomNav";
 import { MapPin, ChevronDown, Star, Search, X, RefreshCw } from "lucide-react";
 import { useArrivalInfo } from "@/hooks/useArrivalInfo";
@@ -115,8 +114,6 @@ export function HomeScreen({
   ) => void;
 }) {
   const { state, dispatch } = useApp();
-  // 지역 설정은 일시 비활성화 — RegionModal 코드는 유지하여 추후 복원 가능
-  const [regionOpen, setRegionOpen] = useState(false);
   const [regionUnderDevOpen, setRegionUnderDevOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [refreshing, setRefreshing] = useState(false);

@@ -14,14 +14,18 @@ function loadFired(): Set<string> {
   try {
     const raw = localStorage.getItem(FIRED_KEY);
     if (raw) return new Set(JSON.parse(raw));
-  } catch {}
+  } catch (err) {
+    console.warn("[alertMonitorService] 중복 방지 기록 로드 실패:", err);
+  }
   return new Set();
 }
 
 function saveFired(set: Set<string>) {
   try {
     localStorage.setItem(FIRED_KEY, JSON.stringify([...set].slice(-200)));
-  } catch {}
+  } catch (err) {
+    console.warn("[alertMonitorService] 중복 방지 기록 저장 실패:", err);
+  }
 }
 
 export function loadAlertRecords(): AlertRecord[] {
@@ -31,19 +35,25 @@ export function loadAlertRecords(): AlertRecord[] {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) return parsed;
     }
-  } catch {}
+  } catch (err) {
+    console.warn("[alertMonitorService] 알림 기록 로드 실패:", err);
+  }
   return [];
 }
 
 export function saveAlertRecords(records: AlertRecord[]) {
   try {
     localStorage.setItem(RECORDS_KEY, JSON.stringify(records.slice(0, 50)));
-  } catch {}
+  } catch (err) {
+    console.warn("[alertMonitorService] 알림 기록 저장 실패:", err);
+  }
 }
 
 function playAlarmPattern() {
   try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    const AudioContextClass =
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextClass) return;
 
     if (!alarmContext) alarmContext = new AudioContextClass();
@@ -69,7 +79,9 @@ function playAlarmPattern() {
       osc.start(start + offset);
       osc.stop(start + offset + beepLength);
     }
-  } catch {}
+  } catch (err) {
+    console.debug("[alertMonitorService] 알람 소리 재생 실패:", err);
+  }
 }
 
 function stopAlarmSound() {
@@ -79,7 +91,9 @@ function stopAlarmSound() {
   }
   try {
     alarmContext?.close();
-  } catch {}
+  } catch (err) {
+    console.debug("[alertMonitorService] AudioContext 종료 실패:", err);
+  }
   alarmContext = null;
 }
 
@@ -104,7 +118,9 @@ function vibrate() {
     if (navigator.vibrate) {
       navigator.vibrate([350, 150, 350, 150, 350, 500]);
     }
-  } catch {}
+  } catch (err) {
+    console.debug("[alertMonitorService] 진동 실패:", err);
+  }
 }
 
 async function showBrowserNotification(title: string, body: string) {
@@ -122,7 +138,9 @@ async function showBrowserNotification(title: string, body: string) {
       tag: "bus-dropoff",
       requireInteraction: true,
     });
-  } catch {}
+  } catch (err) {
+    console.warn("[alertMonitorService] 브라우저 알림 표시 실패:", err);
+  }
 }
 
 export async function requestNotificationPermission(): Promise<boolean> {

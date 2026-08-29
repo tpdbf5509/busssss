@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Plus, Minus, CreditCard, TrendingUp, Receipt, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import { useApp } from "@/store/AppContext";
 import { CARD_INFO } from "@/data/mock";
-import { showToast } from "@/components/Toast";
+import { showToast } from "@/lib/toastStore";
 
 const chargeAmounts = [1000, 5000, 10000, 50000];
 const MAX_CHARGE_AMOUNT = 900000; // 실제 교통카드 1회 최대 충전 한도와 비슷하게 제한

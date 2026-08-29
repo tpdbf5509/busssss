@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
-import { Search, X, Star, ArrowLeft, Bus as BusIcon, RadioTower, Navigation, Clock, Calendar, ChevronDown } from "lucide-react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { Search, X, Star, ArrowLeft, Bus as BusIcon, Navigation, Clock, Calendar, ChevronDown } from "lucide-react";
 import { useAsync } from "@/hooks/useAsync";
 import { useBusLocations } from "@/hooks/useBusLocations";
 import { useApp } from "@/store/AppContext";
@@ -9,7 +9,7 @@ import type { Route, BusStop } from "@/types/route";
 import type { Favorite } from "@/types";
 import { LoadingSkeleton, ErrorState, EmptyState, ReliabilityTag } from "@/components/ui";
 import type { ReliabilityState } from "@/lib/reliability";
-import { showToast } from "@/components/Toast";
+import { showToast } from "@/lib/toastStore";
 import type { Station } from "@/types/route";
 import { MapPin } from "lucide-react";
 import { resolveNodeId, resolveNodeIdForRoute, resolveRouteId } from "@/services/arrivalService";
@@ -44,13 +44,22 @@ export function BusScreen({
 
   const { data: routes, status, retry } = useAsync(() => fetchAllRoutes(), []);
 
+  // onConsumeInitialRoute/onConsumeInitialStation은 App.tsx에서 매 렌더마다 새로
+  // 만들어지는 인라인 함수라, 이걸 그대로 deps에 넣으면 부모가 리렌더될 때마다
+  // (예: 검색어 입력) 이 effect가 다시 실행돼 사용자가 고른 노선/정류장을 되돌려버린다.
+  // ref로 최신 콜백만 붙잡아서 deps 경고 없이 안전하게 최신 함수를 호출한다.
+  const onConsumeInitialRouteRef = useRef(onConsumeInitialRoute);
+  onConsumeInitialRouteRef.current = onConsumeInitialRoute;
+  const onConsumeInitialStationRef = useRef(onConsumeInitialStation);
+  onConsumeInitialStationRef.current = onConsumeInitialStation;
+
   useEffect(() => {
     if (!initialRouteId || !routes) return;
     const target = routes.find((r) => r.id === initialRouteId);
     if (target) {
       setSelectedRoute(target);
     }
-    onConsumeInitialRoute?.();
+    onConsumeInitialRouteRef.current?.();
   }, [initialRouteId, routes]);
     // 홈 정류장 즐겨찾기 → 정류장 상세로 바로 이동
     useEffect(() => {
@@ -64,7 +73,7 @@ export function BusScreen({
         lat: null,
         lng: null,
       });
-      onConsumeInitialStation?.();
+      onConsumeInitialStationRef.current?.();
     }, [initialStation]);
     // 검색어로 정류장 검색
     useEffect(() => {
@@ -1154,7 +1163,15 @@ const handleStopClick = async (stop: BusStop) => {
           {busStatus === "success" && buses && buses.length > 0 && "실시간 위치 연동 중"}
           {busStatus === "success" && buses && buses.length === 0 && "현재 운행 중인 버스가 없어요"}
         </span>
-        {lastUpdated && (
+        {busStatus === "error" && (
+          <button
+            onClick={() => retryBuses()}
+            className="text-[11px] font-semibold text-blue-600 ml-auto hover:underline"
+          >
+            다시 시도
+          </button>
+        )}
+        {busStatus !== "error" && lastUpdated && (
           <span className="text-[10px] text-slate-300 ml-auto">
             {lastUpdated.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })} 갱신
           </span>
