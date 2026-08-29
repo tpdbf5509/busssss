@@ -1,46 +1,68 @@
-import { useReducer, useEffect, type ReactNode } from "react";
+import { useReducer, useEffect, useRef, type ReactNode } from "react";
+import { showToast } from "@/lib/toastStore";
 import type { Favorite, AlertSetting } from "@/types";
 import { FAVORITES, ALERT_SETTINGS, CARD_INFO } from "@/data/mock";
 import { fetchAllRoutes } from "@/services/routeService";
 import { resolveDirections } from "@/services/busLocationService";
 import { resolveNodeIdForRoute } from "@/services/arrivalService";
-import { AppContext, type AppState, type Action } from "@/store/appContext";
+import {
+  AppContext,
+  type AppState,
+  type Action,
+  type StorageLoadError,
+} from "@/store/appContext";
 
 const FAVORITES_STORAGE_KEY = "busssss_favorites_v1";
 const ALERTS_STORAGE_KEY = "busssss_alerts_v1";
 
-function loadFavorites(): Favorite[] {
+/**
+ * 저장값을 읽지 못하면 예시 데이터로 대체하되, "실패했다"는 사실을 함께
+ * 돌려준다. 실패 사실을 잃어버리면 (1) 사용자에게 알릴 수 없고 (2) 아래
+ * 저장 effect가 마운트 직후 예시 데이터를 원래 저장값 위에 덮어써버린다.
+ */
+function loadStored<T>(key: string, fallback: T[], label: string): { data: T[]; failed: boolean } {
   try {
-    const raw = localStorage.getItem(FAVORITES_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
-    }
+    const raw = localStorage.getItem(key);
+    if (raw === null) return { data: fallback, failed: false }; // 저장된 적 없음 = 정상
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return { data: parsed as T[], failed: false };
+    console.warn(`[AppContext] ${label} 형식이 올바르지 않습니다.`);
   } catch (err) {
-    console.warn("[AppContext] 즐겨찾기 로드 실패:", err);
+    console.warn(`[AppContext] ${label} 로드 실패:`, err);
   }
-  return FAVORITES;
+  return { data: fallback, failed: true };
 }
 
-function loadAlerts(): AlertSetting[] {
-  try {
-    const raw = localStorage.getItem(ALERTS_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
-    }
-  } catch (err) {
-    console.warn("[AppContext] 알림 설정 로드 실패:", err);
-  }
-  return ALERT_SETTINGS;
-}
+const favoritesLoad = loadStored<Favorite>(FAVORITES_STORAGE_KEY, FAVORITES, "즐겨찾기");
+const alertsLoad = loadStored<AlertSetting>(ALERTS_STORAGE_KEY, ALERT_SETTINGS, "알림 설정");
 
 const initialState: AppState = {
   region: { sido: "전북특별자치도", sigungu: "전주시" },
-  favorites: loadFavorites(),
+  favorites: favoritesLoad.data,
   cardBalance: CARD_INFO.balance,
-  alerts: loadAlerts(),
+  alerts: alertsLoad.data,
+  storageError:
+    favoritesLoad.failed || alertsLoad.failed
+      ? { favorites: favoritesLoad.failed, alerts: alertsLoad.failed }
+      : null,
 };
+
+/**
+ * 사용자가 직접 목록을 바꿨다면 "저장값을 못 읽었다"는 경고는 역할을 다한 것이다.
+ * 플래그를 내려서 저장이 재개되게 한다.
+ *
+ * SYNC_FAVORITE_* 같은 자동 보정에는 적용하지 않는다. 그건 사용자의 의사가
+ * 아니라 백그라운드 동작이라, 그걸로 저장을 재개하면 예시 데이터가 원래
+ * 저장값을 덮어쓰는 걸 막지 못한다.
+ */
+function clearStorageError(
+  current: StorageLoadError | null,
+  slice: "favorites" | "alerts",
+): StorageLoadError | null {
+  if (!current?.[slice]) return current;
+  const next = { ...current, [slice]: false };
+  return next.favorites || next.alerts ? next : null;
+}
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -53,15 +75,24 @@ function reducer(state: AppState, action: Action): AppState {
         )
       )
         return state;
-      return { ...state, favorites: [...state.favorites, action.favorite] };
+      return {
+        ...state,
+        favorites: [...state.favorites, action.favorite],
+        storageError: clearStorageError(state.storageError, "favorites"),
+      };
     case "REMOVE_FAVORITE":
-      return { ...state, favorites: state.favorites.filter((f) => f.id !== action.id) };
+      return {
+        ...state,
+        favorites: state.favorites.filter((f) => f.id !== action.id),
+        storageError: clearStorageError(state.storageError, "favorites"),
+      };
     case "RENAME_FAVORITE":
       return {
         ...state,
         favorites: state.favorites.map((f) =>
           f.id === action.id ? { ...f, label: action.label } : f
         ),
+        storageError: clearStorageError(state.storageError, "favorites"),
       };
     case "SYNC_FAVORITE_ROUTE_ID":
       return {
@@ -82,16 +113,27 @@ function reducer(state: AppState, action: Action): AppState {
     case "PAY_CARD":
       return { ...state, cardBalance: Math.max(0, state.cardBalance - action.amount) };
     case "ADD_ALERT":
-      return { ...state, alerts: [...state.alerts, action.alert] };
+      return {
+        ...state,
+        alerts: [...state.alerts, action.alert],
+        storageError: clearStorageError(state.storageError, "alerts"),
+      };
     case "TOGGLE_ALERT":
       return {
         ...state,
         alerts: state.alerts.map((a) =>
           a.id === action.id ? { ...a, active: !a.active } : a
         ),
+        storageError: clearStorageError(state.storageError, "alerts"),
       };
     case "REMOVE_ALERT":
-      return { ...state, alerts: state.alerts.filter((a) => a.id !== action.id) };
+      return {
+        ...state,
+        alerts: state.alerts.filter((a) => a.id !== action.id),
+        storageError: clearStorageError(state.storageError, "alerts"),
+      };
+    case "DISMISS_STORAGE_ERROR":
+      return { ...state, storageError: null };
     default:
       return state;
   }
@@ -100,19 +142,42 @@ function reducer(state: AppState, action: Action): AppState {
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
+  // 저장값을 못 읽은 슬라이스는 예시 데이터로 덮어쓰지 않는다. 그대로 두면
+  // 마운트 직후 사용자의 원래 저장값이 날아가서, 배너로 알릴 때쯤엔 되돌릴
+  // 게 없다. 사용자가 직접 목록을 바꾸면 reducer가 이 플래그를 내리고, 그때
+  // 비로소 저장이 재개된다.
+  //
+  // "첫 렌더만 건너뛰기" 같은 방식은 쓰지 않는다 — StrictMode가 개발 모드에서
+  // effect를 두 번 실행해 가드가 소진되고, 두 번째 실행이 그대로 덮어쓴다.
+  // ref로 최신 값만 읽어 deps는 정직하게 유지하면서 조건을 결정론적으로 만든다.
+  const storageErrorRef = useRef(state.storageError);
+  storageErrorRef.current = state.storageError;
+
+  // 저장 실패 안내는 세션당 한 번만 (목록을 바꿀 때마다 토스트가 쌓이면 안 됨)
+  const saveErrorNotified = useRef(false);
+  const notifySaveFailure = () => {
+    if (saveErrorNotified.current) return;
+    saveErrorNotified.current = true;
+    showToast("변경한 내용을 저장하지 못했어요. 앱을 다시 열면 사라질 수 있어요", "error");
+  };
+
   useEffect(() => {
+    if (storageErrorRef.current?.favorites) return;
     try {
       localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(state.favorites));
     } catch (err) {
       console.warn("[AppContext] 즐겨찾기 저장 실패:", err);
+      notifySaveFailure();
     }
   }, [state.favorites]);
 
   useEffect(() => {
+    if (storageErrorRef.current?.alerts) return;
     try {
       localStorage.setItem(ALERTS_STORAGE_KEY, JSON.stringify(state.alerts));
     } catch (err) {
       console.warn("[AppContext] 알림 설정 저장 실패:", err);
+      notifySaveFailure();
     }
   }, [state.alerts]);
 

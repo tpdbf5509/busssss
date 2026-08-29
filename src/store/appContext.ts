@@ -8,11 +8,25 @@ import type { Favorite, AlertSetting } from "@/types";
  * AppContext.tsx는 AppProvider 컴포넌트만 export하도록 분리했습니다.
  */
 
+/**
+ * localStorage에서 저장된 데이터를 불러오지 못한 상황.
+ *
+ * 이때 화면에는 예시(mock) 데이터가 대신 뜨는데, 그 사실을 사용자가 모르면
+ * 목록을 건드리는 순간 원래 저장돼 있던 내용이 예시 데이터로 덮어써진다.
+ * 그래서 조용히 넘기지 않고 배너로 알린다(StorageErrorBanner).
+ */
+export interface StorageLoadError {
+  favorites: boolean;
+  alerts: boolean;
+}
+
 export interface AppState {
   region: { sido: string; sigungu: string };
   favorites: Favorite[];
   cardBalance: number;
   alerts: AlertSetting[];
+  /** null이면 정상 로드됐거나 사용자가 안내를 확인한 상태 */
+  storageError: StorageLoadError | null;
 }
 
 export type Action =
@@ -26,7 +40,8 @@ export type Action =
   | { type: "PAY_CARD"; amount: number }
   | { type: "ADD_ALERT"; alert: AlertSetting }
   | { type: "TOGGLE_ALERT"; id: string }
-  | { type: "REMOVE_ALERT"; id: string };
+  | { type: "REMOVE_ALERT"; id: string }
+  | { type: "DISMISS_STORAGE_ERROR" };
 
 export interface AppContextValue {
   state: AppState;
