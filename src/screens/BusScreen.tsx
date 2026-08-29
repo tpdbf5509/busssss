@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { Search, X, Star, ArrowLeft, Bus as BusIcon, Navigation, Clock, Calendar, ChevronDown } from "lucide-react";
 import { useAsync } from "@/hooks/useAsync";
 import { useBusLocations } from "@/hooks/useBusLocations";
-import { useApp } from "@/store/AppContext";
+import { useApp } from "@/store/appContext";
 import { fetchAllRoutes, fetchStopsForRoute, fetchRoutesForStop } from "@/services/routeService";
 import { fetchBisTimeInfo, type BisTimeInfo } from "@/api/jeonjuBis";
 import type { Route, BusStop } from "@/types/route";

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { AppProvider, useApp } from "@/store/AppContext";
+import { AppProvider } from "@/store/AppContext";
+import { useApp } from "@/store/appContext";
 import { BottomNav, type TabId } from "@/components/BottomNav";
 import { ToastContainer } from "@/components/Toast";
 import { HomeScreen } from "@/screens/HomeScreen";

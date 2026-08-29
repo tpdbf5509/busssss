@@ -12,7 +12,7 @@ import {
   ChevronRight,
   ArrowLeft,
 } from "lucide-react";
-import { useApp } from "@/store/AppContext";
+import { useApp } from "@/store/appContext";
 import { useAsync } from "@/hooks/useAsync";
 import { fetchAllRoutes, fetchStopsForRoute } from "@/services/routeService";
 import { Toggle, EmptyState, LoadingSkeleton } from "@/components/ui";

@@ -4,6 +4,21 @@ import { indexOfStopByOrder, resolveBusStopIndex } from "@/lib/stopPosition";
 import type { AlertSetting, AlertRecord } from "@/types";
 import type { Route } from "@/types/route";
 
+/**
+ * 예외 로그 레벨 기준 (이 저장소 공통).
+ *
+ * - `console.warn` — 사용자의 데이터가 유실됐거나 저장되지 않은 경우.
+ *   예: localStorage 읽기/쓰기 실패(용량 초과, 사파리 프라이빗 모드).
+ *   조용히 넘어가면 사용자는 설정이 사라진 이유를 알 수 없다.
+ * - `console.debug` — 환경에 따라 실패하는 게 정상인 best-effort 호출, 또는
+ *   주기적으로 재시도되는 작업. 예: 오디오/진동/알림 API, 20초 폴링의 네트워크
+ *   실패. warn으로 올리면 콘솔이 잠겨 진짜 문제가 묻힌다.
+ * - 사용자가 지금 한 동작이 실패한 경우는 로그가 아니라 토스트/에러 상태로
+ *   화면에 알린다.
+ *
+ * 빈 `catch {}`는 쓰지 않는다. 최소한 위 중 하나로 흔적을 남긴다.
+ */
+
 const FIRED_KEY = "busssss_alert_fired_v1";
 const RECORDS_KEY = "busssss_alert_records_v1";
 
@@ -186,7 +201,10 @@ export async function checkDropoffAlerts(
     let locations;
     try {
       locations = await fetchBusLocations(route);
-    } catch {
+    } catch (err) {
+      // 20초마다 재시도하므로 warn으로 올리면 콘솔이 잠긴다. 다만 완전히
+      // 삼키면 알림이 계속 안 울릴 때 단서가 없어 debug로 흔적만 남긴다.
+      console.debug(`[alertMonitorService] ${route.number}번 실시간 위치 조회 실패:`, err);
       continue;
     }
 
@@ -197,7 +215,8 @@ export async function checkDropoffAlerts(
     let stops;
     try {
       stops = await fetchStopsForRoute(route);
-    } catch {
+    } catch (err) {
+      console.debug(`[alertMonitorService] ${route.number}번 정류장 목록 조회 실패:`, err);
       continue;
     }
     if (stops.length === 0) continue;

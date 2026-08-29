@@ -1,29 +1,10 @@
-import { createContext, useContext, useReducer, useEffect, type ReactNode } from "react";
+import { useReducer, useEffect, type ReactNode } from "react";
 import type { Favorite, AlertSetting } from "@/types";
 import { FAVORITES, ALERT_SETTINGS, CARD_INFO } from "@/data/mock";
 import { fetchAllRoutes } from "@/services/routeService";
 import { resolveDirections } from "@/services/busLocationService";
 import { resolveNodeIdForRoute } from "@/services/arrivalService";
-
-interface AppState {
-  region: { sido: string; sigungu: string };
-  favorites: Favorite[];
-  cardBalance: number;
-  alerts: AlertSetting[];
-}
-
-type Action =
-  | { type: "SET_REGION"; sido: string; sigungu: string }
-  | { type: "ADD_FAVORITE"; favorite: Favorite }
-  | { type: "REMOVE_FAVORITE"; id: string }
-  | { type: "RENAME_FAVORITE"; id: string; label: string }
-  | { type: "SYNC_FAVORITE_ROUTE_ID"; id: string; tagoRouteId: string }
-  | { type: "SYNC_FAVORITE_NODE_ID"; id: string; tagoNodeId: string }
-  | { type: "CHARGE_CARD"; amount: number }
-  | { type: "PAY_CARD"; amount: number }
-  | { type: "ADD_ALERT"; alert: AlertSetting }
-  | { type: "TOGGLE_ALERT"; id: string }
-  | { type: "REMOVE_ALERT"; id: string };
+import { AppContext, type AppState, type Action } from "@/store/appContext";
 
 const FAVORITES_STORAGE_KEY = "busssss_favorites_v1";
 const ALERTS_STORAGE_KEY = "busssss_alerts_v1";
@@ -115,11 +96,6 @@ function reducer(state: AppState, action: Action): AppState {
       return state;
   }
 }
-
-const AppContext = createContext<{
-  state: AppState;
-  dispatch: React.Dispatch<Action>;
-} | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -260,10 +236,4 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [state.favorites]);
 
   return <AppContext.Provider value={{ state, dispatch }}>{children}</AppContext.Provider>;
-}
-
-export function useApp() {
-  const ctx = useContext(AppContext);
-  if (!ctx) throw new Error("useApp must be used within AppProvider");
-  return ctx;
 }

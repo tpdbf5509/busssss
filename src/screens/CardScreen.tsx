@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, Minus, CreditCard, TrendingUp, Receipt, ArrowUpRight, ArrowDownLeft } from "lucide-react";
-import { useApp } from "@/store/AppContext";
+import { useApp } from "@/store/appContext";
 import { CARD_INFO } from "@/data/mock";
 import { showToast } from "@/lib/toastStore";
 
