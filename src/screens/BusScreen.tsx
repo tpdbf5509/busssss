@@ -1394,13 +1394,16 @@ function generateTimetable(firstBus: string, lastBus: string, interval: string):
   const info = parseInterval(interval);
   if (!info) return [];
   const start = parseTimeToMinutes(firstBus);
-  const end = parseTimeToMinutes(lastBus);
-  if (isNaN(start) || isNaN(end) || end <= start) return [];
+  let end = parseTimeToMinutes(lastBus);
+  if (isNaN(start) || isNaN(end)) return [];
+  // 막차가 "00:20"처럼 자정을 넘겨 기록된 노선은 end가 start보다 작게
+  // 파싱된다. 다음 날로 넘어간 것으로 보고 24시간을 더해 보정한다.
+  if (end <= start) end += 24 * 60;
   const avg = Math.max(1, Math.round((info.min + info.max) / 2));
   const times: string[] = [];
   let current = start;
   while (current <= end) {
-    const h = Math.floor(current / 60);
+    const h = Math.floor(current / 60) % 24;
     const m = current % 60;
     times.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
     current += avg;

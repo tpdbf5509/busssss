@@ -67,6 +67,7 @@ export function MyScreen() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [shortcutFavorite, setShortcutFavorite] = useState<Favorite | null>(null);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
   useEffect(() => {
     applySettings(settings);
@@ -98,8 +99,12 @@ export function MyScreen() {
     else showToast("알림 권한이 필요해요. 브라우저 설정에서 허용해 주세요");
   };
 
-  const handleLogout = async () => {
-    if (!confirm("로그아웃 할까요? (로컬 설정은 유지됩니다)")) return;
+  // window.confirm()은 iOS 홈 화면에 설치된 standalone PWA에서는 브라우저
+  // 크롬이 없어 표시되지 않거나 즉시 취소된 것처럼 동작하는 WebKit 제약이
+  // 있다. 이 앱의 목표가 아이폰 홈 화면 배포라 네이티브 confirm() 대신
+  // 자체 확인 모달(logoutConfirmOpen)을 쓴다.
+  const performLogout = async () => {
+    setLogoutConfirmOpen(false);
     const { error } = await supabase.auth.signOut();
     if (error) {
       showToast("로그아웃에 실패했어요");
@@ -227,6 +232,8 @@ export function MyScreen() {
 
       <RegionModal
         open={regionOpen}
+        currentSido={state.region.sido}
+        currentSigungu={state.region.sigungu}
         onClose={() => setRegionOpen(false)}
         onSelect={(sido, sigungu) => {
           dispatch({ type: "SET_REGION", sido, sigungu });
@@ -240,6 +247,33 @@ export function MyScreen() {
           favorite={shortcutFavorite}
           onClose={() => setShortcutFavorite(null)}
         />
+      )}
+
+      {logoutConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setLogoutConfirmOpen(false)}
+          />
+          <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 shadow-2xl animate-slide-up">
+            <h2 className="text-lg font-bold text-slate-900 mb-2">로그아웃 할까요?</h2>
+            <p className="text-sm text-slate-500 leading-relaxed mb-5">로컬 설정은 유지됩니다.</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setLogoutConfirmOpen(false)}
+                className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-2xl font-medium text-sm"
+              >
+                취소
+              </button>
+              <button
+                onClick={performLogout}
+                className="flex-1 py-3 bg-red-500 text-white rounded-2xl font-semibold text-sm"
+              >
+                로그아웃
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {helpOpen && (
@@ -350,7 +384,7 @@ export function MyScreen() {
               icon={LogOut}
               label="로그아웃"
               danger
-              onClick={handleLogout}
+              onClick={() => setLogoutConfirmOpen(true)}
               last
             />
           </div>

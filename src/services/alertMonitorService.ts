@@ -171,16 +171,18 @@ export async function checkDropoffAlerts(
       continue;
     }
 
+    const today = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD (로컬 기준)
+
     for (const alert of routeAlerts) {
       const triggerOrder = alert.targetStopOrder - alert.stopsBefore;
       if (triggerOrder < 1) continue;
 
       for (const bus of locations) {
-        if (
-          bus.nodeOrder >= triggerOrder &&
-          bus.nodeOrder < alert.targetStopOrder
-        ) {
-          const key = `${alert.id}_${bus.vehicleNo}`;
+        // 상한(< targetStopOrder)을 두면 폴링 사이에 버스가 구간을 통째로
+        // 지나쳐버렸을 때 알림이 영원히 안 울린다. 하한만 확인하고, 같은
+        // 날 같은 차량에 대한 중복 발송은 아래 fired 키로 막는다.
+        if (bus.nodeOrder >= triggerOrder) {
+          const key = `${today}_${alert.id}_${bus.vehicleNo}`;
           if (fired.has(key)) continue;
 
           fired.add(key);

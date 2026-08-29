@@ -54,9 +54,17 @@ function AppContent() {
         name: fav.name,
         arsId: fav.label !== "정류장" ? fav.label : undefined,
       });
+    } else if (fav.type === "stop_route") {
+      // appRouteId가 없으면(옵셔널 필드) 노선 상세로는 못 가지만, 정류장
+      // 자체는 tagoNodeId로 알 수 있으니 그 정류장 화면으로라도 보낸다.
+      // 아무 데도 안 옮기고 배너만 뜨는 것보다 낫다.
+      if (fav.appRouteId) {
+        setPendingRouteId(fav.appRouteId);
+      } else if (fav.tagoNodeId && fav.stopName) {
+        setPendingStation({ id: fav.tagoNodeId, name: fav.stopName });
+      }
     } else {
-      const targetId = fav.type === "stop_route" ? fav.appRouteId : fav.refId;
-      if (targetId) setPendingRouteId(targetId);
+      setPendingRouteId(fav.refId);
     }
     setTab("bus");
     document.title = `${fav.name} - BUS STOP`;

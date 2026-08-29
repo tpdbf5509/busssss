@@ -5,9 +5,10 @@ import { CARD_INFO } from "@/data/mock";
 import { showToast } from "@/components/Toast";
 
 const chargeAmounts = [1000, 5000, 10000, 50000];
+const MAX_CHARGE_AMOUNT = 900000; // 실제 교통카드 1회 최대 충전 한도와 비슷하게 제한
 
 export function CardScreen() {
-  const { state, dispatch } = useApp();
+  const { state } = useApp();
   const [amount, setAmount] = useState(5000);
   const [charging, setCharging] = useState(false);
   const [customMode, setCustomMode] = useState(false);
@@ -19,17 +20,19 @@ export function CardScreen() {
     if (amount <= 0) return;
     setCharging(true);
     setTimeout(() => {
-      dispatch({ type: "CHARGE_CARD", amount });
+      // 모바일 버스카드 연동 전이라 실제로는 잔액을 바꾸지 않습니다.
+      // (화면 상단에도 "준비중"이라고 안내하는데, 이전엔 여기서 실제로
+      // CHARGE_CARD를 dispatch해 안내 문구와 동작이 어긋났습니다.)
       setCharging(false);
-      showToast(`${amount.toLocaleString()}원이 충전되었어요`);
+      showToast("아직 준비 중인 기능이에요. 미리보기 화면입니다");
     }, 800);
   };
 
   const applyCustomInput = (raw: string) => {
-    const digits = raw.replace(/[^0-9]/g, "");
+    const digits = raw.replace(/[^0-9]/g, "").slice(0, 7); // 900,000원 상한이라 7자리면 충분
     setCustomInput(digits);
     const n = parseInt(digits || "0", 10);
-    if (!Number.isNaN(n)) setAmount(n);
+    if (!Number.isNaN(n)) setAmount(Math.min(MAX_CHARGE_AMOUNT, n));
   };
 
   const formatLabel = (amt: number) => {
@@ -40,7 +43,7 @@ export function CardScreen() {
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-slate-50">
-      <header className="bg-gradient-to-b from-slate-900 to-slate-800 px-5 pt-16 pb-9 text-whitesticky top-0 z-30 shrink-0">
+      <header className="bg-gradient-to-b from-slate-900 to-slate-800 px-5 pt-16 pb-9 text-white sticky top-0 z-30 shrink-0">
         <h1 className="text-xl font-bold mb-4">모바일 버스카드</h1>
 
         <div className="relative bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-400 rounded-2xl p-5 shadow-xl overflow-hidden">
@@ -153,7 +156,7 @@ export function CardScreen() {
             </div>
             <button
               onClick={() => {
-                const next = amount + 1000;
+                const next = Math.min(MAX_CHARGE_AMOUNT, amount + 1000);
                 setAmount(next);
                 if (customMode) setCustomInput(String(next));
               }}

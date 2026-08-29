@@ -63,7 +63,12 @@ function reducer(state: AppState, action: Action): AppState {
     case "SET_REGION":
       return { ...state, region: { sido: action.sido, sigungu: action.sigungu } };
     case "ADD_FAVORITE":
-      if (state.favorites.some((f) => f.refId === action.favorite.refId)) return state;
+      if (
+        state.favorites.some(
+          (f) => f.refId === action.favorite.refId && f.type === action.favorite.type
+        )
+      )
+        return state;
       return { ...state, favorites: [...state.favorites, action.favorite] };
     case "REMOVE_FAVORITE":
       return { ...state, favorites: state.favorites.filter((f) => f.id !== action.id) };
