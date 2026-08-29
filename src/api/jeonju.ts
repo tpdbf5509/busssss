@@ -153,6 +153,9 @@ export async function getRoutes(): Promise<RawRouteField[]> {
       brtEndNm: cached?.end_name || row.end_node || "",
       brtFirsttime: row.start_time ?? "",
       brtLasttime: row.end_time ?? "",
+      // master가 본선/분선의 정답(category)을 갖고 있다 — 프론트에서
+      // 하드코딩된 배열로 다시 추측하지 않도록 그대로 내려준다.
+      category: row.category ?? "",
     };
   });
 

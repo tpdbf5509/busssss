@@ -60,6 +60,10 @@ function formatRouteNumber(raw: RawRouteField): string {
 
 function mapToRoute(raw: RawRouteField): Route {
   const displayNumber = formatRouteNumber(raw);
+  // bus_routes_master.category가 본선/분선의 정답이다. 값이 없는(마스터에
+  // 없고 cache에만 있는) 노선은 기존 기본값과 같게 본선으로 둔다.
+  const category = firstValue(raw, ["category"]);
+  const typeLabel = category === "분선" ? "분선" : "본선";
 
   return {
     id: firstValue(raw, ["brtStdid", "brt_stdid", "brtStdId"]) || "",
@@ -67,7 +71,7 @@ function mapToRoute(raw: RawRouteField): Route {
     rawNumber: firstValue(raw, ["brtNo", "brt_no", "brtId", "brt_id"]) || "",
     class: firstValue(raw, ["brtClass", "brt_class"]) || "",
     subId: firstValue(raw, ["brtSubid", "brt_subid", "brtSubId"]) || "",
-    name: `본선${displayNumber}`,
+    name: `${typeLabel}${displayNumber}`,
     start:
       firstValue(raw, [
         "brtSname",
