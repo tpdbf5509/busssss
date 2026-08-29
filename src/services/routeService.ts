@@ -95,7 +95,9 @@ function mapToRoute(raw: RawRouteField): Route {
     interval: (() => {
       const min = firstValue(raw, ["brtMininterval", "brt_mininterval", "minInterval"]);
       const max = firstValue(raw, ["brtMaxinterval", "brt_maxinterval", "maxInterval"]);
-      return min && max ? `${min}~${max}분` : "정보 없음";
+      if (!min || !max) return "정보 없음";
+      if (min === "0" && max === "0") return "정보 없음";
+      return min === max ? `${min}분` : `${min}~${max}분`;
     })(),
     distance: (() => {
       const len = firstValue(raw, ["brtLength", "brt_length", "length"]);

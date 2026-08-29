@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   ChevronRight,
+  MoreHorizontal,
   MapPin,
   Star,
   Pencil,
@@ -345,9 +346,10 @@ export function MyScreen() {
             />
 
             <SettingRow
-              icon={ChevronRight}
+              icon={MoreHorizontal}
               label="더보기"
               onClick={() => setMoreOpen((prev) => !prev)}
+              expanded={moreOpen}
             />
 
             {moreOpen && (
@@ -401,12 +403,14 @@ function SettingRow({
   onClick,
   danger,
   last,
+  expanded,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   onClick: () => void;
   danger?: boolean;
   last?: boolean;
+  expanded?: boolean;
 }) {
   return (
     <button
@@ -423,7 +427,11 @@ function SettingRow({
       >
         {label}
       </span>
-      <ChevronRight className="w-4 h-4 text-slate-300" />
+      <ChevronRight
+        className={`w-4 h-4 text-slate-300 transition-transform ${
+          expanded ? "rotate-90" : ""
+        }`}
+      />
     </button>
   );
 }
