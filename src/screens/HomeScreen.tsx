@@ -134,7 +134,7 @@ export function HomeScreen({
 
   return (
     <div className="flex flex-col bg-slate-50">
-       <header className="bg-gradient-to-b from-blue-600 to-blue-500 text-white px-5 pt-16 pb-9 shrink-0">
+       <header className="bg-gradient-to-b from-blue-600 to-blue-500 text-white px-5 pt-safe-16 pb-9 shrink-0">
          <div className="flex items-center justify-between mb-1.5">
           <h1 className="text-2xl font-bold tracking-tight">BUS STOP</h1>
           <button

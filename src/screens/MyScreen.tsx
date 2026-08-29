@@ -130,10 +130,14 @@ export function MyScreen() {
   return (
     <div className="h-full flex flex-col overflow-hidden bg-slate-50">
       <div className="flex-1 overflow-hidden overscroll-contain">
-      <header className="relative bg-gradient-to-b from-blue-600 to-blue-500 px-5 pt-16 pb-9 text-white">
+      <header className="relative bg-gradient-to-b from-blue-600 to-blue-500 px-5 pt-safe-16 pb-9 text-white">
           <button
             onClick={() => setMenuOpen(true)}
-            className="absolute top-14 right-4 p-2 text-white"
+            className="absolute right-4 p-2 text-white"
+            // 절대위치라 헤더 패딩의 영향을 받지 않는다. 고정 56px이면 다이내믹
+            // 아일랜드(59pt) 안으로 들어가므로 상단 인셋 기준으로 계산한다.
+            // max()로 감싸 인셋이 없는 기기에서는 기존 top-14(3.5rem)를 유지.
+            style={{ top: "max(calc(env(safe-area-inset-top) + 0.5rem), 3.5rem)" }}
           >
             <Menu className="w-6 h-6" />
           </button>

@@ -48,6 +48,20 @@
   .h-4\.5 {
     height: 1.125rem;
   }
+
+  /* ── 노치 / 다이내믹 아일랜드 상단 여백 ──────────────────────────
+     기기별 상단 인셋이 다르므로(홈버튼 20pt, 노치 44pt, 다이내믹
+     아일랜드 59pt) 고정 px 대신 env()로 계산한다.
+     max()로 감싸 기존 여백보다 작아지지 않게 한다 — 인셋이 없는 환경
+     에서는 원래 값(pt-16=4rem, pt-14=3.5rem)이 그대로 유지되고,
+     다이내믹 아일랜드처럼 인셋이 기존 값보다 큰 기기에서만 늘어난다.
+     index.html의 viewport-fit=cover가 있어야 env()가 0이 아니다. */
+  .pt-safe-16 {
+    padding-top: max(calc(env(safe-area-inset-top) + 1rem), 4rem);
+  }
+  .pt-safe-14 {
+    padding-top: max(calc(env(safe-area-inset-top) + 0.75rem), 3.5rem);
+  }
 }
 
 @keyframes slide-up {

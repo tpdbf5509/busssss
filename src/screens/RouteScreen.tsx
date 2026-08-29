@@ -209,7 +209,7 @@ export function RouteScreen() {
   return (
     <div className="h-full flex flex-col overflow-hidden bg-slate-50">
       {/* 버스/알림과 동일한 흰 헤더 */}
-      <header className="bg-white px-5 pt-16 pb-5 border-b border-slate-100 sticky top-0 z-30 shrink-0">
+      <header className="bg-white px-5 pt-safe-16 pb-5 border-b border-slate-100 sticky top-0 z-30 shrink-0">
         <h1 className="text-xl font-bold text-slate-900">길찾기</h1>
         <p className="text-xs text-slate-400 mt-0.5">
           목적지까지 버스 타는 방법

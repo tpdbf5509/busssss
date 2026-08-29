@@ -20,7 +20,10 @@ export function BottomNav({
   return (
     <nav
       className="shrink-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200"
-      style={{ paddingBottom: "min(env(safe-area-inset-bottom), 8px)" }}
+      // min()은 하단 인셋을 8px로 잘라버려 홈 인디케이터(34pt) 위에 탭바가
+      // 겹친다. max()로 바꿔 인디케이터 높이를 그대로 확보하고, 인셋이 없는
+      // 기기에서는 기존과 같은 8px을 유지한다.
+      style={{ paddingBottom: "max(env(safe-area-inset-bottom), 8px)" }}
     >
       <div className="max-w-md mx-auto grid grid-cols-5">
         {tabs.map((tab) => {
