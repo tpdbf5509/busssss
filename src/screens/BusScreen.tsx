@@ -172,8 +172,8 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
     );
   }
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-slate-50">
-            <header className="bg-white px-5 pt-16 pb-5 border-b border-slate-100 sticky top-0 z-30 shrink-0">
+    <div className="h-full flex flex-col overflow-hidden bg-white">
+            <header className="bg-white px-5 pt-safe-header pb-4 border-b border-slate-200 sticky top-0 z-30 shrink-0">
               <h1 className="text-xl font-bold text-slate-900 mb-3">버스 검색</h1>
 
               <div className="flex bg-slate-100 rounded-xl p-1 mb-3">
@@ -252,7 +252,7 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
               />
             )}
             {status === "success" && filtered && filtered.length > 0 && (
-              <div className="space-y-2">
+              <div className="divide-y divide-slate-100 border-t border-slate-200 scroll-pb-safe">
                 {filtered.map((route) => (
                   <div
                     key={`${route.id}-${route.number}`}
@@ -260,44 +260,30 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                     tabIndex={0}
                     onClick={() => setSelectedRoute(route)}
                     onKeyDown={(e) => e.key === "Enter" && setSelectedRoute(route)}
-                    className="w-full bg-white rounded-2xl p-4 border border-slate-100 text-left hover:border-blue-200 hover:shadow-sm transition-all cursor-pointer"
+                    className="w-full bg-white px-1 py-4 text-left transition-colors cursor-pointer active:bg-slate-50"
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        {(() => {
-                          const label = getRouteTypeLabel(route.name);
-                          const isMain = label === "본선";
-                          return (
-                            <div
-                              className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
-                                isMain ? "bg-blue-50" : "bg-emerald-50"
-                              }`}
-                            >
-                              <span
-                                className={`font-bold text-xs leading-tight text-center ${
-                                  isMain ? "text-blue-700" : "text-emerald-700"
-                                }`}
-                              >
-                                {label}
-                              </span>
-                            </div>
-                          );
-                        })()}
-                        <div>
-                          <span className="font-semibold text-slate-900 text-base">
-                            {route.number}
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-3">
+                        {/* 본선/분선은 색이 아니라 라벨로 구분 — 중립 표면 유지 */}
+                        <div className="w-[52px] h-9 rounded-lg border border-slate-200 flex items-center justify-center shrink-0">
+                          <span className="font-semibold text-[12px] leading-tight text-center text-slate-600 tracking-tight">
+                            {getRouteTypeLabel(route.name)}
                           </span>
                         </div>
+                        <span className="font-bold text-slate-900 text-[19px] tracking-[-0.02em]">
+                          {route.number}
+                        </span>
                       </div>
                       <button
                         onClick={(e) => toggleFavorite(route, e)}
-                        className="p-1 -m-1 rounded-full hover:bg-amber-50"
+                        className="p-1.5 -m-1.5 rounded-full"
+                        aria-label="즐겨찾기"
                       >
                         <Star
-                          className={`w-4 h-4 transition-colors ${
+                          className={`w-[18px] h-[18px] transition-colors ${
                             isFavorited(route.id)
-                              ? "text-amber-400 fill-amber-400"
-                              : "text-slate-300 hover:text-amber-400"
+                              ? "text-slate-900 fill-slate-900"
+                              : "text-slate-300"
                           }`}
                         />
                       </button>
@@ -362,7 +348,7 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                     onKeyDown={(e) => e.key === "Enter" && setSelectedStation(station)}
                     className="w-full bg-white rounded-2xl p-4 border border-slate-100 flex items-center gap-3 cursor-pointer hover:border-blue-200 hover:shadow-sm transition-all"
                   >
-                    <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-lg border border-slate-200 flex items-center justify-center shrink-0">
                       <MapPin className="w-5 h-5 text-emerald-600" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -377,13 +363,13 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                     </div>
                     <button
                       onClick={(e) => toggleStationFavorite(station, e)}
-                      className="p-1.5 rounded-full hover:bg-amber-50"
+                      className="p-1.5 -m-1.5 rounded-full"
                     >
                       <Star
                         className={`w-4 h-4 transition-colors ${
                           isStationFavorited(station.id)
-                            ? "text-amber-400 fill-amber-400"
-                            : "text-slate-300 hover:text-amber-400"
+                            ? "text-slate-900 fill-slate-900"
+                            : "text-slate-300"
                         }`}
                       />
                     </button>
@@ -425,20 +411,22 @@ function StationRouteCard({
       type="button"
       onClick={onSelect}
       disabled={isAdding}
-      className={`w-full bg-white rounded-2xl border border-slate-100 text-left hover:border-blue-200 hover:shadow-sm transition-all flex items-center gap-3 ${
-        hero ? "p-5" : "p-3"
+      className={`w-full bg-white text-left transition-colors active:bg-slate-50 flex items-center gap-3.5 ${
+        hero ? "py-5 px-1" : "py-3 px-1"
       }`}
     >
       <div
-        className={`relative rounded-xl bg-blue-50 flex items-center justify-center shrink-0 ${
-          hero ? "w-14 h-14" : "w-10 h-10"
+        className={`relative rounded-lg border border-slate-200 flex items-center justify-center shrink-0 ${
+          hero ? "w-13 h-13 min-w-[52px] h-[52px]" : "w-10 h-10"
         }`}
       >
-        <span className={`font-bold text-blue-700 ${hero ? "text-base" : "text-xs"}`}>
+        <span
+          className={`font-bold text-slate-700 tracking-tight ${hero ? "text-[15px]" : "text-[12px]"}`}
+        >
           {sr.routeNo}
         </span>
         {isFavorited && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center ring-2 ring-white">
+          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-slate-900 flex items-center justify-center ring-2 ring-white">
             <Star className="w-2.5 h-2.5 text-white fill-white" />
           </span>
         )}
@@ -485,7 +473,7 @@ function StationRouteCard({
         >
           <Star
             className={`w-4 h-4 transition-colors ${
-              isFavorited ? "text-amber-400 fill-amber-400" : "text-slate-300"
+              isFavorited ? "text-slate-900 fill-slate-900" : "text-slate-300"
             }`}
           />
         </button>
@@ -718,7 +706,7 @@ const isAllRouteFavorited = (route: Route) =>
 
   return (
     <div className="bg-slate-50">
-      <header className="bg-white px-4 pt-14 pb-5 border-b border-slate-100 sticky top-0 z-30">
+      <header className="bg-white px-4 pt-safe-subheader pb-4 border-b border-slate-200 sticky top-0 z-30">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
@@ -920,7 +908,7 @@ const isAllRouteFavorited = (route: Route) =>
                       onKeyDown={(e) => e.key === "Enter" && onSelectRoute(route)}
                       className="w-full bg-white rounded-2xl p-4 border border-slate-100 text-left hover:border-blue-200 hover:shadow-sm transition-all flex items-center gap-3 cursor-pointer"
                     >
-                      <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+                      <div className="w-10 h-10 rounded-lg border border-slate-200 flex items-center justify-center shrink-0">
                         <span className="font-bold text-sm text-emerald-700">
                           {route.number}
                         </span>
@@ -951,7 +939,7 @@ const isAllRouteFavorited = (route: Route) =>
                           <Star
                             className={`w-4 h-4 transition-colors ${
                               isAllRouteFavorited(route)
-                                ? "text-amber-400 fill-amber-400"
+                                ? "text-slate-900 fill-slate-900"
                                 : "text-slate-300"
                             }`}
                           />
@@ -1056,7 +1044,7 @@ const handleStopClick = async (stop: BusStop) => {
  
   return (
     <div className="bg-slate-50">
-      <header className="bg-white px-4 pt-14 pb-5 border-b border-slate-100 sticky top-0 z-30">
+      <header className="bg-white px-4 pt-safe-subheader pb-4 border-b border-slate-200 sticky top-0 z-30">
         <div className="flex items-center gap-3">
           <button onClick={onBack} className="p-1.5 -ml-1.5 rounded-full hover:bg-slate-100">
             <ArrowLeft className="w-5 h-5 text-slate-700" />
@@ -1097,7 +1085,7 @@ const handleStopClick = async (stop: BusStop) => {
             <Star
               className={`w-5 h-5 transition-colors ${
                 state.favorites.some((f) => f.type === "route" && f.refId === route.id)
-                  ? "text-amber-400 fill-amber-400"
+                  ? "text-slate-900 fill-slate-900"
                   : "text-slate-300"
               }`}
             />
@@ -1111,7 +1099,7 @@ const handleStopClick = async (stop: BusStop) => {
         </div>
         <button
           onClick={() => setShowSchedule(true)}
-          className="mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 bg-blue-50 text-blue-700 rounded-xl text-sm font-semibold hover:bg-blue-100 transition-colors"
+          className="mt-4 w-full flex items-center justify-center gap-1.5 py-3 border border-slate-200 text-slate-700 rounded-xl text-[14px] font-semibold active:bg-slate-50 transition-colors"
         >
           <Clock className="w-4 h-4" />
           배차시간 보기
@@ -1210,7 +1198,7 @@ const handleStopClick = async (stop: BusStop) => {
                         <Star
                           className={`w-4 h-4 shrink-0 transition-colors ${
                             isArrivalFavorited(stop.name)
-                              ? "text-amber-400 fill-amber-400"
+                              ? "text-slate-900 fill-slate-900"
                               : "text-slate-300"
                           }`}
                         />
@@ -1324,7 +1312,7 @@ function DispatchScheduleModal({
               <p className="text-[10px] text-slate-400 mb-0.5">막차</p>
               <p className="text-sm font-bold text-slate-700">{route.lastBus}</p>
             </div>
-            <div className="bg-blue-50 rounded-xl p-3 text-center">
+            <div className="border border-slate-200 rounded-xl p-3 text-center">
               <div className="flex items-center justify-center mb-1">
                 <Clock className="w-3.5 h-3.5 text-blue-500" />
               </div>
@@ -1353,7 +1341,7 @@ function DispatchScheduleModal({
               <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-1.5">
                 <Navigation className="w-4 h-4 text-blue-500" />
                 실제 배차시간표
-                <span className="text-[10px] font-normal text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded-full ml-1">
+                <span className="text-[11px] font-normal text-slate-400 ml-1.5">
                   공식 데이터
                 </span>
               </h3>

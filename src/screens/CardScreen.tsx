@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Minus, CreditCard, TrendingUp, Receipt, ArrowUpRight, ArrowDownLeft } from "lucide-react";
+import { Plus, Minus, CreditCard, TrendingUp, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import { useApp } from "@/store/appContext";
 import { CARD_INFO } from "@/data/mock";
 import { showToast } from "@/lib/toastStore";
@@ -42,53 +42,42 @@ export function CardScreen() {
   };
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-slate-50">
-      <header className="bg-gradient-to-b from-slate-900 to-slate-800 px-5 pt-16 pb-9 text-white sticky top-0 z-30 shrink-0">
-        <h1 className="text-xl font-bold mb-4">모바일 버스카드</h1>
+    <div className="h-full flex flex-col overflow-hidden bg-white">
+      <header className="bg-white px-5 pt-safe-header pb-6 sticky top-0 z-30 shrink-0 border-b border-slate-200">
+        <h1 className="text-[22px] font-bold text-slate-900 tracking-[-0.02em] leading-tight">
+          모바일 버스카드
+        </h1>
 
-        <div className="relative bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-400 rounded-2xl p-5 shadow-xl overflow-hidden">
-          <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full" />
-          <div className="absolute -right-4 -bottom-10 w-24 h-24 bg-white/10 rounded-full" />
-          <div className="relative">
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-2">
-                <CreditCard className="w-5 h-5" />
-                <span className="text-sm font-medium text-blue-50">{card.cardName}</span>
-              </div>
-              <span className="text-xs text-blue-100">{card.cardNumber}</span>
+        <div className="mt-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-slate-500">
+              <CreditCard className="w-4 h-4" />
+              <span className="text-[13px] font-medium">{card.cardName}</span>
             </div>
-            <div>
-              <p className="text-xs text-blue-100 mb-1">잔액</p>
-              <p className="text-3xl font-bold tracking-tight">
-                {state.cardBalance.toLocaleString()}
-                <span className="text-lg font-medium ml-1">원</span>
-              </p>
-            </div>
+            <span className="text-[12px] text-slate-400 tabular-nums">{card.cardNumber}</span>
+          </div>
+          <div className="mt-3">
+            <p className="text-[12px] text-slate-400">잔액</p>
+            <p className="text-[34px] font-bold tracking-[-0.03em] text-slate-900 leading-none mt-1">
+              {state.cardBalance.toLocaleString()}
+              <span className="text-lg font-medium ml-1 text-slate-400">원</span>
+            </p>
           </div>
         </div>
       </header>
       <div className="flex-1 overflow-y-auto overscroll-contain">
-          <section className="px-4 -mt-4 mb-7">
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 px-4 py-4 flex items-start gap-3">
-              <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
-                <CreditCard className="w-4 h-4 text-amber-500" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-slate-800">카드 기능은 준비중이에요</p>
-                <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
-                  모바일 버스카드 연동이 아직 완료되지 않아 실제 충전·결제 기능은 사용할 수 없어요.
-                  아래 화면은 미리보기용입니다.
-                </p>
-              </div>
-            </div>
+          <section className="px-5 pt-5 pb-6">
+            <p className="text-[13px] font-semibold text-slate-900">카드 기능은 준비중이에요</p>
+            <p className="text-[13px] text-slate-400 mt-1 leading-relaxed">
+              모바일 버스카드 연동이 아직 완료되지 않아 실제 충전·결제 기능은 사용할 수 없어요.
+              아래 화면은 미리보기용입니다.
+            </p>
           </section>
 
-          <section className="px-4 mt-1"></section>
-
-      <section className="px-4 -mt-4">
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold text-slate-700">충전하기</h2>
+      <section className="px-5">
+        <div className="border-t border-slate-200 pt-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-[17px] font-bold text-slate-900 tracking-[-0.01em]">충전하기</h2>
             <button
               onClick={() => {
                 setCustomMode((v) => !v);
@@ -186,70 +175,56 @@ export function CardScreen() {
         </div>
       </section>
 
-      <section className="px-4 mt-4">
-        <div className="grid grid-cols-2 gap-2">
-          <div className="bg-white rounded-2xl p-4 border border-slate-100">
-            <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
+      <section className="px-5 mt-8">
+        <div className="grid grid-cols-2 gap-6 border-t border-slate-200 pt-5">
+          <div>
+            <div className="flex items-center gap-1.5 text-[12px] text-slate-400">
               <TrendingUp className="w-3.5 h-3.5" />
               이번 주
             </div>
-            <p className="text-lg font-bold text-slate-900">
+            <p className="text-[20px] font-bold text-slate-900 mt-1.5 tracking-[-0.02em]">
               {card.weeklyUsage.toLocaleString()}
-              <span className="text-sm text-slate-400 ml-0.5">원</span>
+              <span className="text-[13px] font-medium text-slate-400 ml-0.5">원</span>
             </p>
           </div>
-          <div className="bg-white rounded-2xl p-4 border border-slate-100">
-            <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
+          <div>
+            <div className="flex items-center gap-1.5 text-[12px] text-slate-400">
               <TrendingUp className="w-3.5 h-3.5" />
               이번 달
             </div>
-            <p className="text-lg font-bold text-slate-900">
+            <p className="text-[20px] font-bold text-slate-900 mt-1.5 tracking-[-0.02em]">
               {card.monthlyUsage.toLocaleString()}
-              <span className="text-sm text-slate-400 ml-0.5">원</span>
+              <span className="text-[13px] font-medium text-slate-400 ml-0.5">원</span>
             </p>
           </div>
         </div>
       </section>
 
-      <section className="px-4 mt-4">
-        <div className="flex items-center gap-1.5 text-sm font-bold text-slate-700 mb-3">
-          <Receipt className="w-4 h-4" />
+      <section className="px-5 mt-8 scroll-pb-safe">
+        <h2 className="text-[17px] font-bold text-slate-900 tracking-[-0.01em] mb-3">
           이용 내역
-        </div>
-        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-          {card.history.map((h, i) => (
-            <div
-              key={h.id}
-              className={`flex items-center justify-between px-4 py-3.5 ${
-                i !== card.history.length - 1 ? "border-b border-slate-50" : ""
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                    h.type === "charge" ? "bg-emerald-50" : "bg-blue-50"
-                  }`}
-                >
-                  {h.type === "charge" ? (
-                    <ArrowDownLeft className="w-4 h-4 text-emerald-600" />
-                  ) : (
-                    <ArrowUpRight className="w-4 h-4 text-blue-600" />
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-800">
+        </h2>
+        <div className="divide-y divide-slate-100 border-t border-slate-200">
+          {card.history.map((h) => (
+            <div key={h.id} className="flex items-center justify-between gap-3 py-3.5">
+              <div className="flex items-center gap-3 min-w-0">
+                {/* 아이콘 컨테이너에 같은 계열 배경을 깔지 않는다 — 아이콘만 중립색으로 */}
+                {h.type === "charge" ? (
+                  <ArrowDownLeft className="w-4 h-4 text-slate-400 shrink-0" />
+                ) : (
+                  <ArrowUpRight className="w-4 h-4 text-slate-400 shrink-0" />
+                )}
+                <div className="min-w-0">
+                  <p className="text-[15px] font-medium text-slate-900 truncate tracking-tight">
                     {h.type === "charge" ? "충전" : h.routeName}
                   </p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">{h.fromStation}</p>
-                  <p className="text-[11px] text-slate-300">{h.date}</p>
+                  <p className="text-[12px] text-slate-400 mt-0.5 truncate">
+                    {h.fromStation} · {h.date}
+                  </p>
                 </div>
               </div>
-              <span
-                className={`text-sm font-semibold ${
-                  h.type === "charge" ? "text-emerald-600" : "text-slate-700"
-                }`}
-              >
-                {h.type === "charge" ? "+" : "-"}
+              <span className="text-[15px] font-semibold text-slate-900 tabular-nums shrink-0">
+                {h.type === "charge" ? "+" : "−"}
                 {h.amount.toLocaleString()}원
               </span>
             </div>

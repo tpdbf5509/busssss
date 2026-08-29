@@ -18,24 +18,25 @@ export function StorageErrorBanner() {
     .filter(Boolean)
     .join(" · ");
 
+  // 중립 표면 + 얇은 경계선으로만 구성한다. 경고색 배경을 깔면 화면 전체가
+  // 색 블록으로 읽히고, 정작 강조해야 할 한 곳이 묻힌다. 위험 신호는 아이콘과
+  // 텍스트 위계로 전달한다.
   return (
-    <div className="shrink-0 bg-amber-50 border-b border-amber-200 px-4 py-3">
+    <div className="shrink-0 bg-white border-b border-slate-200 px-5 py-4">
       <div className="max-w-md mx-auto flex items-start gap-3">
-        <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-          <AlertTriangle className="w-4 h-4 text-amber-600" />
-        </div>
+        <AlertTriangle className="w-[18px] h-[18px] text-slate-900 shrink-0 mt-px" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-amber-900">
+          <p className="text-[15px] font-semibold text-slate-900 tracking-tight leading-snug">
             저장된 {failed}을 불러오지 못했어요
           </p>
-          <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+          <p className="text-[13px] text-slate-500 mt-1.5 leading-relaxed">
             지금 보이는 목록은 예시 데이터예요. 여기서 항목을 추가하거나 지우면 기존에
             저장된 내용이 이 목록으로 덮어써집니다. 원래 데이터를 지키려면 앱을 다시
             열어보시고, 계속 이 안내가 뜨면 저장된 값이 손상된 것일 수 있어요.
           </p>
           <button
             onClick={() => dispatch({ type: "DISMISS_STORAGE_ERROR" })}
-            className="mt-2 text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-lg px-3 py-1.5 transition-colors"
+            className="mt-2.5 text-[13px] font-semibold text-slate-900 underline underline-offset-4 decoration-slate-300 hover:decoration-slate-900 transition-colors"
           >
             확인했어요
           </button>

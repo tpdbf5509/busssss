@@ -119,11 +119,11 @@ function AppContent() {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-slate-50 fixed inset-0 overflow-hidden flex flex-col">
+    <div className="max-w-md mx-auto bg-white fixed inset-0 overflow-hidden flex flex-col px-safe">
       {dropoffAlarm && (
         <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-6">
           <div className="w-full max-w-sm rounded-3xl bg-white shadow-2xl p-7 text-center animate-pulse">
-            <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-red-100 flex items-center justify-center text-3xl">
+            <div className="mx-auto mb-4 h-16 w-16 rounded-full border border-slate-200 flex items-center justify-center text-3xl">
               🔔
             </div>
             <div className="text-2xl font-bold text-slate-900">{dropoffAlarm.title}</div>
@@ -145,18 +145,18 @@ function AppContent() {
       )}
 
       {quickViewBanner && (
-        <div className="shrink-0 z-20 bg-blue-600 text-white px-4 py-2.5 flex items-center gap-2 text-xs">
-          <span className="flex-1">
-            지금 화면을 <strong className="font-semibold">Safari 공유 → 홈 화면에 추가</strong>로 저장하면,
-            다음부터 앱을 열지 않고 "{quickViewBanner}" 도착정보를 바로 볼 수 있어요.
+        <div className="shrink-0 z-20 bg-white border-b border-slate-200 px-5 py-3 flex items-start gap-3">
+          <span className="flex-1 text-[13px] text-slate-500 leading-relaxed">
+            지금 화면을 <strong className="font-semibold text-slate-900">Safari 공유 → 홈 화면에 추가</strong>로
+            저장하면, 다음부터 앱을 열지 않고 “{quickViewBanner}” 도착정보를 바로 볼 수 있어요.
           </span>
           <button
             type="button"
             onClick={() => setQuickViewBanner(null)}
-            className="p-1 -m-1 shrink-0 rounded-full hover:bg-white/10"
+            className="p-1 -m-1 shrink-0 rounded-full text-slate-400 hover:text-slate-900"
             aria-label="닫기"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
       )}
@@ -217,7 +217,7 @@ function App() {
 
   if (!authReady) {
     return (
-      <div className="fixed inset-0 bg-slate-50 flex items-center justify-center text-sm text-slate-400">
+      <div className="fixed inset-0 bg-white flex items-center justify-center text-sm text-slate-400">
         로그인 상태를 확인하는 중...
       </div>
     );

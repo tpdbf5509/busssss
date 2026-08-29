@@ -3,7 +3,6 @@ import {
   ChevronRight,
   MoreHorizontal,
   MapPin,
-  Star,
   Pencil,
   Trash2,
   Bell,
@@ -128,28 +127,32 @@ export function MyScreen() {
   };
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-slate-50">
+    <div className="h-full flex flex-col overflow-hidden bg-white">
       <div className="flex-1 overflow-hidden overscroll-contain">
-      <header className="relative bg-gradient-to-b from-blue-600 to-blue-500 px-5 pt-16 pb-9 text-white">
+      <header className="relative bg-white px-5 pt-safe-header pb-6 border-b border-slate-200">
           <button
             onClick={() => setMenuOpen(true)}
-            className="absolute top-14 right-4 p-2 text-white"
+            className="absolute right-3 p-2 text-slate-500 hover:text-slate-900 transition-colors"
+            style={{ top: "calc(env(safe-area-inset-top) + 0.5rem)" }}
+            aria-label="설정"
           >
             <Menu className="w-6 h-6" />
           </button>
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl font-bold">
+            <div className="w-14 h-14 rounded-full border border-slate-200 flex items-center justify-center text-xl font-semibold text-slate-500 shrink-0">
               승
             </div>
-            <div>
-              <h1 className="text-lg font-bold">승객님</h1>
+            <div className="min-w-0">
+              <h1 className="text-[22px] font-bold text-slate-900 tracking-[-0.02em] leading-tight">
+                승객님
+              </h1>
               <button
                 onClick={() => setRegionOpen(true)}
-                className="flex items-center gap-1 text-sm text-blue-100 mt-0.5 hover:text-white transition-colors"
+                className="flex items-center gap-1 text-[13px] text-slate-500 mt-1 hover:text-slate-900 transition-colors"
               >
                 <MapPin className="w-3.5 h-3.5" />
                 {state.region.sido} {state.region.sigungu}
-                <ChevronRight className="w-3.5 h-3.5" />
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
               </button>
             </div>
           </div>
@@ -157,27 +160,24 @@ export function MyScreen() {
 
         
         <div className="flex-1 overscroll-contain">
-        {/* 즐겨찾기 카드 — 파란 헤더 위로 겹침 */}
-        <section className="px-4 -mt-3 relative z-10">
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-            <div className="flex items-center gap-1.5 text-sm font-bold text-slate-700 mb-3">
-              <Star className="w-4 h-4 text-amber-400" />
+        <section className="px-5 pt-7">
+          <div>
+            <h2 className="text-[17px] font-bold text-slate-900 tracking-[-0.01em]">
               즐겨찾기 관리
-            </div>
-            <p className="text-xs text-slate-400 mb-3">항목을 눌러 이름을 바꿀 수 있어요</p>
+            </h2>
+            <p className="text-[13px] text-slate-400 mt-1">항목을 눌러 이름을 바꿀 수 있어요</p>
 
             {state.favorites.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-6">즐겨찾기가 없어요</p>
+              <p className="text-[13px] text-slate-400 py-10 border-t border-slate-200 mt-3">
+                즐겨찾기가 없어요
+              </p>
             ) : (
-              <div className="space-y-2 max-h-60 overflow-y-auto overscroll-contain">
+              <div className="divide-y divide-slate-100 border-t border-slate-200 mt-3 max-h-60 overflow-y-auto overscroll-contain">
               {state.favorites.map((fav) => (
                   <div
                     key={fav.id}
-                    className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 transition-colors"
+                    className="flex items-center gap-3 py-3 transition-colors"
                   >
-                    <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
-                      <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                    </div>
                     {editingId === fav.id ? (
                       <div className="flex-1 flex items-center gap-2">
                         <input
@@ -188,13 +188,15 @@ export function MyScreen() {
                         />
                         <button
                           onClick={saveEdit}
-                          className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg"
+                          className="p-1.5 text-slate-900 hover:bg-slate-100 rounded-lg"
+                          aria-label="저장"
                         >
                           <Check className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => setEditingId(null)}
                           className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg"
+                          aria-label="취소"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -202,10 +204,10 @@ export function MyScreen() {
                     ) : (
                       <>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-800 truncate">
+                          <p className="text-[15px] font-medium text-slate-900 truncate tracking-tight">
                             {fav.name}
                           </p>
-                          <p className="text-[11px] text-slate-400">
+                          <p className="text-[12px] text-slate-400 mt-0.5">
                             {fav.label} ·{" "}
                             {fav.type === "station"
                               ? "정류장"
@@ -216,14 +218,15 @@ export function MyScreen() {
                         </div>
                         <button
                           onClick={() => setShortcutFavorite(fav)}
-                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
                           aria-label="홈 화면 바로가기 추가"
                         >
                           <Smartphone className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => startEdit(fav.id, fav.label)}
-                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                          aria-label="이름 변경"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
@@ -232,7 +235,8 @@ export function MyScreen() {
                             dispatch({ type: "REMOVE_FAVORITE", id: fav.id });
                             showToast("삭제했어요");
                           }}
-                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-slate-100 rounded-lg transition-colors"
+                          aria-label="삭제"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
