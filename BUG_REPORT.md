@@ -1,0 +1,119 @@
+# BUS STOP 버그 리포트
+
+조사 범위: `claude/animate-o60mbs` 브랜치 현재 상태 전체 (main 병합 반영 완료, PR #5).
+방법: 전체 소스 수동 검토 + `npm run lint` 정적 분석 교차 확인.
+
+---
+
+## 🔴 심각 — 실제로 사용자가 겪을 수 있는 기능 버그
+
+### 1. `CardScreen.tsx:43` — 클래스명 오타로 헤더 스타일 두 개가 통째로 깨짐
+```tsx
+className="bg-gradient-to-b from-slate-900 to-slate-800 px-5 pt-16 pb-9 text-whitesticky top-0 z-30 shrink-0"
+```
+`text-white`와 `sticky` 사이에 공백이 빠져서 `text-whitesticky`라는, 존재하지 않는 클래스 하나로 합쳐졌습니다. Tailwind가 이 토큰을 인식하지 못해 **흰 글씨 색도, 스크롤 시 상단 고정(sticky)도 둘 다 적용되지 않습니다.** 어두운 그라디언트 배경 위에 기본(어두운) 글자색이 얹혀 대비가 나쁘고, 스크롤하면 헤더가 다른 화면들과 다르게 같이 흘러가버립니다.
+→ `text-white sticky`로 공백 하나만 넣으면 해결됩니다.
+
+### 2. `RegionModal.tsx` — 지역 설정 모달이 실제 저장된 지역을 반영하지 않음
+```tsx
+const [selectedSido, setSelectedSido] = useState("전북특별자치도");
+const [selectedSigungu, setSelectedSigungu] = useState("전주시");
+```
+이 모달은 현재 앱에 저장된 `state.region` 값을 prop으로 전혀 받지 않고, 항상 "전북특별자치도 / 전주시"로 초기화됩니다. `MyScreen`은 탭을 벗어났다가 돌아올 때마다 통째로 다시 마운트되므로, 그 안의 `RegionModal`도 매번 새로 만들어집니다.
+
+**재현 시나리오**: 마이 탭에서 지역을 "서울특별시 종로구"로 변경 → 다른 탭으로 이동했다가 마이 탭으로 복귀 → 지역 버튼을 다시 눌러 모달을 열면 "전주시"가 선택된 상태로 뜸 → 사용자가 값을 안 바꾸고 그냥 "이 지역으로 설정"을 다시 누르면 **의도치 않게 지역이 전주시로 되돌아갑니다.**
+
+### 3. `alertMonitorService.ts` — 하차 알림이 같은 버스에 대해 평생 딱 한 번만 울림
+```ts
+const key = `${alert.id}_${bus.vehicleNo}`;
+if (fired.has(key)) continue;
+```
+중복 방지 키가 알림ID+차량번호 조합이고, `localStorage`에 개수(최근 200개)로만 정리될 뿐 **날짜/시간 기준으로 만료되지 않습니다.** 매일 같은 노선을 타는 사용자가 어느 날 우연히 같은 차량(vehicleNo)을 다시 타면, 그 알림은 이후 다시는 울리지 않습니다 — 알람이 "고장난 것처럼" 조용히 무력화됩니다.
+
+### 4. `alertMonitorService.ts` — 짧은 정류장 간격에서 하차 알림이 통째로 씹힐 수 있음
+20초 주기로만 버스 위치를 확인하는데, 그 사이에 버스가 `[triggerOrder, targetStopOrder)` 구간을 통째로 지나쳐버리면(정류장 간격이 짧거나 버스가 빠르면) 그 구간을 "본 적"이 없어 알림이 전혀 울리지 않고 지나갑니다.
+
+### 5. `App.tsx:57-60` — 딥링크(홈 화면 바로가기)가 stop_route 즐겨찾기의 appRouteId가 없으면 아무 데도 이동 안 함
+```ts
+const targetId = fav.type === "stop_route" ? fav.appRouteId : fav.refId;
+if (targetId) setPendingRouteId(targetId);
+```
+`appRouteId`는 옵셔널 필드라 없을 수 있습니다. 이 경우 `pendingRouteId`도 `pendingStation`도 설정되지 않아, 안내 배너("OO 도착정보를 바로 볼 수 있어요")만 뜨고 실제로는 빈 버스 검색 화면에 멈춥니다.
+(참고: 정확히 같은 한계가 홈 화면에서 즐겨찾기를 직접 탭할 때도 이미 존재합니다 — 새로 생긴 버그라기보단 기존 한계를 딥링크가 그대로 물려받은 것이지만, 배너 문구는 실제보다 더 정밀하게 이동하는 것처럼 약속하고 있어 사용자 혼란을 줄 수 있습니다.)
+
+### 6. `src/api/tagoProxy.ts` — 이미 고쳤던 버그가 그대로 남아있는 죽은 코드
+`tago.ts`와 함수 이름이 완전히 겹치는 예전 버전 사본인데, 정류장 도착정보 조회 시 `routeId`를 쿼리에 그대로 붙입니다:
+```ts
+if (routeId) p.routeId = routeId;
+```
+`tago.ts`에는 "특정 노선에서 504 오류가 나서 일부러 뺐다"는 주석과 함께 이 파라미터가 제거되어 있는데, `tagoProxy.ts`에는 예전 버그가 그대로 남아 있습니다. 지금은 어디서도 `import`하지 않아 실행되지 않지만, 이름이 거의 같아 나중에 실수로 이 파일을 가져다 쓰면 고쳤던 504 버그가 재발합니다. → 삭제 권장.
+
+### 7. `BusScreen.tsx`의 `generateTimetable`이 자정 넘는 막차 시간을 처리 못 함
+```ts
+if (isNaN(start) || isNaN(end) || end <= start) return [];
+```
+막차 시간이 "00:20"처럼 자정 이후로 기록된 노선은 `end`(20분)가 `start`(예: 330분)보다 작아져 `end <= start`에 걸리고, 예상 배차표 전체가 빈 배열이 됩니다. 이런 노선은 실제로는 정상 운행 중인데도 "배차간격 정보가 없어 시간표를 생성할 수 없어요"로 잘못 표시됩니다.
+
+---
+
+## 🟠 중간 — 데이터 정합성 / 표시 오류
+
+### 8. `AppContext.tsx:66` — 즐겨찾기 중복검사가 타입을 안 보고 refId만 봄
+```ts
+case "ADD_FAVORITE":
+  if (state.favorites.some((f) => f.refId === action.favorite.refId)) return state;
+```
+노선ID·정류장ID·복합ID는 서로 다른 값 공간에서 오지만 전부 문자열이라, 우연히 같은 문자열이면 타입이 달라도 추가가 조용히 막힙니다. 반면 화면 쪽 로직은 각자 `type`까지 확인한 뒤 "즐겨찾기에 추가했어요" 토스트를 먼저 띄우므로, **실제로는 저장 안 됐는데 성공한 것처럼 보이는 상황**이 생길 수 있습니다.
+
+### 9. (제가 이번에 새로 넣은 코드) `src/lib/reliability.ts` — 급격한 지연은 오히려 "새 버스"로 오인
+폴링 사이 예정 도착시각이 지연 임계값보다 **한 번에 크게** 나빠지면, 로직이 이를 "다른 버스로 교체됨"으로 판단해 기준 시각을 초기화합니다. 완만하게 누적되는 지연은 정상적으로 잡아내지만, 급격한 이상치(재배차, GPS 튐 등)는 되레 "지연 아님"으로 리셋될 수 있는 설계상 빈틈입니다. 폴링에 차량 식별자가 없어 "같은 버스인지" 자체를 확실히 알 방법이 없다는 근본적 한계에서 옵니다.
+
+### 10. `src/types/index.ts` — 안 쓰이는 중복/사장 타입
+`Station`(← `types/route.ts`의 `Station`과 이름은 같은데 필드가 다름 — `lat/lng`이 `number` 필수 vs `number | null`), `Arrival`, `RouteType`, `Congestion`, `BusRoute`, `RouteStation` 전부 어디서도 import되지 않는 옛 mock 시절 잔재입니다. 이름이 겹치는 `Station` 두 개가 각각 다른 파일에 존재하는 게 특히 위험 — 나중에 자동완성으로 잘못된 쪽을 import하기 쉽습니다.
+
+### 11. `CardScreen.tsx` — "준비중" 안내와 달리 충전이 실제로 잔액을 바꿈
+"실제 충전·결제 기능은 사용할 수 없어요"라고 안내하지만, 충전 버튼은 실제로 `dispatch({type:"CHARGE_CARD", amount})`를 실행해 `state.cardBalance`를 바꾸고 성공 토스트까지 띄웁니다. 문구와 동작이 어긋납니다.
+
+### 12. `CardScreen.tsx` — 충전 금액 증가(+)에 상한이 없음
+`+` 버튼을 계속 누르면 1,000원씩 무제한 증가합니다 (감소는 0원에서 멈추도록 처리되어 있는 것과 비대칭).
+
+### 13. `routeService.ts:70` — `route.name`이 항상 "본선"으로 고정
+```ts
+name: `본선${displayNumber}`,
+```
+실제 본선/분선 구분은 `getRouteTypeLabel()`이 기점·종점을 비교해 따로 계산하는데, `route.name` 필드 자체는 무조건 "본선"+번호로 박혀 있습니다. 홈 화면 즐겨찾기 카드는 `getRouteTypeLabel`을 쓰므로 문제없지만, **`route.name`을 직접 표시하는 곳은 분선 노선도 "본선"으로 잘못 표시**됩니다:
+- `AlertScreen.tsx` 하차 알림 노선 선택 목록(361줄), 알림 설정 헤더(381, 415줄), 저장되는 `alert.routeName` 필드
+- `BusScreen.tsx` 배차시간표 모달 헤더(1466줄)
+
+### 14. `routeService.ts:94` — 배차간격이 같은 값일 때도 "15~15분"처럼 표시됨
+```ts
+return min && max ? `${min}~${max}분` : "정보 없음";
+```
+`min === max`(고정 배차)인 노선도 항상 범위 표기를 쓰기 때문에 정류장 상세 화면의 "배차간격" 줄에 "15~15분" 같은 어색한 문구가 뜹니다. (파싱 자체는 정상 동작하므로 A1 지연 판정 계산에는 영향 없음)
+
+---
+
+## 🟡 낮음 — 죽은 코드 / 자잘한 정적분석 이슈 (`npm run lint` 결과 포함)
+
+15. `src/api/jeonju.ts` — `ApiEnvelope` 인터페이스 정의만 있고 어디서도 안 씀.
+16. `src/screens/BusScreen.tsx` — `RadioTower` 아이콘을 import했지만 실제로는 안 씀.
+17. `src/screens/BusScreen.tsx:1147` — `retryBuses`(버스 위치 재조회 함수)를 받아오기만 하고 아무 버튼에도 연결 안 함. 실시간 위치 조회가 실패해도(`busStatus === "error"`) 재시도할 UI가 없음.
+18. `src/screens/HomeScreen.tsx` — `RegionModal` import, `regionOpen`/`setRegionOpen`가 안 쓰임. 주석("지역 설정은 일시 비활성화")으로 보아 의도적으로 막아둔 것으로 보이지만, 죽은 코드가 그대로 남아있음.
+19. `src/store/AppContext.tsx` — `fetchRoutesForStation` import 후 안 씀.
+20. 빈 `catch {}` 블록 다수 (`AppContext.tsx` 4곳, `MyScreen.tsx` 2곳, `alertMonitorService.ts` 6곳) — 모든 에러를 무조건 삼켜서, 실제 저장 실패(예: localStorage 용량 초과) 같은 진짜 문제도 콘솔에 아무 흔적 없이 사라짐.
+21. `alertMonitorService.ts:46` — `(window as any).webkitAudioContext`에 `any` 타입 사용.
+22. `useAsync.ts:22` — `useCallback(fn, deps)`에서 `deps`가 배열 리터럴이 아니라 매개변수로 전달돼 ESLint 의존성 검사를 받을 수 없음(런타임 동작 자체는 정상).
+23. `BusScreen.tsx` 202·216번 줄 — `useEffect`에 `onConsumeInitialRoute`/`onConsumeInitialStation`이 의존성 배열에서 빠져있다는 경고.
+24. `Toast.tsx`, `AppContext.tsx` — "Fast refresh only works when a file only exports components" 경고 (컴포넌트 외 함수/상수를 같은 파일에서 export). 동작엔 영향 없음.
+
+---
+
+## 요약
+
+| 심각도 | 개수 |
+|---|---|
+| 🔴 심각 (실사용 영향) | 7 |
+| 🟠 중간 (데이터/표시 오류) | 7 |
+| 🟡 낮음 (죽은 코드/lint) | 10 |
+
+가장 먼저 손보면 좋을 것: **#1(오타 한 글자), #2(지역 리셋), #3(알림 평생 1회 제한)** — 셋 다 재현이 쉽고 사용자 체감이 큽니다. 원하시면 이 중 우선순위 정해서 바로 고쳐드릴게요.
