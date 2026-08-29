@@ -61,6 +61,10 @@ function formatRouteNumber(raw: RawRouteField): string {
 
 function mapToRoute(raw: RawRouteField): Route {
   const displayNumber = formatRouteNumber(raw);
+  // bus_routes_master.category가 본선/분선의 정답이다. 값이 없는(마스터에
+  // 없고 cache에만 있는) 노선은 기존 기본값과 같게 본선으로 둔다.
+  const category = firstValue(raw, ["category"]);
+  const typeLabel = category === "분선" ? "분선" : "본선";
 
   return {
     id: firstValue(raw, ["brtStdid", "brt_stdid", "brtStdId"]) || "",
@@ -68,7 +72,7 @@ function mapToRoute(raw: RawRouteField): Route {
     rawNumber: firstValue(raw, ["brtNo", "brt_no", "brtId", "brt_id"]) || "",
     class: firstValue(raw, ["brtClass", "brt_class"]) || "",
     subId: firstValue(raw, ["brtSubid", "brt_subid", "brtSubId"]) || "",
-    name: `본선${displayNumber}`,
+    name: `${typeLabel}${displayNumber}`,
     start:
       firstValue(raw, [
         "brtSname",
@@ -92,7 +96,9 @@ function mapToRoute(raw: RawRouteField): Route {
     interval: (() => {
       const min = firstValue(raw, ["brtMininterval", "brt_mininterval", "minInterval"]);
       const max = firstValue(raw, ["brtMaxinterval", "brt_maxinterval", "maxInterval"]);
-      return min && max ? `${min}~${max}분` : "정보 없음";
+      if (!min || !max) return "정보 없음";
+      if (min === "0" && max === "0") return "정보 없음";
+      return min === max ? `${min}분` : `${min}~${max}분`;
     })(),
     distance: (() => {
       const len = firstValue(raw, ["brtLength", "brt_length", "length"]);

@@ -49,13 +49,19 @@ export class ArrivalReliabilityTracker {
 
     if (minutes != null) {
       const predicted = now + minutes * 60_000;
+      // 직전 관측이 곧 도착(<=1분)이었다면, 지금 큰 값이 온 건 "그 버스가
+      // 도착해서 다음 버스 추적을 새로 시작"한 정상적인 새 사이클이다.
+      const previousWasArriving = this.lastMinutes == null || this.lastMinutes <= 1;
 
       // 이전 예측보다 도착 시각이 앞당겨졌다면(버스가 정상적으로 접근 중) 기준을 갱신.
-      // 이전 예측이 없거나, 새 예측이 이전 예측보다 크게 늦어졌다면(새 버스로 간주) 기준을 새로 잡음.
+      // 이전 예측이 없거나, 직전이 곧 도착 상태였는데 새 예측이 크게 늦어졌다면
+      // (다음 버스로 넘어간 것) 기준을 새로 잡는다. 반대로 곧 도착 상태가 아니었는데
+      // 갑자기 크게 늦어졌다면 같은 버스가 급하게 지연된 것이므로, 기준을 그대로
+      // 두어 지연으로 잡히게 한다(급격한 지연을 "새 버스"로 오인하지 않도록).
       if (
         this.predictedArrivalAt == null ||
         predicted <= this.predictedArrivalAt + 1 ||
-        predicted > this.predictedArrivalAt + thresholdMs
+        (previousWasArriving && predicted > this.predictedArrivalAt + thresholdMs)
       ) {
         this.predictedArrivalAt = predicted;
       }

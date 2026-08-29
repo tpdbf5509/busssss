@@ -1,18 +1,33 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X, ChevronRight, MapPin, Check } from "lucide-react";
 import { REGIONS } from "@/data/mock";
 
 export function RegionModal({
   open,
+  currentSido,
+  currentSigungu,
   onClose,
   onSelect,
 }: {
   open: boolean;
+  /** 현재 앱에 저장된 지역 — 모달을 열 때 이 값으로 선택 상태를 맞춥니다 */
+  currentSido: string;
+  currentSigungu: string;
   onClose: () => void;
   onSelect: (sido: string, sigungu: string) => void;
 }) {
-  const [selectedSido, setSelectedSido] = useState("전북특별자치도");
-  const [selectedSigungu, setSelectedSigungu] = useState("전주시");
+  const [selectedSido, setSelectedSido] = useState(currentSido);
+  const [selectedSigungu, setSelectedSigungu] = useState(currentSigungu);
+
+  // 열릴 때마다 실제 저장된 지역으로 선택 상태를 다시 맞춥니다.
+  // (컴포넌트가 재마운트되지 않고 open만 토글되는 경우까지 커버)
+  useEffect(() => {
+    if (open) {
+      setSelectedSido(currentSido);
+      setSelectedSigungu(currentSigungu);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   if (!open) return null;
 

@@ -1,35 +1,17 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, AlertCircle, Info, X } from "lucide-react";
-
-export type ToastType = "success" | "error" | "info";
-
-export interface ToastItem {
-  id: string;
-  message: string;
-  type: ToastType;
-}
-
-let toastListeners: ((toast: ToastItem) => void)[] = [];
-
-export function showToast(message: string, type: ToastType = "success") {
-  const toast: ToastItem = { id: Date.now().toString(), message, type };
-  toastListeners.forEach((l) => l(toast));
-}
+import { subscribeToast, type ToastItem } from "@/lib/toastStore";
 
 export function ToastContainer() {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   useEffect(() => {
-    const listener = (toast: ToastItem) => {
+    return subscribeToast((toast) => {
       setToasts((prev) => [...prev, toast]);
       setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== toast.id));
       }, 3000);
-    };
-    toastListeners.push(listener);
-    return () => {
-      toastListeners = toastListeners.filter((l) => l !== listener);
-    };
+    });
   }, []);
 
   return (

@@ -14,14 +14,18 @@ function loadFired(): Set<string> {
   try {
     const raw = localStorage.getItem(FIRED_KEY);
     if (raw) return new Set(JSON.parse(raw));
-  } catch {}
+  } catch (err) {
+    console.warn("[alertMonitorService] 중복 방지 기록 로드 실패:", err);
+  }
   return new Set();
 }
 
 function saveFired(set: Set<string>) {
   try {
     localStorage.setItem(FIRED_KEY, JSON.stringify([...set].slice(-200)));
-  } catch {}
+  } catch (err) {
+    console.warn("[alertMonitorService] 중복 방지 기록 저장 실패:", err);
+  }
 }
 
 export function loadAlertRecords(): AlertRecord[] {
@@ -31,19 +35,25 @@ export function loadAlertRecords(): AlertRecord[] {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) return parsed;
     }
-  } catch {}
+  } catch (err) {
+    console.warn("[alertMonitorService] 알림 기록 로드 실패:", err);
+  }
   return [];
 }
 
 export function saveAlertRecords(records: AlertRecord[]) {
   try {
     localStorage.setItem(RECORDS_KEY, JSON.stringify(records.slice(0, 50)));
-  } catch {}
+  } catch (err) {
+    console.warn("[alertMonitorService] 알림 기록 저장 실패:", err);
+  }
 }
 
 function playAlarmPattern() {
   try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    const AudioContextClass =
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextClass) return;
 
     if (!alarmContext) alarmContext = new AudioContextClass();
@@ -69,7 +79,9 @@ function playAlarmPattern() {
       osc.start(start + offset);
       osc.stop(start + offset + beepLength);
     }
-  } catch {}
+  } catch (err) {
+    console.debug("[alertMonitorService] 알람 소리 재생 실패:", err);
+  }
 }
 
 function stopAlarmSound() {
@@ -79,7 +91,9 @@ function stopAlarmSound() {
   }
   try {
     alarmContext?.close();
-  } catch {}
+  } catch (err) {
+    console.debug("[alertMonitorService] AudioContext 종료 실패:", err);
+  }
   alarmContext = null;
 }
 
@@ -104,7 +118,9 @@ function vibrate() {
     if (navigator.vibrate) {
       navigator.vibrate([350, 150, 350, 150, 350, 500]);
     }
-  } catch {}
+  } catch (err) {
+    console.debug("[alertMonitorService] 진동 실패:", err);
+  }
 }
 
 async function showBrowserNotification(title: string, body: string) {
@@ -122,7 +138,9 @@ async function showBrowserNotification(title: string, body: string) {
       tag: "bus-dropoff",
       requireInteraction: true,
     });
-  } catch {}
+  } catch (err) {
+    console.warn("[alertMonitorService] 브라우저 알림 표시 실패:", err);
+  }
 }
 
 export async function requestNotificationPermission(): Promise<boolean> {
@@ -171,16 +189,21 @@ export async function checkDropoffAlerts(
       continue;
     }
 
+    const today = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD (로컬 기준)
+
     for (const alert of routeAlerts) {
+      // 주의: targetStopOrder는 정적 캐시(bus_route_stops_cache.sequence_no) 순번이고
+      // 아래에서 비교하는 bus.nodeOrder는 전주시 실시간 GW가 그때그때 매기는 별도
+      // 순번이다. 두 순번이 항상 같은 기준으로 매겨진다는 보장은 없다(실측 검증 필요).
       const triggerOrder = alert.targetStopOrder - alert.stopsBefore;
       if (triggerOrder < 1) continue;
 
       for (const bus of locations) {
-        if (
-          bus.nodeOrder >= triggerOrder &&
-          bus.nodeOrder < alert.targetStopOrder
-        ) {
-          const key = `${alert.id}_${bus.vehicleNo}`;
+        // 상한(< targetStopOrder)을 두면 폴링 사이에 버스가 구간을 통째로
+        // 지나쳐버렸을 때 알림이 영원히 안 울린다. 하한만 확인하고, 같은
+        // 날 같은 차량에 대한 중복 발송은 아래 fired 키로 막는다.
+        if (bus.nodeOrder >= triggerOrder) {
+          const key = `${today}_${alert.id}_${bus.vehicleNo}`;
           if (fired.has(key)) continue;
 
           fired.add(key);

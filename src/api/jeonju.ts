@@ -2,14 +2,6 @@ import { parseXml } from "./xml";
 
 export type RawRouteField = Record<string, string>;
 
-interface ApiEnvelope {
-  RFC30?: {
-    code?: string;
-    msg?: string;
-    routeList?: { list?: RawRouteField[] };
-  };
-}
-
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
@@ -47,9 +39,12 @@ function collectObjects(value: unknown, out: RawRouteField[] = []): RawRouteFiel
 
   const keys = Object.keys(primitive);
   const keyText = keys.join(" ").toLowerCase();
+  // "car"는 뺐습니다 — 부분 문자열 매칭이라 나중에 API에 "carrierCode" 같은
+  // 무관한 필드가 추가되면 버스 위치가 아닌 레코드를 잘못 집어올 위험이 있고,
+  // 실제 응답 필드(busNo/BNo/vehicleNo/vehicleid 등)는 vehicle/bus로 이미 잡힙니다.
   const locationHint = [
     "gps", "lat", "lng", "lon", "long", "latitude", "longitude",
-    "vehicle", "veh", "bus", "car", "node", "stop", "station",
+    "vehicle", "veh", "bus", "node", "stop", "station",
     "route", "brt", "x", "y"
   ].some((hint) => keyText.includes(hint));
 
@@ -153,6 +148,9 @@ export async function getRoutes(): Promise<RawRouteField[]> {
       brtEndNm: cached?.end_name || row.end_node || "",
       brtFirsttime: row.start_time ?? "",
       brtLasttime: row.end_time ?? "",
+      // master가 본선/분선의 정답(category)을 갖고 있다 — 프론트에서
+      // 하드코딩된 배열로 다시 추측하지 않도록 그대로 내려준다.
+      category: row.category ?? "",
     };
   });
 

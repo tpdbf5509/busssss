@@ -16,7 +16,7 @@ import { useApp } from "@/store/AppContext";
 import { useAsync } from "@/hooks/useAsync";
 import { fetchAllRoutes, fetchStopsForRoute } from "@/services/routeService";
 import { Toggle, EmptyState, LoadingSkeleton } from "@/components/ui";
-import { showToast } from "@/components/Toast";
+import { showToast } from "@/lib/toastStore";
 import type { AlertSetting, AlertRecord } from "@/types";
 import type { Route, BusStop } from "@/types/route";
 import {
@@ -273,6 +273,14 @@ function AddAlertModal({
         (r.end ?? "").includes(query)
     ) ?? [];
 
+  // triggerOrder(= targetStopOrder - stopsBefore)가 1 미만이면 alertMonitorService가
+  // 그 알림을 영원히 건너뛴다. 하차 정류장 순번보다 큰 stopsBefore는 애초에 못 고르게 막는다.
+  const maxStopsBefore = selectedStop ? Math.max(1, Math.min(10, selectedStop.order - 1)) : 10;
+
+  useEffect(() => {
+    setStopsBefore((s) => Math.min(s, maxStopsBefore));
+  }, [maxStopsBefore]);
+
   const handleSave = () => {
     if (!selectedRoute || !selectedStop) return;
     onAdd({
@@ -434,12 +442,18 @@ function AddAlertModal({
                   {stopsBefore}정거장 전
                 </span>
                 <button
-                  onClick={() => setStopsBefore((s) => Math.min(10, s + 1))}
-                  className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-lg font-bold"
+                  onClick={() => setStopsBefore((s) => Math.min(maxStopsBefore, s + 1))}
+                  disabled={stopsBefore >= maxStopsBefore}
+                  className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-lg font-bold disabled:opacity-40"
                 >
                   +
                 </button>
               </div>
+              {maxStopsBefore < 10 && (
+                <p className="text-[11px] text-slate-400 mt-1.5">
+                  선택한 정류장 앞에 정거장이 {maxStopsBefore}개뿐이라 최대 {maxStopsBefore}정거장 전까지 설정할 수 있어요
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">

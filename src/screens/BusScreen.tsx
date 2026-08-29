@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
-import { Search, X, Star, ArrowLeft, Bus as BusIcon, RadioTower, Navigation, Clock, Calendar, ChevronDown } from "lucide-react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { Search, X, Star, ArrowLeft, Bus as BusIcon, Navigation, Clock, Calendar, ChevronDown } from "lucide-react";
 import { useAsync } from "@/hooks/useAsync";
 import { useBusLocations } from "@/hooks/useBusLocations";
 import { useApp } from "@/store/AppContext";
@@ -9,164 +9,16 @@ import type { Route, BusStop } from "@/types/route";
 import type { Favorite } from "@/types";
 import { LoadingSkeleton, ErrorState, EmptyState, ReliabilityTag } from "@/components/ui";
 import type { ReliabilityState } from "@/lib/reliability";
-import { showToast } from "@/components/Toast";
+import { showToast } from "@/lib/toastStore";
 import type { Station } from "@/types/route";
 import { MapPin } from "lucide-react";
 import { resolveNodeId, resolveNodeIdForRoute, resolveRouteId } from "@/services/arrivalService";
 import { searchStations, fetchRoutesForStation, type StationRoute } from "@/services/stationService";
 import { parseInterval, parseTimeToMinutes } from "@/lib/interval";
 
-const MAIN_LINES: { number: string; start: string; end: string }[] = [
-  { number: "2", start: "평화동종점", end: "평화동종점" },
-  { number: "3-1", start: "전주대학교", end: "전주대학교" },
-  { number: "3-2", start: "전주대학교", end: "전주대학교" },
-  { number: "5-5", start: "전북대종점", end: "전북대종점" },
-  { number: "6", start: "전주대학교", end: "전주대학교" },
-  { number: "6-1", start: "전주대학교", end: "평화동종점" },
-  { number: "8-1", start: "전북대종점", end: "전북대종점" },
-  { number: "8-2", start: "전북대종점", end: "전북대종점" },
-  { number: "9", start: "송천동종점", end: "송천동종점" },
-  { number: "10", start: "평화코오롱아파트", end: "추동" },
-  { number: "12", start: "풍남문", end: "내원당마을" },
-  { number: "13", start: "풍남문", end: "은석마을" },
-  { number: "14", start: "낙수정", end: "낙수정" },
-  { number: "15", start: "낙수정", end: "흑석골종점" },
-  { number: "16", start: "풍남문", end: "삼경사" },
-  { number: "17", start: "풍남문", end: "흑석골종점" },
-  { number: "18", start: "월드컵경기장", end: "백구" },
-  { number: "19", start: "월드컵경기장", end: "춘강" },
-  { number: "20", start: "원마다리", end: "이서회차지" },
-  { number: "21", start: "모산종점", end: "이서회차지" },
-  { number: "23", start: "원동마을", end: "이서회차지" },
-  { number: "24", start: "구암", end: "이서회차지" },
-  { number: "25", start: "대문안종점", end: "이서회차지" },
-  { number: "26", start: "콩쥐팥쥐마을", end: "이서회차지" },
-  { number: "27", start: "삼례역", end: "이서회차지" },
-  { number: "31", start: "삼례역", end: "둔산코아루2차아파트" },
-  { number: "32", start: "삼례터미널", end: "비봉종점" },
-  { number: "33", start: "삼례역", end: "지암마을" },
-  { number: "34", start: "삼례역", end: "지암마을" },
-  { number: "34-1", start: "삼례역", end: "지암마을" },
-  { number: "35", start: "삼례역", end: "고산터미널" },
-  { number: "36", start: "삼례역", end: "고산터미널" },
-  { number: "40", start: "월드컵경기장", end: "고잔" },
-  { number: "41", start: "하나로마트종점", end: "삼화동" },
-  { number: "43", start: "월드컵경기장", end: "홍개" },
-  { number: "45", start: "월드컵경기장", end: "덕동" },
-  { number: "46", start: "하나로마트종점", end: "용신마을" },
-  { number: "47", start: "하나로마트종점", end: "용덕마을" },
-  { number: "48", start: "월드컵경기장", end: "신기종점" },
-  { number: "49", start: "월드컵경기장", end: "월드컵경기장" },
-  { number: "50", start: "소양회차지", end: "봉동주공아파트" },
-  { number: "51", start: "고산터미널", end: "둔산코아루2차아파트" },
-  { number: "52", start: "완주군청", end: "비봉종점" },
-  { number: "53", start: "완주군청", end: "제촌" },
-  { number: "54", start: "완주군청", end: "원구암마을" },
-  { number: "55", start: "모아엘가아파트", end: "완주군청" },
-  { number: "56", start: "설경마을종점", end: "봉동회차지" },
-  { number: "57", start: "양야리경로당", end: "봉동회차지" },
-  { number: "58", start: "봉동회차지", end: "터지내마을" },
-  { number: "59", start: "어린이창의체험관", end: "만경강변 진조리.은평" },
-  { number: "60", start: "모아엘가아파트", end: "둔산코아루2차아파트" },
-  { number: "61", start: "비전대학교", end: "전주대학교" },
-  { number: "62", start: "흑석골종점", end: "삼산리" },
-  { number: "62-1", start: "흑석골종점", end: "원상림" },
-  { number: "63", start: "흑석골종점", end: "호동마을" },
-  { number: "63-1", start: "흑석골종점", end: "신덕마을" },
-  { number: "70", start: "민목리", end: "상관농협로컬푸드" },
-  { number: "74", start: "평화동종점", end: "전북대종점" },
-  { number: "75", start: "평화동종점", end: "전북대종점" },
-  { number: "76", start: "상관주민센터", end: "어두마을" },
-  { number: "77", start: "대흥마을", end: "상관농협로컬푸드" },
-  { number: "79", start: "전주동물원", end: "금산사" },
-  { number: "80", start: "금상동", end: "모래내시장" },
-  { number: "81", start: "모래내시장", end: "하이리" },
-  { number: "82", start: "어린이창의체험관", end: "재전" },
-  { number: "82-1", start: "상망표", end: "앞멀" },
-  { number: "82-2", start: "앞멀", end: "상망표" },
-  { number: "83", start: "소양행정복지센터", end: "동상거인경로당" },
-  { number: "84", start: "인덕마을", end: "일임리" },
-  { number: "85", start: "용문사.반곡마을", end: "응암마을" },
-  { number: "86", start: "월상리", end: "분토종점" },
-  { number: "87", start: "송천동종점", end: "원당리" },
-  { number: "87-1", start: "다리목", end: "약암마을" },
-  { number: "87-2", start: "약암마을", end: "다리목" },
-  { number: "89", start: "송천동종점", end: "중인동" },
-  { number: "90", start: "원안덕마을", end: "전북도립미술관" },
-  { number: "91", start: "막은댐", end: "전북도립미술관" },
-  { number: "92", start: "막은댐", end: "전북도립미술관" },
-  { number: "94", start: "어린이창의체험관", end: "진기마을종점" },
-  { number: "97", start: "전북대종점", end: "만경강변 진조리.은평" },
-  { number: "99-1", start: "진조리", end: "진조리" },
-  { number: "99-2", start: "진조리", end: "진조리" },
-  { number: "101", start: "전북대종점", end: "평화동종점" },
-  { number: "102", start: "송천동종점", end: "전주시양묘장" },
-  { number: "103-1", start: "송천동종점", end: "전주시양묘장" },
-  { number: "104", start: "평화동종점", end: "송천동종점" },
-  { number: "108", start: "전주대학교", end: "송천동종점" },
-  { number: "110", start: "비전대학교", end: "대성동종점" },
-  { number: "119", start: "전주대학교", end: "평화동종점" },
-  { number: "165", start: "전주동물원", end: "이서회차지" },
-  { number: "200", start: "기린봉", end: "하나로마트종점" },
-  { number: "220", start: "비전대학교", end: "비전대학교" },
-  { number: "309", start: "평화동종점", end: "우석대종점" },
-  { number: "337", start: "전주시양묘장", end: "우석대종점" },
-  { number: "350", start: "평화동종점", end: "삼례터미널" },
-  { number: "354", start: "비전대학교", end: "우석대종점" },
-  { number: "355", start: "전주대학교", end: "삼례터미널" },
-  { number: "383", start: "비전대학교", end: "우석대종점" },
-  { number: "385", start: "전주대학교", end: "우석대종점" },
-  { number: "386", start: "전주대학교", end: "익산더반포레아파트" },
-  { number: "401", start: "월드컵경기장", end: "상하보" },
-  { number: "402", start: "월드컵경기장", end: "상하보" },
-  { number: "403", start: "월드컵경기장", end: "화원마을" },
-  { number: "420", start: "월드컵경기장", end: "중인동" },
-  { number: "500", start: "평화동종점", end: "봉동회차지" },
-  { number: "501", start: "평화동종점", end: "봉동회차지" },
-  { number: "530", start: "전주대학교", end: "고산터미널" },
-  { number: "550", start: "평화동종점", end: "둔산코아루2차아파트" },
-  { number: "554", start: "삼천동종점", end: "둔산코아루2차아파트" },
-  { number: "559", start: "삼천동종점", end: "둔산코아루2차아파트" },
-  { number: "644", start: "감수리", end: "원평종점" },
-  { number: "684", start: "감수리", end: "금구" },
-  { number: "685", start: "감수리", end: "오봉리" },
-  { number: "752", start: "송천동종점", end: "관촌터미널" },
-  { number: "810", start: "평화동종점", end: "소양회차지" },
-  { number: "820", start: "이서회차지", end: "소양" },
-  { number: "970", start: "에코시티종점차고지(승하차X)", end: "전북도립미술관" },
-  { number: "999", start: "전주동물원", end: "국립전주박물관종점" },
-  { number: "1001", start: "평화동종점", end: "우석대종점" },
-  { number: "1002", start: "평화동종점", end: "우석대종점" },
-  { number: "1994", start: "평화동종점", end: "시외고속간이터미널" },
-  { number: "2001", start: "평화동종점", end: "송천동종점" },
-  { number: "2002", start: "평화동종점", end: "송천동종점" },
-  { number: "3001", start: "송천동종점", end: "평화동종점" },
-  { number: "3002", start: "송천동종점", end: "삼천동종점" },
-  { number: "4000", start: "전주대캠퍼스", end: "전주대캠퍼스" },
-  { number: "5001", start: "전주대캠퍼스", end: "전주대캠퍼스" },
-  { number: "5002", start: "전주대캠퍼스", end: "전주대캠퍼스" },
-  { number: "6001", start: "비전대학교", end: "비전대학교" },
-  { number: "6002", start: "비전대학교", end: "비전대학교" },
-  { number: "8490", start: "어린이창의체험관", end: "신유강" },
-];
-
-function normalizeName(s: string) {
-  return (s ?? "").replace(/\s+/g, "").trim();
-}
-
-function getRouteTypeLabel(number: string, start: string, end: string) {
-  const ns = normalizeName(start);
-  const ne = normalizeName(end);
-  const matched = MAIN_LINES.some((m) => {
-    if (m.number !== number) return false;
-    const ms = normalizeName(m.start);
-    const me = normalizeName(m.end);
-    // 정방향(기점→종점) 또는 역방향(종점→기점) 둘 다 본선으로 인정
-    const sameDirection = ms === ns && me === ne;
-    const reversedDirection = ms === ne && me === ns;
-    return sameDirection || reversedDirection;
-  });
-  return matched ? "본선" : "분선";
+function getRouteTypeLabel(routeName: string) {
+  // bus_routes_master.category가 정답이라 route.name에 이미 반영돼 있다.
+  return routeName.startsWith("분선") ? "분선" : "본선";
 }
 
 export function BusScreen({
@@ -192,13 +44,22 @@ export function BusScreen({
 
   const { data: routes, status, retry } = useAsync(() => fetchAllRoutes(), []);
 
+  // onConsumeInitialRoute/onConsumeInitialStation은 App.tsx에서 매 렌더마다 새로
+  // 만들어지는 인라인 함수라, 이걸 그대로 deps에 넣으면 부모가 리렌더될 때마다
+  // (예: 검색어 입력) 이 effect가 다시 실행돼 사용자가 고른 노선/정류장을 되돌려버린다.
+  // ref로 최신 콜백만 붙잡아서 deps 경고 없이 안전하게 최신 함수를 호출한다.
+  const onConsumeInitialRouteRef = useRef(onConsumeInitialRoute);
+  onConsumeInitialRouteRef.current = onConsumeInitialRoute;
+  const onConsumeInitialStationRef = useRef(onConsumeInitialStation);
+  onConsumeInitialStationRef.current = onConsumeInitialStation;
+
   useEffect(() => {
     if (!initialRouteId || !routes) return;
     const target = routes.find((r) => r.id === initialRouteId);
     if (target) {
       setSelectedRoute(target);
     }
-    onConsumeInitialRoute?.();
+    onConsumeInitialRouteRef.current?.();
   }, [initialRouteId, routes]);
     // 홈 정류장 즐겨찾기 → 정류장 상세로 바로 이동
     useEffect(() => {
@@ -212,7 +73,7 @@ export function BusScreen({
         lat: null,
         lng: null,
       });
-      onConsumeInitialStation?.();
+      onConsumeInitialStationRef.current?.();
     }, [initialStation]);
     // 검색어로 정류장 검색
     useEffect(() => {
@@ -404,7 +265,7 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         {(() => {
-                          const label = getRouteTypeLabel(route.number, route.start, route.end);
+                          const label = getRouteTypeLabel(route.name);
                           const isMain = label === "본선";
                           return (
                             <div
@@ -1202,7 +1063,7 @@ const handleStopClick = async (stop: BusStop) => {
           </button>
           <div className="flex-1">
             <h1 className="text-lg font-bold text-slate-900">
-              {getRouteTypeLabel(route.number, route.start, route.end)}
+              {getRouteTypeLabel(route.name)}
               {route.number}
             </h1>
             <p className="text-xs text-slate-400 mt-0.5">
@@ -1274,7 +1135,15 @@ const handleStopClick = async (stop: BusStop) => {
           {busStatus === "success" && buses && buses.length > 0 && "실시간 위치 연동 중"}
           {busStatus === "success" && buses && buses.length === 0 && "현재 운행 중인 버스가 없어요"}
         </span>
-        {lastUpdated && (
+        {busStatus === "error" && (
+          <button
+            onClick={() => retryBuses()}
+            className="text-[11px] font-semibold text-blue-600 ml-auto hover:underline"
+          >
+            다시 시도
+          </button>
+        )}
+        {busStatus !== "error" && lastUpdated && (
           <span className="text-[10px] text-slate-300 ml-auto">
             {lastUpdated.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })} 갱신
           </span>
@@ -1366,13 +1235,16 @@ function generateTimetable(firstBus: string, lastBus: string, interval: string):
   const info = parseInterval(interval);
   if (!info) return [];
   const start = parseTimeToMinutes(firstBus);
-  const end = parseTimeToMinutes(lastBus);
-  if (isNaN(start) || isNaN(end) || end <= start) return [];
+  let end = parseTimeToMinutes(lastBus);
+  if (isNaN(start) || isNaN(end)) return [];
+  // 막차가 "00:20"처럼 자정을 넘겨 기록된 노선은 end가 start보다 작게
+  // 파싱된다. 다음 날로 넘어간 것으로 보고 24시간을 더해 보정한다.
+  if (end <= start) end += 24 * 60;
   const avg = Math.max(1, Math.round((info.min + info.max) / 2));
   const times: string[] = [];
   let current = start;
   while (current <= end) {
-    const h = Math.floor(current / 60);
+    const h = Math.floor(current / 60) % 24;
     const m = current % 60;
     times.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
     current += avg;

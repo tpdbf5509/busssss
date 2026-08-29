@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   ChevronRight,
+  MoreHorizontal,
   MapPin,
   Star,
   Pencil,
@@ -21,7 +22,7 @@ import { useApp } from "@/store/AppContext";
 import { RegionModal } from "@/components/RegionModal";
 import { AddShortcutSheet } from "@/components/AddShortcutSheet";
 import { Toggle } from "@/components/ui";
-import { showToast } from "@/components/Toast";
+import { showToast } from "@/lib/toastStore";
 import { requestNotificationPermission } from "@/services/alertMonitorService";
 import { supabase } from "@/lib/supabaseClient";
 import type { Favorite } from "@/types";
@@ -46,7 +47,9 @@ function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (raw) return { ...defaultSettings, ...JSON.parse(raw) };
-  } catch {}
+  } catch (err) {
+    console.warn("[MyScreen] 설정 로드 실패:", err);
+  }
   return { ...defaultSettings };
 }
 
@@ -67,12 +70,18 @@ export function MyScreen() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [shortcutFavorite, setShortcutFavorite] = useState<Favorite | null>(null);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(
+    () => ("Notification" in window ? Notification.permission : "denied")
+  );
 
   useEffect(() => {
     applySettings(settings);
     try {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-    } catch {}
+    } catch (err) {
+      console.warn("[MyScreen] 설정 저장 실패:", err);
+    }
   }, [settings]);
 
   const updateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
@@ -94,12 +103,22 @@ export function MyScreen() {
 
   const handleNotification = async () => {
     const ok = await requestNotificationPermission();
+    setNotifPermission(
+      ok ? "granted" : "Notification" in window ? Notification.permission : "denied"
+    );
     if (ok) showToast("알림 권한이 허용되었어요");
     else showToast("알림 권한이 필요해요. 브라우저 설정에서 허용해 주세요");
   };
 
-  const handleLogout = async () => {
-    if (!confirm("로그아웃 할까요? (로컬 설정은 유지됩니다)")) return;
+  const notifPermissionLabel =
+    notifPermission === "granted" ? "허용됨" : notifPermission === "denied" ? "거부됨" : "설정 필요";
+
+  // window.confirm()은 iOS 홈 화면에 설치된 standalone PWA에서는 브라우저
+  // 크롬이 없어 표시되지 않거나 즉시 취소된 것처럼 동작하는 WebKit 제약이
+  // 있다. 이 앱의 목표가 아이폰 홈 화면 배포라 네이티브 confirm() 대신
+  // 자체 확인 모달(logoutConfirmOpen)을 쓴다.
+  const performLogout = async () => {
+    setLogoutConfirmOpen(false);
     const { error } = await supabase.auth.signOut();
     if (error) {
       showToast("로그아웃에 실패했어요");
@@ -187,7 +206,12 @@ export function MyScreen() {
                             {fav.name}
                           </p>
                           <p className="text-[11px] text-slate-400">
-                            {fav.label} · {fav.type === "station" ? "정류장" : "노선"}
+                            {fav.label} ·{" "}
+                            {fav.type === "station"
+                              ? "정류장"
+                              : fav.type === "stop_route"
+                              ? "정류장 도착정보"
+                              : "노선"}
                           </p>
                         </div>
                         <button
@@ -227,6 +251,8 @@ export function MyScreen() {
 
       <RegionModal
         open={regionOpen}
+        currentSido={state.region.sido}
+        currentSigungu={state.region.sigungu}
         onClose={() => setRegionOpen(false)}
         onSelect={(sido, sigungu) => {
           dispatch({ type: "SET_REGION", sido, sigungu });
@@ -240,6 +266,33 @@ export function MyScreen() {
           favorite={shortcutFavorite}
           onClose={() => setShortcutFavorite(null)}
         />
+      )}
+
+      {logoutConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setLogoutConfirmOpen(false)}
+          />
+          <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 shadow-2xl animate-slide-up">
+            <h2 className="text-lg font-bold text-slate-900 mb-2">로그아웃 할까요?</h2>
+            <p className="text-sm text-slate-500 leading-relaxed mb-5">로컬 설정은 유지됩니다.</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setLogoutConfirmOpen(false)}
+                className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-2xl font-medium text-sm"
+              >
+                취소
+              </button>
+              <button
+                onClick={performLogout}
+                className="flex-1 py-3 bg-red-500 text-white rounded-2xl font-semibold text-sm"
+              >
+                로그아웃
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {helpOpen && (
@@ -288,6 +341,8 @@ export function MyScreen() {
               icon={Bell}
               label="알림 설정"
               onClick={handleNotification}
+              subtitle={notifPermissionLabel}
+              subtitleTone={notifPermission === "granted" ? "ok" : "warn"}
             />
 
             <SettingToggle
@@ -311,9 +366,10 @@ export function MyScreen() {
             />
 
             <SettingRow
-              icon={ChevronRight}
+              icon={MoreHorizontal}
               label="더보기"
               onClick={() => setMoreOpen((prev) => !prev)}
+              expanded={moreOpen}
             />
 
             {moreOpen && (
@@ -350,7 +406,7 @@ export function MyScreen() {
               icon={LogOut}
               label="로그아웃"
               danger
-              onClick={handleLogout}
+              onClick={() => setLogoutConfirmOpen(true)}
               last
             />
           </div>
@@ -367,12 +423,18 @@ function SettingRow({
   onClick,
   danger,
   last,
+  expanded,
+  subtitle,
+  subtitleTone,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   onClick: () => void;
   danger?: boolean;
   last?: boolean;
+  expanded?: boolean;
+  subtitle?: string;
+  subtitleTone?: "ok" | "warn";
 }) {
   return (
     <button
@@ -389,7 +451,20 @@ function SettingRow({
       >
         {label}
       </span>
-      <ChevronRight className="w-4 h-4 text-slate-300" />
+      {subtitle && (
+        <span
+          className={`text-xs font-medium ${
+            subtitleTone === "ok" ? "text-emerald-600" : "text-amber-600"
+          }`}
+        >
+          {subtitle}
+        </span>
+      )}
+      <ChevronRight
+        className={`w-4 h-4 text-slate-300 transition-transform ${
+          expanded ? "rotate-90" : ""
+        }`}
+      />
     </button>
   );
 }

@@ -1,7 +1,6 @@
 import { createContext, useContext, useReducer, useEffect, type ReactNode } from "react";
 import type { Favorite, AlertSetting } from "@/types";
 import { FAVORITES, ALERT_SETTINGS, CARD_INFO } from "@/data/mock";
-import { fetchRoutesForStation } from "@/services/stationService";
 import { fetchAllRoutes } from "@/services/routeService";
 import { resolveDirections } from "@/services/busLocationService";
 import { resolveNodeIdForRoute } from "@/services/arrivalService";
@@ -36,7 +35,9 @@ function loadFavorites(): Favorite[] {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) return parsed;
     }
-  } catch {}
+  } catch (err) {
+    console.warn("[AppContext] 즐겨찾기 로드 실패:", err);
+  }
   return FAVORITES;
 }
 
@@ -47,7 +48,9 @@ function loadAlerts(): AlertSetting[] {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) return parsed;
     }
-  } catch {}
+  } catch (err) {
+    console.warn("[AppContext] 알림 설정 로드 실패:", err);
+  }
   return ALERT_SETTINGS;
 }
 
@@ -63,7 +66,12 @@ function reducer(state: AppState, action: Action): AppState {
     case "SET_REGION":
       return { ...state, region: { sido: action.sido, sigungu: action.sigungu } };
     case "ADD_FAVORITE":
-      if (state.favorites.some((f) => f.refId === action.favorite.refId)) return state;
+      if (
+        state.favorites.some(
+          (f) => f.refId === action.favorite.refId && f.type === action.favorite.type
+        )
+      )
+        return state;
       return { ...state, favorites: [...state.favorites, action.favorite] };
     case "REMOVE_FAVORITE":
       return { ...state, favorites: state.favorites.filter((f) => f.id !== action.id) };
@@ -119,13 +127,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(state.favorites));
-    } catch {}
+    } catch (err) {
+      console.warn("[AppContext] 즐겨찾기 저장 실패:", err);
+    }
   }, [state.favorites]);
 
   useEffect(() => {
     try {
       localStorage.setItem(ALERTS_STORAGE_KEY, JSON.stringify(state.alerts));
-    } catch {}
+    } catch (err) {
+      console.warn("[AppContext] 알림 설정 저장 실패:", err);
+    }
   }, [state.alerts]);
 
   // 저장된 즐겨찾기의 TAGO routeId를 보정할 때 버스 번호만 보지 않습니다.
