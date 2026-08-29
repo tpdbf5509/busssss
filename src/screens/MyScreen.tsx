@@ -71,6 +71,9 @@ export function MyScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [shortcutFavorite, setShortcutFavorite] = useState<Favorite | null>(null);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(
+    () => ("Notification" in window ? Notification.permission : "denied")
+  );
 
   useEffect(() => {
     applySettings(settings);
@@ -100,9 +103,15 @@ export function MyScreen() {
 
   const handleNotification = async () => {
     const ok = await requestNotificationPermission();
+    setNotifPermission(
+      ok ? "granted" : "Notification" in window ? Notification.permission : "denied"
+    );
     if (ok) showToast("알림 권한이 허용되었어요");
     else showToast("알림 권한이 필요해요. 브라우저 설정에서 허용해 주세요");
   };
+
+  const notifPermissionLabel =
+    notifPermission === "granted" ? "허용됨" : notifPermission === "denied" ? "거부됨" : "설정 필요";
 
   // window.confirm()은 iOS 홈 화면에 설치된 standalone PWA에서는 브라우저
   // 크롬이 없어 표시되지 않거나 즉시 취소된 것처럼 동작하는 WebKit 제약이
@@ -197,7 +206,12 @@ export function MyScreen() {
                             {fav.name}
                           </p>
                           <p className="text-[11px] text-slate-400">
-                            {fav.label} · {fav.type === "station" ? "정류장" : "노선"}
+                            {fav.label} ·{" "}
+                            {fav.type === "station"
+                              ? "정류장"
+                              : fav.type === "stop_route"
+                              ? "정류장 도착정보"
+                              : "노선"}
                           </p>
                         </div>
                         <button
@@ -327,6 +341,8 @@ export function MyScreen() {
               icon={Bell}
               label="알림 설정"
               onClick={handleNotification}
+              subtitle={notifPermissionLabel}
+              subtitleTone={notifPermission === "granted" ? "ok" : "warn"}
             />
 
             <SettingToggle
@@ -408,6 +424,8 @@ function SettingRow({
   danger,
   last,
   expanded,
+  subtitle,
+  subtitleTone,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
@@ -415,6 +433,8 @@ function SettingRow({
   danger?: boolean;
   last?: boolean;
   expanded?: boolean;
+  subtitle?: string;
+  subtitleTone?: "ok" | "warn";
 }) {
   return (
     <button
@@ -431,6 +451,15 @@ function SettingRow({
       >
         {label}
       </span>
+      {subtitle && (
+        <span
+          className={`text-xs font-medium ${
+            subtitleTone === "ok" ? "text-emerald-600" : "text-amber-600"
+          }`}
+        >
+          {subtitle}
+        </span>
+      )}
       <ChevronRight
         className={`w-4 h-4 text-slate-300 transition-transform ${
           expanded ? "rotate-90" : ""

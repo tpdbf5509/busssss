@@ -39,9 +39,12 @@ function collectObjects(value: unknown, out: RawRouteField[] = []): RawRouteFiel
 
   const keys = Object.keys(primitive);
   const keyText = keys.join(" ").toLowerCase();
+  // "car"는 뺐습니다 — 부분 문자열 매칭이라 나중에 API에 "carrierCode" 같은
+  // 무관한 필드가 추가되면 버스 위치가 아닌 레코드를 잘못 집어올 위험이 있고,
+  // 실제 응답 필드(busNo/BNo/vehicleNo/vehicleid 등)는 vehicle/bus로 이미 잡힙니다.
   const locationHint = [
     "gps", "lat", "lng", "lon", "long", "latitude", "longitude",
-    "vehicle", "veh", "bus", "car", "node", "stop", "station",
+    "vehicle", "veh", "bus", "node", "stop", "station",
     "route", "brt", "x", "y"
   ].some((hint) => keyText.includes(hint));
 
