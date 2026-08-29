@@ -54,6 +54,29 @@ if (isNaN(start) || isNaN(end) || end <= start) return [];
 ```
 막차 시간이 "00:20"처럼 자정 이후로 기록된 노선은 `end`(20분)가 `start`(예: 330분)보다 작아져 `end <= start`에 걸리고, 예상 배차표 전체가 빈 배열이 됩니다. 이런 노선은 실제로는 정상 운행 중인데도 "배차간격 정보가 없어 시간표를 생성할 수 없어요"로 잘못 표시됩니다.
 
+### 25. `MyScreen.tsx` — 로그아웃이 iOS 홈 화면 앱(설치된 PWA)에서 동작하지 않을 수 있음
+```ts
+const handleLogout = async () => {
+  if (!confirm("로그아웃 할까요? (로컬 설정은 유지됩니다)")) return;
+  ...
+```
+`window.confirm()`(그리고 `alert`/`prompt`)은 iOS Safari의 "홈 화면에 추가"로 설치된 standalone 모드 앱에서는 브라우저 크롬이 없어서 아예 표시되지 않거나 즉시 취소된 것처럼 동작하는 것으로 알려진 WebKit 제약입니다. 이 프로젝트의 목표가 정확히 "아이폰 홈 화면 배포"이기 때문에, 배포 후 홈 화면 아이콘으로 실행했을 때 로그아웃 버튼을 눌러도 아무 반응이 없을 가능성이 있습니다.
+
+### 26. `manifest.json` — 아이콘의 `purpose` 값이 스펙에 없는 값
+```json
+{ "src": "/icons/bus_stop_icon_180x180.png", "sizes": "180x180", "type": "image/png", "purpose": "apple touch icon" }
+```
+Web App Manifest 스펙에서 `purpose`는 `"any"` / `"maskable"` / `"monochrome"`(공백으로 조합 가능)만 허용합니다. `"apple touch icon"`은 유효한 값이 아니라서(HTML의 `<link rel="apple-touch-icon">` 개념을 매니페스트에 잘못 옮겨 적은 것으로 보임) 브라우저가 이 값을 그냥 무시합니다 — 크래시는 안 나지만 의도한 효과가 없습니다. 또한 `maskable` 아이콘이 하나도 없어 안드로이드에서 어댑티브 아이콘 마스크가 적용되면 로고 여백이 잘릴 수 있습니다.
+
+### 27. `index.html` — `user-scalable=no`로 핀치 줌이 완전히 막혀 있음
+```html
+<meta name="viewport" content="...maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+```
+저시력 사용자가 화면을 확대해서 볼 수 있는 표준 접근성 기능(핀치 줌)이 통째로 비활성화되어 있습니다. 앱 안에 "큰 글씨" 토글이 있긴 하지만, 이는 브라우저 표준 확대 기능을 대체하지 못합니다. WCAG 1.4.4(Resize Text) 기준으로도 문제가 되는 설정입니다.
+
+### 28. PWA에 서비스워커가 전혀 없음 — 오프라인/백그라운드 알림 불가
+`vite.config.ts`에 PWA 플러그인이 없고, `public/`에도 서비스워커 파일이 없습니다. 지금 PWA는 매니페스트+아이콘만 있는 "홈 화면 아이콘" 수준이라 (1) 오프라인일 때 정적 노선도조차 캐시로 뜨지 않고, (2) 하차 알림도 브라우저 탭/앱이 완전히 켜져 있을 때만 동작하는 `Notification()` 방식이라 앱을 완전히 종료하거나 백그라운드로 오래 두면 알림이 안 옵니다. "진행 중인 PWA 작업"의 다음 단계로 필요한 부분입니다.
+
 ---
 
 ## 🟠 중간 — 데이터 정합성 / 표시 오류
@@ -91,6 +114,22 @@ return min && max ? `${min}~${max}분` : "정보 없음";
 ```
 `min === max`(고정 배차)인 노선도 항상 범위 표기를 쓰기 때문에 정류장 상세 화면의 "배차간격" 줄에 "15~15분" 같은 어색한 문구가 뜹니다. (파싱 자체는 정상 동작하므로 A1 지연 판정 계산에는 영향 없음)
 
+### 29. `AddAlertModal` — "N정거장 전"을 목적지 정류장 위치와 상관없이 최대 10까지 고를 수 있음
+```ts
+const triggerOrder = alert.targetStopOrder - alert.stopsBefore;
+if (triggerOrder < 1) continue; // alertMonitorService.ts
+```
+하차 알림 설정 화면의 `stopsBefore` 스테퍼는 무조건 1~10 범위만 허용(`Math.min(10, s+1)`)하는데, 선택한 하차 정류장이 노선의 앞쪽(예: 3번째 정류장)이면 `stopsBefore`를 7 이상으로 설정하는 순간 `triggerOrder`가 1 미만이 되어 **그 알림은 영원히 울리지 않습니다.** 화면에는 아무 경고도 없어서 사용자는 알림을 정상적으로 설정했다고 믿게 됩니다.
+
+### 30. `BusStop.order`(경유 정류장 캐시)와 `BusLocation.nodeOrder`(실시간 위치)가 서로 다른 데이터 소스의 순번 — 어긋날 위험
+하차 알림·정류장 도착 로직은 노선의 "몇 번째 정류장"이라는 순번을 두 군데에서 따로 가져옵니다: 정적 목록은 Supabase `bus_route_stops_cache.sequence_no`(`routeService.ts`), 실시간 버스 위치는 전주시 GW가 그때그때 내려주는 자체 순번(`busLocationService.ts`)입니다. 이 둘이 정확히 같은 기준으로 매겨진다는 보장이 코드 어디에도 없고, 실제로 이 코드베이스에는 "서로 다른 소스의 ID가 어긋나서 생긴 버그"를 고친 이력이 이미 두 번 있습니다(`arrivalService.ts`의 `resolveNodeIdForRoute`, `resolveRouteId` 관련 주석 참고). 순번도 같은 종류의 위험을 안고 있어, 실측 데이터로 한 번 검증해볼 가치가 있습니다.
+
+### 31. `MyScreen.tsx` — 설정 화면의 "더보기" 행이 같은 화살표 아이콘을 두 번 보여줌
+```tsx
+<SettingRow icon={ChevronRight} label="더보기" onClick={() => setMoreOpen((prev) => !prev)} />
+```
+`SettingRow`는 왼쪽에 전달받은 아이콘을, 오른쪽 끝에는 항상 고정된 `ChevronRight`를 그립니다. "더보기" 행은 왼쪽 아이콘으로도 `ChevronRight`를 넘겨서 **같은 화살표가 한 줄에 두 번** 나옵니다. 게다가 "더보기"는 다른 화면으로 이동하는 게 아니라 그 자리에서 펼쳐지는 동작인데, `ChevronRight`(다음 화면으로 이동을 암시하는 아이콘)를 쓰는 것도 의미상 맞지 않습니다. 펼쳐진 상태를 나타내는 회전 애니메이션도 없어서, 펼쳐졌는지 접혔는지는 아래 항목이 나타나고 사라지는 것으로만 알 수 있습니다.
+
 ---
 
 ## 🟡 낮음 — 죽은 코드 / 자잘한 정적분석 이슈 (`npm run lint` 결과 포함)
@@ -105,6 +144,12 @@ return min && max ? `${min}~${max}분` : "정보 없음";
 22. `useAsync.ts:22` — `useCallback(fn, deps)`에서 `deps`가 배열 리터럴이 아니라 매개변수로 전달돼 ESLint 의존성 검사를 받을 수 없음(런타임 동작 자체는 정상).
 23. `BusScreen.tsx` 202·216번 줄 — `useEffect`에 `onConsumeInitialRoute`/`onConsumeInitialStation`이 의존성 배열에서 빠져있다는 경고.
 24. `Toast.tsx`, `AppContext.tsx` — "Fast refresh only works when a file only exports components" 경고 (컴포넌트 외 함수/상수를 같은 파일에서 export). 동작엔 영향 없음.
+32. `src/api/jeonju.ts:getRoutes` — Supabase `bus_routes_master`에서 `category` 컬럼을 조회는 하지만 실제 매핑(`fromMaster`)에서 한 번도 안 씀. 불필요한 컬럼 조회.
+33. `src/api/xml.ts`의 주석/`isArray` 규칙(`tagName === "list"`)이 예전 "노선 목록 XML API" 구조를 설명하는데, 그 API는 이제 Supabase로 대체돼 이 파서가 안 쓰입니다. 실제로 이 파서를 쓰는 유일한 곳(`getBusLocationsByRoute`, 실시간 위치 API)은 태그 구조가 달라서 `collectObjects`가 배열 여부와 상관없이 트리를 전부 순회하는 별도 로직으로 우회하고 있음 — 동작엔 문제없지만 주석이 실제 용도와 안 맞아 헷갈리기 쉬움.
+34. `src/api/jeonju.ts:collectObjects`의 위치정보 판별 키워드 목록에 `"car"`가 포함되어 있어, 나중에 API 응답 필드명에 "car"를 부분 문자열로 포함하는 무관한 필드(예: "carrierCode")가 추가되면 엉뚱한 레코드를 버스 위치로 잘못 인식할 수 있음(현재 실제 응답 기준으로는 문제 없음, 잠재적 취약점).
+35. `MyScreen.tsx:190` — 즐겨찾기 관리 목록에서 `fav.type === "station" ? "정류장" : "노선"`으로만 구분해서, `stop_route`(특정 정류장의 특정 노선 도착정보) 즐겨찾기도 그냥 "노선"으로 표시됨. 홈 화면 쪽 로직만큼 세분화되어 있지 않음.
+36. `MyScreen.tsx` 설정 드로어의 "알림 설정" 행이 현재 브라우저 알림 권한 상태(허용/거부)를 전혀 표시하지 않음 — `AlertScreen.tsx`는 같은 정보를 상태로 갖고 배너로 보여주는데 여기는 안내가 없음.
+37. `CardScreen.tsx`의 `applyCustomInput`이 입력 자릿수 제한이 없어서, 숫자를 아주 길게 붙여넣으면 충전 금액이 그대로 초천문학적 숫자가 됨(12번 항목의 상한 없음 문제와 같은 근본 원인).
 
 ---
 
@@ -112,8 +157,10 @@ return min && max ? `${min}~${max}분` : "정보 없음";
 
 | 심각도 | 개수 |
 |---|---|
-| 🔴 심각 (실사용 영향) | 7 |
-| 🟠 중간 (데이터/표시 오류) | 7 |
-| 🟡 낮음 (죽은 코드/lint) | 10 |
+| 🔴 심각 (실사용 영향) | 11 |
+| 🟠 중간 (데이터/표시 오류) | 10 |
+| 🟡 낮음 (죽은 코드/lint/잠재적 취약점) | 16 |
 
-가장 먼저 손보면 좋을 것: **#1(오타 한 글자), #2(지역 리셋), #3(알림 평생 1회 제한)** — 셋 다 재현이 쉽고 사용자 체감이 큽니다. 원하시면 이 중 우선순위 정해서 바로 고쳐드릴게요.
+**1차 보고 이후 추가로 찾은 것**: #25(iOS 홈 화면 앱에서 로그아웃 확인창이 안 뜰 수 있음), #26(매니페스트 아이콘 purpose 값 오류), #27(핀치 줌 차단), #28(서비스워커 부재), #29(하차 알림이 조건에 따라 영원히 안 울리는 설정을 그대로 허용), #30(정류장 순번 두 데이터 소스 불일치 위험), #31(더보기 행 아이콘 중복) 순으로 심각도가 높습니다.
+
+가장 먼저 손보면 좋을 것: **#1(오타 한 글자), #2(지역 리셋), #3(알림 평생 1회 제한), #25(iOS 로그아웃)** — 넷 다 재현이 쉽고, 특히 #25는 이 프로젝트의 핵심 목표(아이폰 홈 화면 배포)와 직결됩니다.
