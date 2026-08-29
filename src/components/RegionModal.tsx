@@ -56,7 +56,7 @@ export function RegionModal({
                 onClick={() => setSelectedSido(sido)}
                 className={`w-full text-left px-4 py-3.5 text-sm transition-colors flex items-center justify-between ${
                   selectedSido === sido
-                    ? "bg-slate-100 text-slate-900 font-semibold"
+                    ? "bg-blue-50 text-blue-700 font-semibold"
                     : "text-slate-600 hover:bg-slate-50"
                 }`}
               >
@@ -74,7 +74,7 @@ export function RegionModal({
                 onClick={() => setSelectedSigungu(sg)}
                 className={`w-full text-left px-4 py-3.5 text-sm transition-colors flex items-center justify-between ${
                   selectedSigungu === sg
-                    ? "bg-slate-100 text-slate-900 font-semibold"
+                    ? "bg-blue-50 text-blue-700 font-semibold"
                     : "text-slate-600 hover:bg-slate-50"
                 }`}
               >

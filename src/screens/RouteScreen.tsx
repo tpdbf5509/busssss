@@ -128,13 +128,13 @@ function StepIcon({ type }: { type: RouteStep["icon"] }) {
 function stepIconBg(type: RouteStep["icon"]) {
   switch (type) {
     case "walk":
-      return "border border-slate-200";
+      return "bg-emerald-50";
     case "bus":
-      return "border border-slate-200";
+      return "bg-blue-50";
     case "pin":
-      return "border border-slate-200";
+      return "bg-orange-50";
     case "target":
-      return "border border-slate-200";
+      return "bg-red-50";
     default:
       return "bg-slate-100";
   }
@@ -207,9 +207,9 @@ export function RouteScreen() {
   };
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-white">
+    <div className="h-full flex flex-col overflow-hidden bg-slate-50">
       {/* 버스/알림과 동일한 흰 헤더 */}
-      <header className="bg-white px-5 pt-safe-header pb-4 border-b border-slate-200 sticky top-0 z-30 shrink-0">
+      <header className="bg-white px-5 pt-16 pb-5 border-b border-slate-100 sticky top-0 z-30 shrink-0">
         <h1 className="text-xl font-bold text-slate-900">길찾기</h1>
         <p className="text-xs text-slate-400 mt-0.5">
           목적지까지 버스 타는 방법
@@ -258,7 +258,7 @@ export function RouteScreen() {
                   key={dest}
                   type="button"
                   onClick={() => handleSearch(dest)}
-                  className="rounded-full bg-white border border-slate-200 px-3.5 py-1.5 text-sm text-slate-700 active:bg-slate-50 transition-colors"
+                  className="rounded-full bg-white border border-slate-100 px-3.5 py-1.5 text-sm text-slate-700 hover:border-blue-200 hover:bg-blue-50 active:scale-[0.98] transition-all shadow-sm"
                 >
                   {dest}
                 </button>
@@ -297,7 +297,7 @@ export function RouteScreen() {
                     현재 위치 · {result.currentArea}
                   </p>
                 </div>
-                <span className="shrink-0 rounded-full border border-slate-200 text-slate-600 text-xs font-semibold px-2.5 py-1">
+                <span className="shrink-0 rounded-full bg-blue-50 text-blue-600 text-xs font-semibold px-2.5 py-1">
                   {result.summary}
                 </span>
               </div>

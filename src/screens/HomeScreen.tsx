@@ -4,7 +4,7 @@ import { useAsync } from "@/hooks/useAsync";
 import { fetchAllRoutes } from "@/services/routeService";
 import { showToast } from "@/lib/toastStore";
 import type { TabId } from "@/components/BottomNav";
-import { MapPin, ChevronDown, ChevronRight, Star, Search, X, RefreshCw } from "lucide-react";
+import { MapPin, ChevronDown, Star, Search, X, RefreshCw } from "lucide-react";
 import { useArrivalInfo } from "@/hooks/useArrivalInfo";
 import { formatArrivalText } from "@/lib/formatArrival";
 import { ReliabilityTag } from "@/components/ui";
@@ -133,62 +133,66 @@ export function HomeScreen({
   };
 
   return (
-    <div className="h-full flex flex-col bg-white">
-       <header className="bg-white px-5 pt-safe-header pb-5 shrink-0">
-         <div className="flex items-start justify-between mb-1">
-          <h1 className="text-[26px] font-bold tracking-[-0.02em] text-slate-900 leading-tight">
-            BUS STOP
-          </h1>
+    <div className="flex flex-col bg-slate-50">
+       <header className="bg-gradient-to-b from-blue-600 to-blue-500 text-white px-5 pt-16 pb-9 shrink-0">
+         <div className="flex items-center justify-between mb-1.5">
+          <h1 className="text-2xl font-bold tracking-tight">BUS STOP</h1>
           <button
             onClick={() => setRegionUnderDevOpen(true)}
-            className="flex items-center gap-1 -mr-1 px-2 py-1 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
+            className="flex items-center gap-1 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1.5 text-sm font-medium hover:bg-white/25 transition-colors"
           >
             <MapPin className="w-4 h-4" />
             <span>{state.region.sigungu}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            <ChevronDown className="w-3.5 h-3.5" />
           </button>
         </div>
-        <p className="text-slate-400 text-[13px] tracking-tight">전주시 버스 노선 정보</p>
+        <p className="text-blue-100 text-sm">전주시 버스 노선 정보</p>
       </header>
-
-      <section className="px-5 shrink-0">
+  
+      <section className="px-4 -mt-3 shrink-0">
         <button
           onClick={() => onNavigate("bus")}
-          className="w-full border-y border-slate-200 py-3.5 flex items-center gap-3 text-left active:bg-slate-50 transition-colors"
+          className="w-full bg-white rounded-2xl border border-slate-200 shadow-sm px-4 py-3.5 flex items-center gap-3 hover:border-blue-300 hover:shadow transition-all active:scale-[0.99]"
         >
-          <Search className="w-[18px] h-[18px] text-slate-400 shrink-0" />
-          <span className="flex-1 text-[15px] text-slate-500 tracking-tight">
-            노선번호·기점·종점으로 검색
-          </span>
-          <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
+          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+            <Search className="w-5 h-5 text-blue-600" />
+          </div>
+          <div className="text-left flex-1">
+            <p className="text-sm font-semibold text-slate-800">전체 노선 검색</p>
+            <p className="text-xs text-slate-400 mt-0.5">노선번호·기점·종점으로 찾아보세요</p>
+          </div>
+          <span className="text-slate-300 text-lg">›</span>
         </button>
       </section>
+  
+      {/* 이 아래에 기존 즐겨찾기 섹션 그대로 유지 */}
 
-      <section className="px-5 mt-8 flex flex-col min-h-0 overflow-y-auto">
-      <div className="flex items-baseline justify-between gap-2 mb-1 shrink-0">
-        <h3 className="text-[17px] font-bold text-slate-900 tracking-[-0.01em] min-w-0">즐겨찾기</h3>
-        <div className="flex items-center gap-2.5 shrink-0">
+      <section className="px-4 mt-6 flex flex-col min-h-0 overflow-y-auto">
+      <div className="flex items-center justify-between mb-3 shrink-0">
+        <h3 className="text-sm font-bold text-slate-700">즐겨찾기</h3>
+        <div className="flex items-center gap-3">
+          {/* 새로고침 버튼 */}
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="p-1 -m-1 rounded-full text-slate-400 hover:text-slate-700 transition-colors disabled:opacity-40"
+            className="p-1.5 rounded-full text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50"
             aria-label="새로고침"
             aria-busy={refreshing}
           >
-            <RefreshCw className={`w-[15px] h-[15px] ${refreshing ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
           </button>
 
           {state.favorites.length > 0 && (
             <button
               onClick={() => setEditMode((v) => !v)}
-              className="text-[13px] text-slate-400 font-medium hover:text-slate-700"
+              className="text-xs text-slate-400 font-medium hover:text-slate-600"
             >
               {editMode ? "완료" : "편집"}
             </button>
           )}
           <button
             onClick={() => onNavigate("my")}
-            className="text-[13px] text-slate-400 font-medium hover:text-slate-700"
+            className="text-xs text-blue-600 font-medium hover:underline"
           >
             전체보기
           </button>
@@ -197,13 +201,13 @@ export function HomeScreen({
       {state.favorites.length === 0 ? (
     <button
       onClick={() => onNavigate("bus")}
-      className="w-full py-12 text-center border-t border-slate-200 mt-3 active:bg-slate-50 transition-colors"
+      className="w-full bg-white rounded-2xl p-6 text-center border border-slate-100 hover:border-blue-200 hover:shadow-sm transition-all active:scale-[0.99]"
     >
-      <Star className="w-7 h-7 text-slate-200 mx-auto mb-2.5" strokeWidth={1.5} />
-      <p className="text-[13px] text-slate-400">즐겨찾기를 추가해 보세요</p>
+      <Star className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+      <p className="text-sm text-slate-400">즐겨찾기를 추가해 보세요</p>
     </button>
   ) : (
-    <div className="max-h-[52vh] overflow-y-auto divide-y divide-slate-100 border-t border-slate-200 mt-3 scroll-pb-safe">
+    <div className="max-h-[50vh] overflow-y-auto bg-white rounded-2xl border border-slate-100 p-3 space-y-2.5">
   {state.favorites.map((fav) => {
         const isRoute = fav.type === "route";
         const matchedRoute = isRoute
@@ -211,8 +215,17 @@ export function HomeScreen({
           : undefined;
         const isMain = matchedRoute ? getRouteTypeLabel(matchedRoute.name) === "본선" : true;
 
-        // 본선/분선은 색이 아니라 라벨 텍스트로 구분한다. 아이콘/배지 색을
-        // 같은 계열 배경과 짝지으면 화면이 색 블록의 나열이 된다.
+        const badgeBg = isRoute
+          ? isMain
+            ? "bg-blue-50"
+            : "bg-emerald-50"
+          : "bg-blue-50";
+        const badgeText = isRoute
+          ? isMain
+            ? "text-blue-700"
+            : "text-emerald-700"
+          : "text-blue-700";
+
         const routeNumber =
           matchedRoute?.number ?? fav.name.replace(/번$/, "").trim();
 
@@ -246,11 +259,15 @@ export function HomeScreen({
               return;
             }
           }}              
-              className="w-full px-1 py-4 flex items-center gap-3.5 text-left active:bg-slate-50 transition-colors"
+              className="w-full bg-slate-50 rounded-xl border border-slate-100 px-4 py-5 flex items-center gap-3 text-left hover:bg-blue-50 hover:border-blue-100 transition-all"
             >
-              {/* 왼쪽: 구분 라벨 — 중립 표면 + 얇은 선으로만 구분 */}
-              <div className="min-w-[58px] h-10 rounded-lg border border-slate-200 flex items-center justify-center shrink-0 px-2">
-                <span className="font-semibold text-[13px] leading-tight text-center truncate text-slate-600 tracking-tight">
+              {/* 왼쪽: 본선/분선 글씨 + 색 */}
+              <div
+                className={`min-w-[64px] h-11 rounded-xl flex items-center justify-center shrink-0 px-2 ${badgeBg}`}
+              >
+                <span
+                  className={`font-bold text-sm leading-tight text-center truncate ${badgeText}`}
+                >
                   {isRoute ? (isMain ? "본선" : "분선") : fav.label}
                 </span>
               </div>

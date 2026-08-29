@@ -18,9 +18,10 @@ export function BottomNav({
   onChange: (id: TabId) => void;
 }) {
   return (
-    // pb-safe는 max()라 홈 인디케이터(34pt) 높이를 그대로 확보한다.
-    // min()으로 상한을 걸면 인디케이터와 겹친다.
-    <nav className="shrink-0 z-40 bg-white border-t border-slate-200 pb-safe px-safe">
+    <nav
+      className="shrink-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200"
+      style={{ paddingBottom: "min(env(safe-area-inset-bottom), 8px)" }}
+    >
       <div className="max-w-md mx-auto grid grid-cols-5">
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -29,17 +30,17 @@ export function BottomNav({
             <button
               key={tab.id}
               onClick={() => onChange(tab.id)}
-              className="flex flex-col items-center justify-center py-2 gap-1 transition-colors"
+              className="flex flex-col items-center justify-center py-1.5 gap-0.5 transition-colors"
             >
               <Icon
-                className={`w-[22px] h-[22px] transition-colors ${
+                className={`w-5 h-5 transition-colors ${
                   isActive ? "text-blue-600" : "text-slate-400"
                 }`}
-                strokeWidth={isActive ? 2.2 : 1.8}
+                strokeWidth={isActive ? 2.5 : 2}
               />
               <span
-                className={`text-[11px] tracking-tight transition-colors ${
-                  isActive ? "text-blue-600 font-semibold" : "text-slate-400 font-medium"
+                className={`text-[11px] font-medium transition-colors ${
+                  isActive ? "text-blue-600" : "text-slate-400"
                 }`}
               >
                 {tab.label}

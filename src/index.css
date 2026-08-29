@@ -48,30 +48,6 @@
   .h-4\.5 {
     height: 1.125rem;
   }
-
-  /* ── 세이프에어리어 ──────────────────────────────────────────────
-     노치(44pt)·다이내믹 아일랜드(59pt)·홈버튼(20pt)은 기기마다 값이 달라
-     고정 px로 잡으면 안 된다. env(safe-area-inset-*) 위에 자체 여백을 더해
-     계산한다. index.html의 viewport-fit=cover가 있어야 값이 0이 아니다. */
-  .pt-safe-header {
-    padding-top: calc(env(safe-area-inset-top) + 1rem);
-  }
-  .pt-safe-subheader {
-    padding-top: calc(env(safe-area-inset-top) + 0.75rem);
-  }
-  /* 홈 인디케이터(34pt)와 겹치지 않게. min()을 쓰면 상한이 걸려 오히려 침범한다. */
-  .pb-safe {
-    padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
-  }
-  /* 가로모드에서 노치가 있는 좌우 변 */
-  .px-safe {
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
-  }
-  /* 스크롤 영역 맨 아래 항목이 홈 인디케이터에 가리지 않도록 */
-  .scroll-pb-safe {
-    padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
-  }
 }
 
 @keyframes slide-up {
@@ -149,16 +125,18 @@ html.dark .border-slate-50 {
   border-color: #334155 !important;
 }
 
-/* 색약 모드 — 대비 강화.
-   UI가 중립 표면 기준으로 바뀌면서 색으로 정보를 구분하는 곳이 거의 없어졌다.
-   남은 강조색(파랑)의 대비만 끌어올리고, 경계선을 진하게 해 형태로 구분되게 한다. */
+/* 색약 모드 — 대비 강화 */
 html.color-blind .text-blue-600,
 html.color-blind .text-blue-700 {
   color: #1d4ed8 !important;
 }
-html.color-blind .bg-blue-600 {
-  background-color: #1d4ed8 !important;
+html.color-blind .bg-blue-50 {
+  background-color: #dbeafe !important;
 }
-html.color-blind .border-slate-200 {
-  border-color: #94a3b8 !important;
+html.color-blind .bg-emerald-50 {
+  background-color: #fef3c7 !important;
+}
+html.color-blind .text-emerald-600,
+html.color-blind .text-emerald-700 {
+  color: #b45309 !important;
 }
