@@ -58,6 +58,15 @@ function toBusLocation(item: Record<string, string>, route: Route): BusLocation 
     "stationName", "bnodeNm", "bnodename", "nodeNm",
   ]);
 
+  // 정류장 ID는 정적 캐시와 실시간 위치를 순번이 아니라 ID로 대조하기 위해
+  // 뽑는다(stopPosition.resolveBusStopIndex 참고). GW가 안 내려주면 빈 값이
+  // 되고, 그때는 nodeOrder 기반 환산으로 폴백한다.
+  const nodeId = firstValue(item, [
+    "stopStandardid", "stopstandardid", "stopId", "stopid",
+    "nodeid", "nodeId", "node_id", "bnodeId", "bnodeid",
+    "BStopId", "bstopid",
+  ]);
+
   const nodeOrder = Number(firstValue(item, [
     "brnSeqno", "brnseqno", "brsSeqno", "brsseqno",
     "nodeord", "nodeOrder", "node_order", "seq", "sequence",
@@ -69,6 +78,7 @@ function toBusLocation(item: Record<string, string>, route: Route): BusLocation 
     lat,
     lng,
     nodeName,
+    nodeId,
     nodeOrder: Number.isFinite(nodeOrder) ? nodeOrder : 0,
     routeId: route.id,
     direction: `${route.start} → ${route.end}`,

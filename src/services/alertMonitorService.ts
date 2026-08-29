@@ -1,5 +1,6 @@
 import { fetchBusLocations } from "@/services/busLocationService";
-import { fetchAllRoutes } from "@/services/routeService";
+import { fetchAllRoutes, fetchStopsForRoute } from "@/services/routeService";
+import { indexOfStopByOrder, resolveBusStopIndex } from "@/lib/stopPosition";
 import type { AlertSetting, AlertRecord } from "@/types";
 import type { Route } from "@/types/route";
 
@@ -189,27 +190,63 @@ export async function checkDropoffAlerts(
       continue;
     }
 
+    // "N정거장 전"은 순번(sequence_no) 뺄셈이 아니라 정류장 목록에서의 위치로
+    // 계산해야 한다. 순번에는 구멍이 있어서 뺄셈 결과가 실제 정거장 수와 다르다
+    // (stopPosition.ts 주석 참고). 목록은 routeService에서 캐시되므로 폴링마다
+    // 새로 받아오지 않는다.
+    let stops;
+    try {
+      stops = await fetchStopsForRoute(route);
+    } catch {
+      continue;
+    }
+    if (stops.length === 0) continue;
+
     const today = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD (로컬 기준)
 
     for (const alert of routeAlerts) {
-      // 주의: targetStopOrder는 정적 캐시(bus_route_stops_cache.sequence_no) 순번이고
-      // 아래에서 비교하는 bus.nodeOrder는 전주시 실시간 GW가 그때그때 매기는 별도
-      // 순번이다. 두 순번이 항상 같은 기준으로 매겨진다는 보장은 없다(실측 검증 필요).
-      const triggerOrder = alert.targetStopOrder - alert.stopsBefore;
-      if (triggerOrder < 1) continue;
+      // 저장된 targetStopOrder는 raw sequence_no라 위치로 환산한다.
+      // 노선 데이터가 갱신돼 그 순번이 사라졌으면 조용히 넘기지 않고 남긴다.
+      const targetIndex = indexOfStopByOrder(stops, alert.targetStopOrder);
+      if (targetIndex === -1) {
+        console.warn(
+          `[alertMonitorService] 알림(${alert.id})의 하차 정류장 순번 ${alert.targetStopOrder}을 ` +
+            `${route.number}번 노선 정류장 목록에서 찾지 못해 건너뜁니다.`,
+        );
+        continue;
+      }
+
+      const triggerIndex = targetIndex - alert.stopsBefore;
+      if (triggerIndex < 0) continue;
 
       for (const bus of locations) {
-        // 상한(< targetStopOrder)을 두면 폴링 사이에 버스가 구간을 통째로
+        const { index: busIndex, resolvedBy } = resolveBusStopIndex(
+          stops,
+          bus.nodeId,
+          bus.nodeOrder,
+        );
+        if (busIndex === -1) continue;
+
+        if (resolvedBy === "order") {
+          // GW가 정류장 ID를 안 줘서 순번 체계가 같다는 가정에 의존한 경우다.
+          // 실제 운영 데이터로 이 가정을 확인할 수 있게 흔적을 남긴다.
+          console.debug(
+            `[alertMonitorService] 버스 ${bus.vehicleNo} 위치를 nodeOrder(${bus.nodeOrder})로 환산했습니다 ` +
+              `(정류장 ID 없음 → ${stops[busIndex].name}).`,
+          );
+        }
+
+        // 상한(< targetIndex)을 두면 폴링 사이에 버스가 구간을 통째로
         // 지나쳐버렸을 때 알림이 영원히 안 울린다. 하한만 확인하고, 같은
         // 날 같은 차량에 대한 중복 발송은 아래 fired 키로 막는다.
-        if (bus.nodeOrder >= triggerOrder) {
+        if (busIndex >= triggerIndex) {
           const key = `${today}_${alert.id}_${bus.vehicleNo}`;
           if (fired.has(key)) continue;
 
           fired.add(key);
 
           const title = "하차 알람";
-          const body = `${alert.routeName} · ${bus.nodeName} 부근\n${alert.targetStation} 하차까지 약 ${alert.targetStopOrder - bus.nodeOrder}정거장`;
+          const body = `${alert.routeName} · ${bus.nodeName} 부근\n${alert.targetStation} 하차까지 약 ${targetIndex - busIndex}정거장`;
 
           if (alert.sound) startDropoffAlarm(title, body);
           if (alert.vibrate) vibrate();

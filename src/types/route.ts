@@ -32,7 +32,8 @@ export interface BusLocation {
   lat: number | null; // gpslati (옵션값이라 없을 수 있음)
   lng: number | null; // gpslong
   nodeName: string; // 현재 근접한 정류소명
-  nodeOrder: number; // 정류소 순서
+  nodeId: string; // 현재 근접한 정류소ID (GW가 안 주면 빈 문자열)
+  nodeOrder: number; // GW가 매긴 정류소 순번 (정적 캐시의 sequence_no와 같은 체계라는 보장 없음)
   routeId: string;
   direction: string; // "start → end" 표시용
 }
