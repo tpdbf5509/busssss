@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useApp } from "@/store/AppContext";
+import { useApp } from "@/store/appContext";
 import { checkDropoffAlerts } from "@/services/alertMonitorService";
 
 const INTERVAL_MS = 20000; // 20초마다 검사

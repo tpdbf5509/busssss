@@ -18,7 +18,7 @@ import {
   Menu,
   Smartphone,
 } from "lucide-react";
-import { useApp } from "@/store/AppContext";
+import { useApp } from "@/store/appContext";
 import { RegionModal } from "@/components/RegionModal";
 import { AddShortcutSheet } from "@/components/AddShortcutSheet";
 import { Toggle } from "@/components/ui";

@@ -12,11 +12,12 @@ import {
   ChevronRight,
   ArrowLeft,
 } from "lucide-react";
-import { useApp } from "@/store/AppContext";
+import { useApp } from "@/store/appContext";
 import { useAsync } from "@/hooks/useAsync";
 import { fetchAllRoutes, fetchStopsForRoute } from "@/services/routeService";
 import { Toggle, EmptyState, LoadingSkeleton } from "@/components/ui";
 import { showToast } from "@/lib/toastStore";
+import { indexOfStopByOrder, maxStopsBefore } from "@/lib/stopPosition";
 import type { AlertSetting, AlertRecord } from "@/types";
 import type { Route, BusStop } from "@/types/route";
 import {
@@ -273,16 +274,23 @@ function AddAlertModal({
         (r.end ?? "").includes(query)
     ) ?? [];
 
-  // triggerOrder(= targetStopOrder - stopsBefore)가 1 미만이면 alertMonitorService가
-  // 그 알림을 영원히 건너뛴다. 하차 정류장 순번보다 큰 stopsBefore는 애초에 못 고르게 막는다.
-  const maxStopsBefore = selectedStop ? Math.max(1, Math.min(10, selectedStop.order - 1)) : 10;
+  // 순번(order)이 아니라 정류장 목록에서의 위치로 계산해야 한다. 순번에는
+  // 구멍이 있어서 "순번 - 1"이 실제 앞선 정거장 수와 다르다(stopPosition.ts 참고).
+  const targetIndex =
+    selectedStop && stops ? indexOfStopByOrder(stops, selectedStop.order) : -1;
+  const stopsBeforeMax = maxStopsBefore(targetIndex);
+  const isFirstStopOfRoute = selectedStop != null && stops != null && stopsBeforeMax === 0;
 
   useEffect(() => {
-    setStopsBefore((s) => Math.min(s, maxStopsBefore));
-  }, [maxStopsBefore]);
+    if (stopsBeforeMax > 0) {
+      setStopsBefore((s) => Math.min(s, stopsBeforeMax));
+    }
+  }, [stopsBeforeMax]);
 
   const handleSave = () => {
     if (!selectedRoute || !selectedStop) return;
+    // 첫 정류장은 "N정거장 전"이 성립하지 않아 저장해도 절대 울리지 않는다.
+    if (isFirstStopOfRoute) return;
     onAdd({
       id: Date.now().toString(),
       routeId: selectedRoute.id,
@@ -423,7 +431,8 @@ function AddAlertModal({
                 {selectedRoute.name || `${selectedRoute.number}번`}
               </p>
               <p className="text-xs text-slate-500 mt-0.5">
-                하차: {selectedStop.name} ({selectedStop.order}번째)
+                하차: {selectedStop.name}
+                {targetIndex >= 0 && ` (${targetIndex + 1}번째 정류장)`}
               </p>
             </div>
 
@@ -434,7 +443,8 @@ function AddAlertModal({
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setStopsBefore((s) => Math.max(1, s - 1))}
-                  className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-lg font-bold"
+                  disabled={isFirstStopOfRoute}
+                  className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-lg font-bold disabled:opacity-40"
                 >
                   -
                 </button>
@@ -442,17 +452,23 @@ function AddAlertModal({
                   {stopsBefore}정거장 전
                 </span>
                 <button
-                  onClick={() => setStopsBefore((s) => Math.min(maxStopsBefore, s + 1))}
-                  disabled={stopsBefore >= maxStopsBefore}
+                  onClick={() => setStopsBefore((s) => Math.min(stopsBeforeMax, s + 1))}
+                  disabled={isFirstStopOfRoute || stopsBefore >= stopsBeforeMax}
                   className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-lg font-bold disabled:opacity-40"
                 >
                   +
                 </button>
               </div>
-              {maxStopsBefore < 10 && (
-                <p className="text-[11px] text-slate-400 mt-1.5">
-                  선택한 정류장 앞에 정거장이 {maxStopsBefore}개뿐이라 최대 {maxStopsBefore}정거장 전까지 설정할 수 있어요
+              {isFirstStopOfRoute ? (
+                <p className="text-[11px] text-amber-600 mt-1.5">
+                  이 정류장은 노선의 첫 정류장이라 하차 알림을 설정할 수 없어요. 다른 정류장을 골라주세요.
                 </p>
+              ) : (
+                stopsBeforeMax < 10 && (
+                  <p className="text-[11px] text-slate-400 mt-1.5">
+                    선택한 정류장 앞에 정거장이 {stopsBeforeMax}개뿐이라 최대 {stopsBeforeMax}정거장 전까지 설정할 수 있어요
+                  </p>
+                )
               )}
             </div>
 
@@ -482,7 +498,8 @@ function AddAlertModal({
               </button>
               <button
                 onClick={handleSave}
-                className="flex-1 py-3 bg-blue-600 text-white rounded-2xl font-semibold text-sm"
+                disabled={isFirstStopOfRoute}
+                className="flex-1 py-3 bg-blue-600 text-white rounded-2xl font-semibold text-sm disabled:opacity-40"
               >
                 설정 완료
               </button>

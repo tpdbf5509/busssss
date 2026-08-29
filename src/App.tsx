@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { AppProvider, useApp } from "@/store/AppContext";
+import { AppProvider } from "@/store/AppContext";
+import { useApp } from "@/store/appContext";
+import { StorageErrorBanner } from "@/components/StorageErrorBanner";
 import { BottomNav, type TabId } from "@/components/BottomNav";
 import { ToastContainer } from "@/components/Toast";
 import { HomeScreen } from "@/screens/HomeScreen";
@@ -158,6 +160,8 @@ function AppContent() {
           </button>
         </div>
       )}
+
+      <StorageErrorBanner />
 
       <main ref={mainRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain">
         {tab === "home" && <HomeScreen key={homeRefreshKey} onNavigate={handleNavigate} />}
