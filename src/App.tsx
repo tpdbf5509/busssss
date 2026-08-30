@@ -13,7 +13,7 @@ import { AuthScreen } from "@/screens/AuthScreen";
 import { useDropoffAlertMonitor } from "@/hooks/useDropoffAlertMonitor";
 import { stopDropoffAlarm } from "@/services/alertMonitorService";
 import { supabase } from "@/lib/supabaseClient";
-import { X } from "lucide-react";
+import { X, Bell } from "lucide-react";
 
 type DropoffAlarm = { title: string; body: string };
 
@@ -126,8 +126,8 @@ function AppContent() {
               계속 깜빡이는 animate-pulse는 추가 정보 없이 화면만 어지럽혀
               장식에 가까웠다 — "방금 나타났다"만 전달하는 1회성 진입으로 교체 */}
           <div className="w-full max-w-sm rounded-3xl bg-white shadow-2xl p-7 text-center animate-dialog-in">
-            <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-red-100 flex items-center justify-center text-3xl">
-              🔔
+            <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-red-100 flex items-center justify-center">
+              <Bell className="w-8 h-8 text-red-500" />
             </div>
             <div className="text-2xl font-bold text-slate-900">{dropoffAlarm.title}</div>
             <div className="mt-3 whitespace-pre-line text-base leading-6 text-slate-600">
@@ -220,7 +220,7 @@ function App() {
 
   if (!authReady) {
     return (
-      <div className="fixed inset-0 bg-slate-50 flex items-center justify-center text-sm text-slate-400">
+      <div className="fixed inset-0 bg-slate-50 flex items-center justify-center text-sm text-slate-500">
         로그인 상태를 확인하는 중...
       </div>
     );

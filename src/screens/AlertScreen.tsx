@@ -63,7 +63,7 @@ export function AlertScreen() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-slate-900">알림</h1>
-            <p className="text-xs text-slate-400 mt-0.5">하차 알림 · 알림 센터</p>
+            <p className="text-xs text-slate-500 mt-0.5">하차 알림 · 알림 센터</p>
           </div>
           <button
             onClick={markAllRead}
@@ -106,8 +106,8 @@ export function AlertScreen() {
 
         {state.alerts.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-100 p-6 text-center">
-            <Bell className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-            <p className="text-sm text-slate-400">설정된 하차 알림이 없어요</p>
+            <Bell className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+            <p className="text-sm text-slate-500">설정된 하차 알림이 없어요</p>
             <button
               onClick={() => setShowAdd(true)}
               className="mt-3 text-sm text-blue-600 font-medium hover:underline"
@@ -170,7 +170,7 @@ export function AlertScreen() {
                     {!r.read && <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />}
                   </div>
                   <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{r.body}</p>
-                  <p className="text-[11px] text-slate-300 mt-1">{r.time}</p>
+                  <p className="text-[11px] text-slate-400 mt-1">{r.time}</p>
                 </div>
               </div>
             ))}
@@ -209,7 +209,7 @@ function AlertCard({
             <span className="font-semibold text-slate-900">{alert.routeName}</span>
             <span
               className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                alert.active ? "bg-blue-50 text-blue-600" : "bg-slate-100 text-slate-400"
+                alert.active ? "bg-blue-50 text-blue-600" : "bg-slate-100 text-slate-500"
               }`}
             >
               {alert.active ? "활성" : "꺼짐"}
@@ -218,7 +218,7 @@ function AlertCard({
           <div className="flex items-center gap-1.5 text-xs text-slate-500">
             <MapPin className="w-3 h-3" />
             <span className="font-medium text-slate-600">{alert.targetStation}</span>
-            <span className="text-slate-300">하차</span>
+            <span className="text-slate-400">하차</span>
           </div>
         </div>
         <Toggle checked={alert.active} onChange={onToggle} />
@@ -230,11 +230,11 @@ function AlertCard({
           {alert.stopsBefore}정거장 전
         </span>
         <div className="flex items-center gap-2 ml-auto">
-          {alert.sound && <Volume2 className="w-3.5 h-3.5 text-slate-400" />}
-          {alert.vibrate && <Vibrate className="w-3.5 h-3.5 text-slate-400" />}
+          {alert.sound && <Volume2 className="w-3.5 h-3.5 text-slate-500" />}
+          {alert.vibrate && <Vibrate className="w-3.5 h-3.5 text-slate-500" />}
           <button
             onClick={onRemove}
-            className="text-slate-300 hover:text-red-500 transition-colors ml-1"
+            className="text-slate-400 hover:text-red-500 transition-colors ml-1"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -335,7 +335,7 @@ function AddAlertModal({
         {step === "route" && (
           <div className="px-4 py-3">
             <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -347,7 +347,7 @@ function AddAlertModal({
                   onClick={() => setQuery("")}
                   className="absolute right-1 top-1/2 -translate-y-1/2 p-2"
                 >
-                  <X className="w-4 h-4 text-slate-400" />
+                  <X className="w-4 h-4 text-slate-500" />
                 </button>
               )}
             </div>
@@ -376,15 +376,15 @@ function AddAlertModal({
                       <p className="text-sm font-medium text-slate-800">
                         {route.name || `${route.number}번`}
                       </p>
-                      <p className="text-[11px] text-slate-400 truncate">
+                      <p className="text-[11px] text-slate-500 truncate">
                         {route.start} → {route.end}
                       </p>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-slate-300" />
+                    <ChevronRight className="w-4 h-4 text-slate-400" />
                   </button>
                 ))}
                 {filteredRoutes.length === 0 && (
-                  <p className="text-sm text-slate-400 text-center py-8">검색 결과가 없어요</p>
+                  <p className="text-sm text-slate-500 text-center py-8">검색 결과가 없어요</p>
                 )}
               </div>
             )}
@@ -393,7 +393,7 @@ function AddAlertModal({
 
         {step === "stop" && (
           <div className="px-4 py-3">
-            <p className="text-xs text-slate-400 mb-2">
+            <p className="text-xs text-slate-500 mb-2">
               {selectedRoute?.name || selectedRoute?.number} · 내릴 정류장을 고르세요
             </p>
             {stopsStatus === "loading" && (
@@ -414,9 +414,9 @@ function AddAlertModal({
                     }}
                     className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 text-left"
                   >
-                    <span className="text-[11px] text-slate-400 w-6 shrink-0">{stop.order}</span>
+                    <span className="text-[11px] text-slate-500 w-6 shrink-0">{stop.order}</span>
                     <span className="text-sm font-medium text-slate-800 flex-1">{stop.name}</span>
-                    <ChevronRight className="w-4 h-4 text-slate-300" />
+                    <ChevronRight className="w-4 h-4 text-slate-400" />
                   </button>
                 ))}
               </div>
@@ -465,7 +465,7 @@ function AddAlertModal({
                 </p>
               ) : (
                 stopsBeforeMax < 10 && (
-                  <p className="text-[11px] text-slate-400 mt-1.5">
+                  <p className="text-[11px] text-slate-500 mt-1.5">
                     선택한 정류장 앞에 정거장이 {stopsBeforeMax}개뿐이라 최대 {stopsBeforeMax}정거장 전까지 설정할 수 있어요
                   </p>
                 )
@@ -475,14 +475,14 @@ function AddAlertModal({
             <div className="space-y-2">
               <div className="flex items-center justify-between py-2">
                 <span className="flex items-center gap-2 text-sm text-slate-700">
-                  <Volume2 className="w-4 h-4 text-slate-400" />
+                  <Volume2 className="w-4 h-4 text-slate-500" />
                   소리 알림
                 </span>
                 <Toggle checked={sound} onChange={setSound} />
               </div>
               <div className="flex items-center justify-between py-2">
                 <span className="flex items-center gap-2 text-sm text-slate-700">
-                  <Vibrate className="w-4 h-4 text-slate-400" />
+                  <Vibrate className="w-4 h-4 text-slate-500" />
                   진동 알림
                 </span>
                 <Toggle checked={vibrate} onChange={setVibrate} />

@@ -75,7 +75,7 @@ export function CardScreen() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-slate-800">카드 기능은 준비중이에요</p>
-                <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
+                <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
                   모바일 버스카드 연동이 아직 완료되지 않아 실제 충전·결제 기능은 사용할 수 없어요.
                   아래 화면은 미리보기용입니다.
                 </p>
@@ -127,11 +127,11 @@ export function CardScreen() {
                   placeholder="충전 금액 입력"
                   className="w-full px-4 py-3 pr-12 bg-slate-100 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-500">
                   원
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 mt-1.5 px-1">
+              <p className="text-[11px] text-slate-500 mt-1.5 px-1">
                 1,000원 단위로 입력하는 것을 권장해요
               </p>
             </div>
@@ -152,7 +152,7 @@ export function CardScreen() {
               <span className="text-2xl font-bold text-slate-900">
                 {amount.toLocaleString()}
               </span>
-              <span className="text-base text-slate-400 ml-1">원</span>
+              <span className="text-base text-slate-500 ml-1">원</span>
             </div>
             <button
               onClick={() => {
@@ -189,23 +189,23 @@ export function CardScreen() {
       <section className="px-4 mt-4">
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-white rounded-2xl p-4 border border-slate-100">
-            <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-1">
               <TrendingUp className="w-3.5 h-3.5" />
               이번 주
             </div>
             <p className="text-lg font-bold text-slate-900">
               {card.weeklyUsage.toLocaleString()}
-              <span className="text-sm text-slate-400 ml-0.5">원</span>
+              <span className="text-sm text-slate-500 ml-0.5">원</span>
             </p>
           </div>
           <div className="bg-white rounded-2xl p-4 border border-slate-100">
-            <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-1">
               <TrendingUp className="w-3.5 h-3.5" />
               이번 달
             </div>
             <p className="text-lg font-bold text-slate-900">
               {card.monthlyUsage.toLocaleString()}
-              <span className="text-sm text-slate-400 ml-0.5">원</span>
+              <span className="text-sm text-slate-500 ml-0.5">원</span>
             </p>
           </div>
         </div>
@@ -240,8 +240,8 @@ export function CardScreen() {
                   <p className="text-sm font-medium text-slate-800">
                     {h.type === "charge" ? "충전" : h.routeName}
                   </p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">{h.fromStation}</p>
-                  <p className="text-[11px] text-slate-300">{h.date}</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">{h.fromStation}</p>
+                  <p className="text-[11px] text-slate-400">{h.date}</p>
                 </div>
               </div>
               <span

@@ -37,13 +37,13 @@ export function BottomNav({
             >
               <Icon
                 className={`w-5 h-5 transition-colors ${
-                  isActive ? "text-blue-600" : "text-slate-400"
+                  isActive ? "text-blue-600" : "text-slate-500"
                 }`}
                 strokeWidth={isActive ? 2.5 : 2}
               />
               <span
                 className={`text-[11px] font-medium transition-colors ${
-                  isActive ? "text-blue-600" : "text-slate-400"
+                  isActive ? "text-blue-600" : "text-slate-500"
                 }`}
               >
                 {tab.label}

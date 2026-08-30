@@ -31,7 +31,7 @@ export function AddShortcutSheet({
           </div>
           <div className="min-w-0">
             <h2 className="text-base font-bold text-slate-900 truncate">{favorite.name} 바로가기 추가</h2>
-            <p className="text-xs text-slate-400 mt-0.5">앱을 열지 않고 도착정보를 바로 확인해요</p>
+            <p className="text-xs text-slate-500 mt-0.5">앱을 열지 않고 도착정보를 바로 확인해요</p>
           </div>
         </div>
 
@@ -62,7 +62,7 @@ export function AddShortcutSheet({
           </li>
         </ol>
 
-        <p className="text-[11px] text-slate-400 mb-4 leading-relaxed">
+        <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">
           즐겨찾기마다 이 과정을 한 번씩 반복하면, 정류장별로 따로 홈 화면 아이콘을 만들 수 있어요.
         </p>
 
@@ -76,7 +76,7 @@ export function AddShortcutSheet({
         <button
           type="button"
           onClick={onClose}
-          className="w-full mt-2 py-2.5 text-sm font-medium text-slate-400"
+          className="w-full mt-2 py-2.5 text-sm font-medium text-slate-500"
         >
           나중에 하기
         </button>

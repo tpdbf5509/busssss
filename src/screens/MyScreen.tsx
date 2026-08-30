@@ -130,10 +130,10 @@ export function MyScreen() {
   return (
     <div className="h-full flex flex-col overflow-hidden bg-slate-50">
       <div className="flex-1 overflow-hidden overscroll-contain">
-      <header className="relative bg-gradient-to-b from-blue-600 to-blue-500 px-5 pt-safe-16 pb-9 text-white">
+      <header className="relative bg-white border-b border-slate-100 px-5 pt-safe-16 pb-5">
           <button
             onClick={() => setMenuOpen(true)}
-            className="absolute right-4 p-2 text-white"
+            className="absolute right-4 p-3 -m-1 rounded-full text-slate-500 hover:bg-slate-100"
             // 절대위치라 헤더 패딩의 영향을 받지 않는다. 고정 56px이면 다이내믹
             // 아일랜드(59pt) 안으로 들어가므로 상단 인셋 기준으로 계산한다.
             // max()로 감싸 인셋이 없는 기기에서는 기존 top-14(3.5rem)를 유지.
@@ -142,14 +142,14 @@ export function MyScreen() {
             <Menu className="w-6 h-6" />
           </button>
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl font-bold">
+            <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center text-xl font-bold text-slate-600">
               승
             </div>
             <div>
-              <h1 className="text-lg font-bold">승객님</h1>
+              <h1 className="text-lg font-bold text-slate-900">승객님</h1>
               <button
                 onClick={() => setRegionOpen(true)}
-                className="flex items-center gap-1 text-sm text-blue-100 mt-0.5 hover:text-white transition-colors"
+                className="flex items-center gap-1 text-sm text-slate-500 mt-0.5 hover:text-slate-700 transition-colors"
               >
                 <MapPin className="w-3.5 h-3.5" />
                 {state.region.sido} {state.region.sigungu}
@@ -159,19 +159,17 @@ export function MyScreen() {
           </div>
         </header>
 
-        
         <div className="flex-1 overscroll-contain">
-        {/* 즐겨찾기 카드 — 파란 헤더 위로 겹침 */}
-        <section className="px-4 -mt-3 relative z-10">
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+        <section className="px-4 pt-4">
+          <div className="bg-white rounded-2xl border border-slate-100 p-4">
             <div className="flex items-center gap-1.5 text-sm font-bold text-slate-700 mb-3">
               <Star className="w-4 h-4 text-amber-400" />
               즐겨찾기 관리
             </div>
-            <p className="text-xs text-slate-400 mb-3">항목을 눌러 이름을 바꿀 수 있어요</p>
+            <p className="text-xs text-slate-500 mb-3">항목을 눌러 이름을 바꿀 수 있어요</p>
 
             {state.favorites.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-6">즐겨찾기가 없어요</p>
+              <p className="text-sm text-slate-500 text-center py-6">즐겨찾기가 없어요</p>
             ) : (
               <div className="space-y-2 max-h-60 overflow-y-auto overscroll-contain">
               {state.favorites.map((fav) => (
@@ -198,7 +196,7 @@ export function MyScreen() {
                         </button>
                         <button
                           onClick={() => setEditingId(null)}
-                          className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg"
+                          className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -209,7 +207,7 @@ export function MyScreen() {
                           <p className="text-sm font-medium text-slate-800 truncate">
                             {fav.name}
                           </p>
-                          <p className="text-[11px] text-slate-400">
+                          <p className="text-[11px] text-slate-500">
                             {fav.label} ·{" "}
                             {fav.type === "station"
                               ? "정류장"
@@ -220,14 +218,14 @@ export function MyScreen() {
                         </div>
                         <button
                           onClick={() => setShortcutFavorite(fav)}
-                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                           aria-label="홈 화면 바로가기 추가"
                         >
                           <Smartphone className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => startEdit(fav.id, fav.label)}
-                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
@@ -236,7 +234,7 @@ export function MyScreen() {
                             dispatch({ type: "REMOVE_FAVORITE", id: fav.id });
                             showToast("삭제했어요");
                           }}
-                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-1.5 text-slate-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -250,7 +248,7 @@ export function MyScreen() {
         </section>
 
 
-        <p className="text-center text-xs text-slate-300 pt-4 pb-6">BUS STOP v1.0.0</p>
+        <p className="text-center text-xs text-slate-400 pt-4 pb-6">BUS STOP v1.0.0</p>
       </div>
 
       <RegionModal
@@ -335,7 +333,7 @@ export function MyScreen() {
             <div className="p-4 border-b border-slate-100 flex items-center justify-between">
               <h2 className="font-bold text-slate-900">설정</h2>
               <button onClick={() => setMenuOpen(false)} className="p-3 -m-3 rounded-full hover:bg-slate-100">
-                <X className="w-5 h-5 text-slate-400" />
+                <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
 
@@ -468,7 +466,7 @@ function SettingRow({
         </span>
       )}
       <ChevronRight
-        className={`w-4 h-4 text-slate-300 transition-transform ${
+        className={`w-4 h-4 text-slate-400 transition-transform ${
           expanded ? "rotate-90" : ""
         }`}
       />

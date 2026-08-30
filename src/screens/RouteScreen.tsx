@@ -211,19 +211,19 @@ export function RouteScreen() {
       {/* 버스/알림과 동일한 흰 헤더 */}
       <header className="bg-white px-5 pt-safe-16 pb-5 border-b border-slate-100 sticky top-0 z-30 shrink-0">
         <h1 className="text-xl font-bold text-slate-900">길찾기</h1>
-        <p className="text-xs text-slate-400 mt-0.5">
+        <p className="text-xs text-slate-500 mt-0.5">
           목적지까지 버스 타는 방법
         </p>
 
         <div className="relative mt-3">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             placeholder="어디로 가시나요? (예: 전주한옥마을)"
-            className="w-full pl-10 pr-10 py-3 bg-slate-100 rounded-2xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+            className="w-full pl-10 pr-10 py-3 bg-slate-100 rounded-2xl text-sm text-slate-700 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
           />
           {query && (
             <button
@@ -231,7 +231,7 @@ export function RouteScreen() {
               onClick={clearResult}
               className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full hover:bg-slate-200"
             >
-              <X className="w-4 h-4 text-slate-400" />
+              <X className="w-4 h-4 text-slate-500" />
             </button>
           )}
         </div>
@@ -268,12 +268,12 @@ export function RouteScreen() {
             {/* 알림 빈 상태와 비슷한 안내 카드 */}
             <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center shadow-sm">
               <div className="mx-auto mb-4 h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center">
-                <Navigation className="w-7 h-7 text-slate-400" />
+                <Navigation className="w-7 h-7 text-slate-500" />
               </div>
               <p className="text-sm font-medium text-slate-600 mb-1">
                 목적지를 입력해 주세요
               </p>
-              <p className="text-xs text-slate-400 leading-relaxed">
+              <p className="text-xs text-slate-500 leading-relaxed">
                 어디에서 몇 번 버스를 타고
                 <br />
                 어디에서 내려야 하는지 알려드려요
@@ -288,11 +288,11 @@ export function RouteScreen() {
             <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-xs text-slate-400 mb-0.5">목적지</p>
+                  <p className="text-xs text-slate-500 mb-0.5">목적지</p>
                   <h2 className="text-lg font-bold text-slate-900 truncate">
                     {result.destination}
                   </h2>
-                  <p className="mt-1 text-xs text-slate-400 flex items-center gap-1">
+                  <p className="mt-1 text-xs text-slate-500 flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5" />
                     현재 위치 · {result.currentArea}
                   </p>
@@ -307,7 +307,7 @@ export function RouteScreen() {
             <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
               <div className="px-4 py-3 border-b border-slate-50">
                 <p className="text-sm font-semibold text-slate-800">추천 경로</p>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-500 mt-0.5">
                   실제 경로 계산은 추후 연동 예정입니다
                 </p>
               </div>
@@ -334,7 +334,7 @@ export function RouteScreen() {
                         {step.title}
                       </p>
                       {step.detail && (
-                        <p className="mt-0.5 text-xs text-slate-400">
+                        <p className="mt-0.5 text-xs text-slate-500">
                           {step.detail}
                         </p>
                       )}
