@@ -415,6 +415,7 @@ function StationRouteCard({
   // 값이 있으면 항상 "실시간"으로 표시합니다(A1).
   const reliability: ReliabilityState =
     minutes != null ? { source: "realtime", delayed: false } : { source: "unknown", delayed: false };
+  const isMain = sr.routeTp !== "분선";
 
   return (
     <button
@@ -426,11 +427,11 @@ function StationRouteCard({
       }`}
     >
       <div
-        className={`relative rounded-xl bg-slate-100 flex items-center justify-center shrink-0 ${
-          hero ? "w-14 h-14" : "w-10 h-10"
-        }`}
+        className={`relative rounded-xl flex items-center justify-center shrink-0 ${
+          isMain ? "bg-blue-500" : "bg-emerald-500"
+        } ${hero ? "w-14 h-14" : "w-10 h-10"}`}
       >
-        <span className={`font-bold text-blue-700 ${hero ? "text-base" : "text-xs"}`}>
+        <span className={`font-bold text-white ${hero ? "text-base" : "text-xs"}`}>
           {sr.routeNo}
         </span>
         {isFavorited && (
@@ -907,7 +908,9 @@ const isAllRouteFavorited = (route: Route) =>
             {allStatus === "success" &&
               allViaRoutes.length > 0 && (
                 <div className="space-y-2">
-                  {allViaRoutes.map((route) => (
+                  {allViaRoutes.map((route) => {
+                    const isMain = getRouteTypeLabel(route.name) === "본선";
+                    return (
                     <div
                       key={route.id}
                       role="button"
@@ -916,8 +919,12 @@ const isAllRouteFavorited = (route: Route) =>
                       onKeyDown={(e) => e.key === "Enter" && onSelectRoute(route)}
                       className="w-full bg-white rounded-2xl p-4 border border-slate-100 text-left hover:border-blue-200 hover:shadow-sm transition-all flex items-center gap-3 cursor-pointer"
                     >
-                      <div className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
-                        <span className="font-bold text-sm text-emerald-700">
+                      <div
+                        className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+                          isMain ? "bg-blue-500" : "bg-emerald-500"
+                        }`}
+                      >
+                        <span className="font-bold text-sm text-white">
                           {route.number}
                         </span>
                       </div>
@@ -954,7 +961,8 @@ const isAllRouteFavorited = (route: Route) =>
                         </button>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
           </>
