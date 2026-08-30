@@ -273,7 +273,11 @@ function AddAlertModal({
   const targetIndex =
     selectedStop && stops ? indexOfStopByOrder(stops, selectedStop.order) : -1;
   const stopsBeforeMax = maxStopsBefore(targetIndex);
-  const isFirstStopOfRoute = selectedStop != null && stops != null && stopsBeforeMax === 0;
+  // targetIndex === -1은 "노선의 첫 정류장"이 아니라 정류장 순번을 목록에서
+  // 찾지 못한 경우(데이터 갱신 등)다. 원인이 다르므로 안내 문구도 분리한다.
+  const stopNotFound = selectedStop != null && stops != null && targetIndex === -1;
+  const isFirstStopOfRoute = selectedStop != null && stops != null && targetIndex === 0;
+  const stopsBeforeDisabled = isFirstStopOfRoute || stopNotFound;
 
   useEffect(() => {
     if (stopsBeforeMax > 0) {
@@ -283,8 +287,8 @@ function AddAlertModal({
 
   const handleSave = () => {
     if (!selectedRoute || !selectedStop) return;
-    // 첫 정류장은 "N정거장 전"이 성립하지 않아 저장해도 절대 울리지 않는다.
-    if (isFirstStopOfRoute) return;
+    // 첫 정류장이거나 위치를 확인 못했으면 "N정거장 전"이 성립하지 않아 저장해도 절대 울리지 않는다.
+    if (stopsBeforeDisabled) return;
     onAdd({
       id: Date.now().toString(),
       routeId: selectedRoute.id,
@@ -437,7 +441,7 @@ function AddAlertModal({
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setStopsBefore((s) => Math.max(1, s - 1))}
-                  disabled={isFirstStopOfRoute}
+                  disabled={stopsBeforeDisabled}
                   className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-lg font-bold disabled:opacity-40"
                 >
                   -
@@ -447,13 +451,17 @@ function AddAlertModal({
                 </span>
                 <button
                   onClick={() => setStopsBefore((s) => Math.min(stopsBeforeMax, s + 1))}
-                  disabled={isFirstStopOfRoute || stopsBefore >= stopsBeforeMax}
+                  disabled={stopsBeforeDisabled || stopsBefore >= stopsBeforeMax}
                   className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-lg font-bold disabled:opacity-40"
                 >
                   +
                 </button>
               </div>
-              {isFirstStopOfRoute ? (
+              {stopNotFound ? (
+                <p className="text-[11px] text-red-500 mt-1.5">
+                  이 정류장의 위치 정보를 확인하지 못했어요. 다른 정류장을 골라주세요.
+                </p>
+              ) : isFirstStopOfRoute ? (
                 <p className="text-[11px] text-amber-600 mt-1.5">
                   이 정류장은 노선의 첫 정류장이라 하차 알림을 설정할 수 없어요. 다른 정류장을 골라주세요.
                 </p>
@@ -492,7 +500,7 @@ function AddAlertModal({
               </button>
               <button
                 onClick={handleSave}
-                disabled={isFirstStopOfRoute}
+                disabled={stopsBeforeDisabled}
                 className="flex-1 py-3 bg-blue-600 text-white rounded-2xl font-semibold text-sm disabled:opacity-40"
               >
                 설정 완료
