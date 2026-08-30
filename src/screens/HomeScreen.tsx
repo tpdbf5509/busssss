@@ -230,17 +230,13 @@ export function HomeScreen({
           ? `${stopRoute.start || "기점"} → ${stopRoute.end || "종점"}`
           : undefined;
 
-        // route와 stop_route는 둘 다 실제 버스 노선이라 본선/분선 카테고리 색을
-        // 적용한다. station(집/회사)은 노선이 아니라 저장한 장소라 중립 유지.
+        // route와 stop_route는 실제 버스 노선이라 본선/분선 카테고리 색을
+        // 적용한다. station(집/회사)은 노선 카테고리가 없어 브랜드 블루로
+        // 통일 — 셋 다 배경을 칠해 즐겨찾기 배지끼리 시각적으로 일관되게 한다.
         const categoryRoute = matchedRoute ?? stopRoute;
         const isMain = categoryRoute ? getRouteTypeLabel(categoryRoute.name) === "본선" : true;
-        const isCategorized = isRoute || isStopRoute;
-        const badgeBg = isCategorized
-          ? isMain
-            ? "bg-blue-500"
-            : "bg-emerald-500"
-          : "bg-slate-100";
-        const badgeText = isCategorized ? "text-white" : "text-blue-700";
+        const badgeBg = isMain ? "bg-blue-500" : "bg-emerald-500";
+        const badgeText = "text-white";
 
         const routeNumber =
           matchedRoute?.number ?? fav.name.replace(/번$/, "").trim();
