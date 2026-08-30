@@ -135,18 +135,22 @@ export function HomeScreen({
   return (
     <div className="flex flex-col bg-slate-50">
        <header className="bg-gradient-to-b from-blue-600 to-blue-500 text-white px-5 pt-safe-16 pb-9 shrink-0">
-         <div className="flex items-center justify-between mb-1.5">
-          <h1 className="text-2xl font-bold tracking-tight">BUS STOP</h1>
-          <button
-            onClick={() => setRegionUnderDevOpen(true)}
-            className="flex items-center gap-1 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1.5 text-sm font-medium hover:bg-white/25 transition-colors"
-          >
-            <MapPin className="w-4 h-4" />
-            <span>{state.region.sigungu}</span>
-            <ChevronDown className="w-3.5 h-3.5" />
-          </button>
-        </div>
-        <p className="text-blue-100 text-sm">전주시 버스 노선 정보</p>
+         {/* My탭 헤더는 아바타(h-16=64px)가 기준이라 더 높다. 텍스트만 있는
+             이 헤더도 min-h-16으로 같은 높이를 맞추고 세로 중앙 정렬한다. */}
+         <div className="min-h-16 flex flex-col justify-center">
+           <div className="flex items-center justify-between mb-1.5">
+            <h1 className="text-2xl font-bold tracking-tight">BUS STOP</h1>
+            <button
+              onClick={() => setRegionUnderDevOpen(true)}
+              className="flex items-center gap-1 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1.5 text-sm font-medium hover:bg-white/25 transition-colors"
+            >
+              <MapPin className="w-4 h-4" />
+              <span>{state.region.sigungu}</span>
+              <ChevronDown className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <p className="text-blue-100 text-sm">전주시 버스 노선 정보</p>
+         </div>
       </header>
   
       <section className="px-4 -mt-3 shrink-0">
