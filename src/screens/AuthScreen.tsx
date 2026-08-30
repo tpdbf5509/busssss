@@ -32,15 +32,9 @@ export function AuthScreen() {
     }
   };
 
-  // body가 position:fixed + overflow:hidden이라(index.css) 브라우저의 기본
-  // "포커스된 입력창을 화면에 보이게 자동 스크롤" 동작이 막힌다. 앱 안의
-  // 다른 화면은 전부 자체 overflow-y-auto 컨테이너를 갖고 있어 괜찮지만
-  // 이 화면은 body 밖 최상위에 그대로 렌더링돼 스크롤 가능한 조상이 아예
-  // 없었다 — 키보드가 비밀번호 입력창을 가려도 스크롤해서 볼 방법이
-  // 없었다. overflow-y-auto를 추가해 그 조상 역할을 하게 한다.
   return (
-    <div className="min-h-screen overflow-y-auto bg-slate-50 px-5 py-16 flex items-center justify-center">
-      <div className="w-full max-w-md bg-white rounded-3xl border border-slate-100 p-6">
+    <div className="min-h-screen bg-gradient-to-b from-blue-600 to-blue-500 px-5 py-16 flex items-center justify-center">
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6">
         <div className="text-center mb-7">
           <div className="mx-auto w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mb-4">
             <LockKeyhole className="w-7 h-7 text-blue-600" />
@@ -55,7 +49,7 @@ export function AuthScreen() {
           <label className="block">
             <span className="text-xs font-semibold text-slate-600">이메일</span>
             <div className="mt-1.5 flex items-center gap-2 rounded-xl bg-slate-100 px-3">
-              <Mail className="w-4 h-4 text-slate-500" />
+              <Mail className="w-4 h-4 text-slate-400" />
               <input
                 type="email"
                 required

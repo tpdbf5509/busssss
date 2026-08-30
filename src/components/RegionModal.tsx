@@ -43,7 +43,7 @@ export function RegionModal({
       <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl animate-slide-up">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <h2 className="text-lg font-bold text-slate-900">지역 선택</h2>
-          <button onClick={onClose} className="p-3 -m-3 rounded-full hover:bg-slate-100">
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-slate-100">
             <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
@@ -87,7 +87,7 @@ export function RegionModal({
           </div>
         </div>
 
-        <div className="p-4 pb-safe-4 border-t border-slate-100">
+        <div className="p-4 border-t border-slate-100">
           <div className="flex items-center gap-1.5 text-sm text-slate-500 mb-3">
             <MapPin className="w-4 h-4 text-blue-500" />
             <span className="font-medium text-slate-700">

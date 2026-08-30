@@ -24,14 +24,14 @@ export function AddShortcutSheet({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl p-6 pb-safe-6 animate-slide-up">
+      <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl p-6 animate-slide-up">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
             <MapPin className="w-5 h-5 text-blue-600" />
           </div>
           <div className="min-w-0">
             <h2 className="text-base font-bold text-slate-900 truncate">{favorite.name} 바로가기 추가</h2>
-            <p className="text-xs text-slate-500 mt-0.5">앱을 열지 않고 도착정보를 바로 확인해요</p>
+            <p className="text-xs text-slate-400 mt-0.5">앱을 열지 않고 도착정보를 바로 확인해요</p>
           </div>
         </div>
 
@@ -62,7 +62,7 @@ export function AddShortcutSheet({
           </li>
         </ol>
 
-        <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">
+        <p className="text-[11px] text-slate-400 mb-4 leading-relaxed">
           즐겨찾기마다 이 과정을 한 번씩 반복하면, 정류장별로 따로 홈 화면 아이콘을 만들 수 있어요.
         </p>
 
@@ -76,7 +76,7 @@ export function AddShortcutSheet({
         <button
           type="button"
           onClick={onClose}
-          className="w-full mt-2 py-2.5 text-sm font-medium text-slate-500"
+          className="w-full mt-2 py-2.5 text-sm font-medium text-slate-400"
         >
           나중에 하기
         </button>

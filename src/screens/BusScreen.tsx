@@ -173,7 +173,7 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
   }
   return (
     <div className="h-full flex flex-col overflow-hidden bg-slate-50">
-            <header className="bg-white px-5 pt-safe-16 pb-5 border-b border-slate-100 sticky top-0 z-30 shrink-0">
+            <header className="bg-white px-5 pt-16 pb-5 border-b border-slate-100 sticky top-0 z-30 shrink-0">
               <h1 className="text-xl font-bold text-slate-900 mb-3">버스 검색</h1>
 
               <div className="flex bg-slate-100 rounded-xl p-1 mb-3">
@@ -206,7 +206,7 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
               </div>
 
               <div className="relative">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -215,19 +215,19 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                       ? "노선번호 또는 기점·종점명"
                       : "정류장명 (예: 전주역, 시청)"
                   }
-                  className="w-full pl-10 pr-10 py-3 bg-slate-100 rounded-2xl text-sm text-slate-700 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                  className="w-full pl-10 pr-10 py-3 bg-slate-100 rounded-2xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
                 />
                 {query && (
                   <button
                     onClick={() => setQuery("")}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 p-2"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2"
                   >
-                    <X className="w-4 h-4 text-slate-500" />
+                    <X className="w-4 h-4 text-slate-400" />
                   </button>
                 )}
               </div>
               {searchTab === "route" && status === "loading" && (
-                <p className="text-[11px] text-slate-500 mt-2">
+                <p className="text-[11px] text-slate-400 mt-2">
                   전주시 노선 데이터를 불러오는 중이에요. 노선이 많아 시간이 걸릴 수 있어요.
                 </p>
               )}
@@ -252,41 +252,52 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
               />
             )}
             {status === "success" && filtered && filtered.length > 0 && (
-              // 개별 카드(테두리+그림자+radius 반복) 대신 리스트 컨테이너 +
-              // 구분선. 노선번호는 이 화면에서 실제로 찾는 대상이라 강조,
-              // 본선/분선은 배경 박스 없는 텍스트 라벨로만 구분한다.
-              <div className="divide-y divide-slate-100 border-t border-b border-slate-100">
-                {filtered.map((route) => {
-                  const label = getRouteTypeLabel(route.name);
-                  const isMain = label === "본선";
-                  return (
+              <div className="space-y-2">
+                {filtered.map((route) => (
                   <div
                     key={`${route.id}-${route.number}`}
                     role="button"
                     tabIndex={0}
                     onClick={() => setSelectedRoute(route)}
                     onKeyDown={(e) => e.key === "Enter" && setSelectedRoute(route)}
-                    className="w-full py-3.5 text-left hover:bg-slate-50 transition-colors cursor-pointer"
+                    className="w-full bg-white rounded-2xl p-4 border border-slate-100 text-left hover:border-blue-200 hover:shadow-sm transition-all cursor-pointer"
                   >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-baseline gap-2">
-                        <span className={`font-bold text-xs shrink-0 ${isMain ? "text-slate-500" : "text-emerald-700"}`}>
-                          {label}
-                        </span>
-                        <span className="font-bold text-slate-900 text-base">
-                          {route.number}
-                        </span>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        {(() => {
+                          const label = getRouteTypeLabel(route.name);
+                          const isMain = label === "본선";
+                          return (
+                            <div
+                              className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+                                isMain ? "bg-blue-50" : "bg-emerald-50"
+                              }`}
+                            >
+                              <span
+                                className={`font-bold text-xs leading-tight text-center ${
+                                  isMain ? "text-blue-700" : "text-emerald-700"
+                                }`}
+                              >
+                                {label}
+                              </span>
+                            </div>
+                          );
+                        })()}
+                        <div>
+                          <span className="font-semibold text-slate-900 text-base">
+                            {route.number}
+                          </span>
+                        </div>
                       </div>
                       <button
                         onClick={(e) => toggleFavorite(route, e)}
-                        className="p-2.5 -m-2.5 rounded-full hover:bg-amber-50"
-                        aria-label={isFavorited(route.id) ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+                        className="p-1 -m-1 rounded-full hover:bg-amber-50"
                       >
                         <Star
                           className={`w-4 h-4 transition-colors ${
                             isFavorited(route.id)
                               ? "text-amber-400 fill-amber-400"
-                              : "text-slate-400 hover:text-amber-400"
+                              : "text-slate-300 hover:text-amber-400"
                           }`}
                         />
                       </button>
@@ -295,19 +306,18 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                       <span className="font-medium text-slate-600">
                         {route.start || "기점 정보 없음"}
                       </span>
-                      <span className="text-slate-400">→</span>
+                      <span className="text-slate-300">→</span>
                       <span className="font-medium text-slate-600">
                         {route.end || "종점 정보 없음"}
                       </span>
                     </div>
-                    <div className="flex items-center gap-3 mt-2 text-[11px] text-slate-500">
+                    <div className="flex items-center gap-3 mt-2 text-[11px] text-slate-400">
                       <span>첫차 {route.firstBus}</span>
                       <span>막차 {route.lastBus}</span>
                       <span>배차 {route.interval}</span>
                     </div>
                   </div>
-                  );
-                })}
+                ))}
               </div>
             )}
           </>
@@ -317,9 +327,9 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
           <>
             {!query.trim() && (
               <div className="flex flex-col items-center justify-center py-16 text-center">
-                <MapPin className="w-10 h-10 text-slate-400 mb-3" />
-                <p className="text-sm text-slate-500">정류장 이름을 검색해 보세요</p>
-                <p className="text-xs text-slate-400 mt-1">전주시 버스 정류장</p>
+                <MapPin className="w-10 h-10 text-slate-300 mb-3" />
+                <p className="text-sm text-slate-400">정류장 이름을 검색해 보세요</p>
+                <p className="text-xs text-slate-300 mt-1">전주시 버스 정류장</p>
               </div>
             )}
             {query.trim() && stationStatus === "loading" && (
@@ -342,7 +352,7 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
               />
             )}
             {query.trim() && stationStatus === "success" && stations.length > 0 && (
-              <div className="divide-y divide-slate-100 border-t border-b border-slate-100">
+              <div className="space-y-2">
                 {stations.map((station) => (
                   <div
                     key={station.id}
@@ -350,29 +360,30 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                     tabIndex={0}
                     onClick={() => setSelectedStation(station)}
                     onKeyDown={(e) => e.key === "Enter" && setSelectedStation(station)}
-                    className="w-full py-3.5 flex items-center gap-3 cursor-pointer hover:bg-slate-50 transition-colors"
+                    className="w-full bg-white rounded-2xl p-4 border border-slate-100 flex items-center gap-3 cursor-pointer hover:border-blue-200 hover:shadow-sm transition-all"
                   >
-                    <MapPin className="w-4 h-4 text-slate-500 shrink-0" />
+                    <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+                      <MapPin className="w-5 h-5 text-emerald-600" />
+                    </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-slate-800 truncate">
                         {station.name}
                       </p>
                       {station.arsId && (
-                        <p className="text-xs text-slate-500 mt-0.5">
+                        <p className="text-xs text-slate-400 mt-0.5">
                           정류장번호 {station.arsId}
                         </p>
                       )}
                     </div>
                     <button
                       onClick={(e) => toggleStationFavorite(station, e)}
-                      className="p-2.5 -m-2.5 rounded-full hover:bg-amber-50"
-                      aria-label={isStationFavorited(station.id) ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+                      className="p-1.5 rounded-full hover:bg-amber-50"
                     >
                       <Star
                         className={`w-4 h-4 transition-colors ${
                           isStationFavorited(station.id)
                             ? "text-amber-400 fill-amber-400"
-                            : "text-slate-400 hover:text-amber-400"
+                            : "text-slate-300 hover:text-amber-400"
                         }`}
                       />
                     </button>
@@ -437,7 +448,7 @@ function StationRouteCard({
         <p className={`font-semibold text-slate-800 ${hero ? "text-base" : "text-sm"}`}>
           {sr.routeNo}번
           {sr.routeTp ? (
-            <span className="text-xs font-normal text-slate-500 ml-1.5">{sr.routeTp}</span>
+            <span className="text-xs font-normal text-slate-400 ml-1.5">{sr.routeTp}</span>
           ) : null}
         </p>
 
@@ -446,7 +457,7 @@ function StationRouteCard({
             {minutes == null ? "도착정보 없음" : minutes <= 0 ? "곧 도착" : `${minutes}분${hero ? " 후" : ""}`}
           </p>
           {minutes != null && sr.arrprevstationcnt != null && (
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-slate-400">
               {hero ? "" : "· "}
               {sr.arrprevstationcnt}정거장 전
             </span>
@@ -474,7 +485,7 @@ function StationRouteCard({
         >
           <Star
             className={`w-4 h-4 transition-colors ${
-              isFavorited ? "text-amber-400 fill-amber-400" : "text-slate-400"
+              isFavorited ? "text-amber-400 fill-amber-400" : "text-slate-300"
             }`}
           />
         </button>
@@ -707,11 +718,11 @@ const isAllRouteFavorited = (route: Route) =>
 
   return (
     <div className="bg-slate-50">
-      <header className="bg-white px-4 pt-safe-14 pb-5 border-b border-slate-100 sticky top-0 z-30">
+      <header className="bg-white px-4 pt-14 pb-5 border-b border-slate-100 sticky top-0 z-30">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            className="p-3 -ml-3 rounded-full hover:bg-slate-100"
+            className="p-1.5 -ml-1.5 rounded-full hover:bg-slate-100"
           >
             <ArrowLeft className="w-5 h-5 text-slate-700" />
           </button>
@@ -722,7 +733,7 @@ const isAllRouteFavorited = (route: Route) =>
             </h1>
 
             {station.arsId && (
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-400 mt-0.5">
                 정류장번호 {station.arsId}
               </p>
             )}
@@ -765,7 +776,7 @@ const isAllRouteFavorited = (route: Route) =>
 
         {detailTab === "arrival" && (
           <>
-            <p className="text-xs text-slate-500 mb-3">
+            <p className="text-xs text-slate-400 mb-3">
               이 정류장을 경유하는 노선
             </p>
 
@@ -827,7 +838,7 @@ const isAllRouteFavorited = (route: Route) =>
                   <button
                     type="button"
                     onClick={() => setShowMoreRoutes((v) => !v)}
-                    className="w-full flex items-center justify-center gap-1 py-2.5 text-xs font-medium text-slate-500 hover:text-slate-600"
+                    className="w-full flex items-center justify-center gap-1 py-2.5 text-xs font-medium text-slate-400 hover:text-slate-600"
                   >
                     {showMoreRoutes ? "접기" : `다른 노선 보기 (${restRoutes.length})`}
                     <ChevronDown
@@ -867,7 +878,7 @@ const isAllRouteFavorited = (route: Route) =>
 
         {detailTab === "all" && (
           <>
-            <p className="text-xs text-slate-500 mb-3">
+            <p className="text-xs text-slate-400 mb-3">
               이 정류장을 경유하는 모든 노선
             </p>
 
@@ -920,7 +931,7 @@ const isAllRouteFavorited = (route: Route) =>
                           {route.number}번
                         </p>
 
-                        <p className="text-xs text-slate-500 mt-0.5 truncate">
+                        <p className="text-xs text-slate-400 mt-0.5 truncate">
                           {route.start} → {route.end}
                         </p>
                       </div>
@@ -941,7 +952,7 @@ const isAllRouteFavorited = (route: Route) =>
                             className={`w-4 h-4 transition-colors ${
                               isAllRouteFavorited(route)
                                 ? "text-amber-400 fill-amber-400"
-                                : "text-slate-400"
+                                : "text-slate-300"
                             }`}
                           />
                         </button>
@@ -1045,9 +1056,9 @@ const handleStopClick = async (stop: BusStop) => {
  
   return (
     <div className="bg-slate-50">
-      <header className="bg-white px-4 pt-safe-14 pb-5 border-b border-slate-100 sticky top-0 z-30">
+      <header className="bg-white px-4 pt-14 pb-5 border-b border-slate-100 sticky top-0 z-30">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="p-3 -ml-3 rounded-full hover:bg-slate-100">
+          <button onClick={onBack} className="p-1.5 -ml-1.5 rounded-full hover:bg-slate-100">
             <ArrowLeft className="w-5 h-5 text-slate-700" />
           </button>
           <div className="flex-1">
@@ -1055,7 +1066,7 @@ const handleStopClick = async (stop: BusStop) => {
               {getRouteTypeLabel(route.name)}
               {route.number}
             </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-400 mt-0.5">
               {route.start || "기점 정보 없음"} → {route.end || "종점 정보 없음"}
             </p>
           </div>
@@ -1087,12 +1098,12 @@ const handleStopClick = async (stop: BusStop) => {
               className={`w-5 h-5 transition-colors ${
                 state.favorites.some((f) => f.type === "route" && f.refId === route.id)
                   ? "text-amber-400 fill-amber-400"
-                  : "text-slate-400"
+                  : "text-slate-300"
               }`}
             />
           </button>
         </div>
-        <div className="flex items-center gap-4 mt-3 text-[11px] text-slate-500">
+        <div className="flex items-center gap-4 mt-3 text-[11px] text-slate-400">
           <span>첫차 {route.firstBus}</span>
           <span>막차 {route.lastBus}</span>
           <span>배차간격 {route.interval}</span>
@@ -1100,7 +1111,7 @@ const handleStopClick = async (stop: BusStop) => {
         </div>
         <button
           onClick={() => setShowSchedule(true)}
-          className="mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 border border-slate-200 text-slate-700 rounded-xl text-sm font-semibold hover:bg-slate-50 transition-colors"
+          className="mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 bg-blue-50 text-blue-700 rounded-xl text-sm font-semibold hover:bg-blue-100 transition-colors"
         >
           <Clock className="w-4 h-4" />
           배차시간 보기
@@ -1118,7 +1129,7 @@ const handleStopClick = async (stop: BusStop) => {
               : "bg-slate-300"
           }`}
         />
-        <span className="text-[11px] text-slate-500">
+        <span className="text-[11px] text-slate-400">
           {busStatus === "loading" && "실시간 위치 불러오는 중"}
           {busStatus === "error" && busError}
           {busStatus === "success" && buses && buses.length > 0 && "실시간 위치 연동 중"}
@@ -1133,7 +1144,7 @@ const handleStopClick = async (stop: BusStop) => {
           </button>
         )}
         {busStatus !== "error" && lastUpdated && (
-          <span className="text-[10px] text-slate-400 ml-auto">
+          <span className="text-[10px] text-slate-300 ml-auto">
             {lastUpdated.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })} 갱신
           </span>
         )}
@@ -1178,7 +1189,7 @@ const handleStopClick = async (stop: BusStop) => {
                       className="flex-1 flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-white transition-colors text-left"
                     >
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[11px] text-slate-500 font-medium w-5 shrink-0">
+                        <span className="text-[11px] text-slate-400 font-medium w-5 shrink-0">
                           {stop.order}
                         </span>
                         <span className="text-sm font-medium text-slate-700">{stop.name}</span>
@@ -1200,7 +1211,7 @@ const handleStopClick = async (stop: BusStop) => {
                           className={`w-4 h-4 shrink-0 transition-colors ${
                             isArrivalFavorited(stop.name)
                               ? "text-amber-400 fill-amber-400"
-                              : "text-slate-400"
+                              : "text-slate-300"
                           }`}
                         />
                       )}
@@ -1288,7 +1299,7 @@ function DispatchScheduleModal({
             <Clock className="w-5 h-5 text-blue-600" />
             <h2 className="text-lg font-bold text-slate-900">배차시간</h2>
           </div>
-          <button onClick={onClose} className="p-3 -m-3 rounded-full hover:bg-slate-100">
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-slate-100">
             <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
@@ -1296,21 +1307,21 @@ function DispatchScheduleModal({
         <div className="px-5 py-4 border-b border-slate-100">
           <div className="flex items-center gap-2 mb-3">
             <span className="font-bold text-slate-900 text-lg">{route.number}번</span>
-            <span className="text-xs text-slate-500">{route.name}</span>
+            <span className="text-xs text-slate-400">{route.name}</span>
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-slate-50 rounded-xl p-3 text-center">
               <div className="flex items-center justify-center mb-1">
-                <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                <Calendar className="w-3.5 h-3.5 text-slate-400" />
               </div>
-              <p className="text-[10px] text-slate-500 mb-0.5">첫차</p>
+              <p className="text-[10px] text-slate-400 mb-0.5">첫차</p>
               <p className="text-sm font-bold text-slate-700">{route.firstBus}</p>
             </div>
             <div className="bg-slate-50 rounded-xl p-3 text-center">
               <div className="flex items-center justify-center mb-1">
-                <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                <Calendar className="w-3.5 h-3.5 text-slate-400" />
               </div>
-              <p className="text-[10px] text-slate-500 mb-0.5">막차</p>
+              <p className="text-[10px] text-slate-400 mb-0.5">막차</p>
               <p className="text-sm font-bold text-slate-700">{route.lastBus}</p>
             </div>
             <div className="bg-blue-50 rounded-xl p-3 text-center">
@@ -1322,13 +1333,13 @@ function DispatchScheduleModal({
             </div>
           </div>
           {intervalInfo && (
-            <p className="text-[11px] text-slate-500 mt-3 text-center">
+            <p className="text-[11px] text-slate-400 mt-3 text-center">
               {intervalInfo.min}분 ~ {intervalInfo.max}분 간격으로 운행합니다
             </p>
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4 pb-safe-4">
+        <div className="flex-1 overflow-y-auto px-5 py-4">
           {realStatus === "loading" && (
             <div className="grid grid-cols-4 gap-2">
               {Array.from({ length: 8 }).map((_, i) => (
@@ -1357,7 +1368,7 @@ function DispatchScheduleModal({
                   const cls = isNext
                     ? "bg-blue-600 text-white font-bold"
                     : isPast
-                    ? "bg-slate-50 text-slate-400"
+                    ? "bg-slate-50 text-slate-300"
                     : "bg-slate-50 text-slate-600";
                   return (
                     <div
@@ -1370,13 +1381,13 @@ function DispatchScheduleModal({
                 })}
               </div>
               {realSchedule.note && (
-                <p className="text-[11px] text-slate-500 mt-4 whitespace-pre-line">{realSchedule.note}</p>
+                <p className="text-[11px] text-slate-400 mt-4 whitespace-pre-line">{realSchedule.note}</p>
               )}
               {realSchedule.satSkip && (
-                <p className="text-[11px] text-slate-500 mt-2">토요일 미운행: {realSchedule.satSkip}</p>
+                <p className="text-[11px] text-slate-400 mt-2">토요일 미운행: {realSchedule.satSkip}</p>
               )}
               {realSchedule.holidaySkip && (
-                <p className="text-[11px] text-slate-500 mt-1">일요일(공휴일) 미운행: {realSchedule.holidaySkip}</p>
+                <p className="text-[11px] text-slate-400 mt-1">일요일(공휴일) 미운행: {realSchedule.holidaySkip}</p>
               )}
             </>
           )}
@@ -1399,7 +1410,7 @@ function DispatchScheduleModal({
                     const cls = isNext
                       ? "bg-blue-600 text-white font-bold"
                       : isPast
-                      ? "bg-slate-50 text-slate-400"
+                      ? "bg-slate-50 text-slate-300"
                       : "bg-slate-50 text-slate-600";
                     return (
                       <div
@@ -1413,13 +1424,13 @@ function DispatchScheduleModal({
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-8">
-                  <Clock className="w-8 h-8 text-slate-400 mb-2" />
-                  <p className="text-sm text-slate-500">배차간격 정보가 없어</p>
-                  <p className="text-sm text-slate-500">시간표를 생성할 수 없어요</p>
+                  <Clock className="w-8 h-8 text-slate-300 mb-2" />
+                  <p className="text-sm text-slate-400">배차간격 정보가 없어</p>
+                  <p className="text-sm text-slate-400">시간표를 생성할 수 없어요</p>
                 </div>
               )}
               {timetable.length > 0 && (
-                <p className="text-[11px] text-slate-500 mt-4 text-center">
+                <p className="text-[11px] text-slate-400 mt-4 text-center">
                   배차간격을 기준으로 한 예상 시간표로, 실제와 다를 수 있어요
                 </p>
               )}

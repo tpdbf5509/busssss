@@ -67,16 +67,16 @@ function FavoriteArrivalInfo({
         <p className="text-sm font-semibold text-slate-800 truncate">
           {isRoute ? `${routeNumber}번` : fav.name}
         </p>
-        <p className="text-xs text-slate-500 mt-0.5 truncate">{subtitle}</p>
+        <p className="text-xs text-slate-400 mt-0.5 truncate">{subtitle}</p>
       </div>
 
       <div className="text-right shrink-0">
-        <p className="text-xs font-medium text-slate-400">
+        <p className="text-xs font-medium text-slate-300">
           {isStopRoute && isRefreshing ? "갱신 중" : "도착정보"}
         </p>
-        {!isStopRoute && <p className="text-sm font-semibold text-slate-500">준비중</p>}
+        {!isStopRoute && <p className="text-sm font-semibold text-slate-400">준비중</p>}
         {isStopRoute && status === "loading" && !data && (
-          <p className="text-sm font-semibold text-slate-400">조회 중</p>
+          <p className="text-sm font-semibold text-slate-300">조회 중</p>
         )}
         {isStopRoute && data && (
           <>
@@ -97,7 +97,7 @@ function FavoriteArrivalInfo({
           </>
         )}
         {isStopRoute && status === "error" && !data && (
-          <p className="text-sm font-semibold text-slate-400">정보 없음</p>
+          <p className="text-sm font-semibold text-slate-300">정보 없음</p>
         )}
       </div>
     </>
@@ -134,38 +134,34 @@ export function HomeScreen({
 
   return (
     <div className="flex flex-col bg-slate-50">
-       {/* 다른 화면(버스/알림/길찾기)은 전부 흰 배경+구분선 헤더를 쓴다.
-           이 화면만 파란 그라디언트였던 걸 같은 패턴으로 통일 — 새 트렌드가
-           아니라 이 앱 안에 이미 있는 스타일을 따른 것 */}
-       <header className="bg-white border-b border-slate-100 px-5 pt-safe-16 pb-5 shrink-0">
-         <div className="flex items-center justify-between mb-0.5">
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">BUS STOP</h1>
+       <header className="bg-gradient-to-b from-blue-600 to-blue-500 text-white px-5 pt-16 pb-9 shrink-0">
+         <div className="flex items-center justify-between mb-1.5">
+          <h1 className="text-2xl font-bold tracking-tight">BUS STOP</h1>
           <button
             onClick={() => setRegionUnderDevOpen(true)}
-            className="flex items-center gap-1 text-slate-500 hover:text-slate-700 text-sm font-medium transition-colors"
+            className="flex items-center gap-1 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1.5 text-sm font-medium hover:bg-white/25 transition-colors"
           >
             <MapPin className="w-4 h-4" />
             <span>{state.region.sigungu}</span>
             <ChevronDown className="w-3.5 h-3.5" />
           </button>
         </div>
-        <p className="text-slate-500 text-xs">전주시 버스 노선 정보</p>
+        <p className="text-blue-100 text-sm">전주시 버스 노선 정보</p>
       </header>
   
-      <section className="px-4 shrink-0">
-        {/* 카드(배경+테두리+그림자) 대신 구분선 하나로 감싼 행. 이전엔
-            파란 헤더 위로 겹치도록 -mt-3에 그림자를 얹었지만, 헤더가
-            평범한 흰 배경이 된 지금은 그 연출 자체가 의미가 없어졌다. */}
+      <section className="px-4 -mt-3 shrink-0">
         <button
           onClick={() => onNavigate("bus")}
-          className="w-full border-y border-slate-100 py-3.5 flex items-center gap-3 hover:bg-slate-50 transition-colors active:scale-[0.99]"
+          className="w-full bg-white rounded-2xl border border-slate-200 shadow-sm px-4 py-3.5 flex items-center gap-3 hover:border-blue-300 hover:shadow transition-all active:scale-[0.99]"
         >
-          <Search className="w-5 h-5 text-slate-500 shrink-0" />
+          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+            <Search className="w-5 h-5 text-blue-600" />
+          </div>
           <div className="text-left flex-1">
             <p className="text-sm font-semibold text-slate-800">전체 노선 검색</p>
-            <p className="text-xs text-slate-500 mt-0.5">노선번호·기점·종점으로 찾아보세요</p>
+            <p className="text-xs text-slate-400 mt-0.5">노선번호·기점·종점으로 찾아보세요</p>
           </div>
-          <span className="text-slate-400 text-lg">›</span>
+          <span className="text-slate-300 text-lg">›</span>
         </button>
       </section>
   
@@ -179,7 +175,7 @@ export function HomeScreen({
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="p-1.5 rounded-full text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50"
+            className="p-1.5 rounded-full text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50"
             aria-label="새로고침"
             aria-busy={refreshing}
           >
@@ -189,7 +185,7 @@ export function HomeScreen({
           {state.favorites.length > 0 && (
             <button
               onClick={() => setEditMode((v) => !v)}
-              className="text-xs text-slate-500 font-medium hover:text-slate-600"
+              className="text-xs text-slate-400 font-medium hover:text-slate-600"
             >
               {editMode ? "완료" : "편집"}
             </button>
@@ -205,16 +201,13 @@ export function HomeScreen({
       {state.favorites.length === 0 ? (
     <button
       onClick={() => onNavigate("bus")}
-      className="w-full py-10 text-center border-t border-slate-100 hover:bg-slate-50 transition-colors active:scale-[0.99]"
+      className="w-full bg-white rounded-2xl p-6 text-center border border-slate-100 hover:border-blue-200 hover:shadow-sm transition-all active:scale-[0.99]"
     >
-      <Star className="w-7 h-7 text-slate-400 mx-auto mb-2" />
-      <p className="text-sm text-slate-500">즐겨찾기를 추가해 보세요</p>
+      <Star className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+      <p className="text-sm text-slate-400">즐겨찾기를 추가해 보세요</p>
     </button>
   ) : (
-    // 개별 카드(테두리+그림자+radius) 대신 하나의 리스트 컨테이너 + 얇은
-    // 구분선(Divider)만 사용. 항목이 많아질수록 카드형은 시각 노이즈만
-    // 늘고, 이 화면의 핵심 행동(빠른 스캔)엔 방해가 된다.
-    <div className="max-h-[50vh] overflow-y-auto divide-y divide-slate-100 border-t border-slate-100">
+    <div className="max-h-[50vh] overflow-y-auto bg-white rounded-2xl border border-slate-100 p-3 space-y-2.5">
   {state.favorites.map((fav) => {
         const isRoute = fav.type === "route";
         const matchedRoute = isRoute
@@ -222,8 +215,16 @@ export function HomeScreen({
           : undefined;
         const isMain = matchedRoute ? getRouteTypeLabel(matchedRoute.name) === "본선" : true;
 
-        // 톤온톤 배지(강한 색+옅은 배경 박스) 대신 텍스트 색만으로 구분
-        const labelColor = isRoute ? (isMain ? "text-slate-700" : "text-emerald-700") : "text-slate-700";
+        const badgeBg = isRoute
+          ? isMain
+            ? "bg-blue-50"
+            : "bg-emerald-50"
+          : "bg-blue-50";
+        const badgeText = isRoute
+          ? isMain
+            ? "text-blue-700"
+            : "text-emerald-700"
+          : "text-blue-700";
 
         const routeNumber =
           matchedRoute?.number ?? fav.name.replace(/번$/, "").trim();
@@ -257,14 +258,16 @@ export function HomeScreen({
               onNavigate("bus", targetId);
               return;
             }
-          }}
-              className={`w-full py-3.5 pl-1 flex items-center gap-3 text-left hover:bg-slate-50 transition-colors ${
-                editMode ? "pr-10" : "pr-1"
-              }`}
+          }}              
+              className="w-full bg-slate-50 rounded-xl border border-slate-100 px-4 py-5 flex items-center gap-3 text-left hover:bg-blue-50 hover:border-blue-100 transition-all"
             >
-              {/* 왼쪽: 본선/분선 텍스트 라벨 — 배경 박스 없음 */}
-              <div className="min-w-[44px] shrink-0">
-                <span className={`font-bold text-xs leading-tight ${labelColor}`}>
+              {/* 왼쪽: 본선/분선 글씨 + 색 */}
+              <div
+                className={`min-w-[64px] h-11 rounded-xl flex items-center justify-center shrink-0 px-2 ${badgeBg}`}
+              >
+                <span
+                  className={`font-bold text-sm leading-tight text-center truncate ${badgeText}`}
+                >
                   {isRoute ? (isMain ? "본선" : "분선") : fav.label}
                 </span>
               </div>
@@ -285,10 +288,9 @@ export function HomeScreen({
                   dispatch({ type: "REMOVE_FAVORITE", id: fav.id });
                   showToast("삭제했어요");
                 }}
-                className="absolute top-1/2 -translate-y-1/2 right-0 w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center active:scale-90 transition-transform"
-                aria-label="즐겨찾기 삭제"
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center shadow-sm active:scale-90 transition-transform"
               >
-                <X className="w-3.5 h-3.5" strokeWidth={3} />
+                <X className="w-3 h-3" strokeWidth={3} />
               </button>
             )}
           </div>
@@ -304,13 +306,13 @@ export function HomeScreen({
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setRegionUnderDevOpen(false)}
           />
-          <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl p-6 pb-safe-6 animate-slide-up">
+          <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl p-6 animate-slide-up">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-slate-900">지역 설정</h2>
               <button
                 type="button"
                 onClick={() => setRegionUnderDevOpen(false)}
-                className="p-3 -m-3 rounded-full hover:bg-slate-100"
+                className="p-1.5 rounded-full hover:bg-slate-100"
               >
                 <X className="w-5 h-5 text-slate-500" />
               </button>
