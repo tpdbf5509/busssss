@@ -338,7 +338,7 @@ function AddAlertModal({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="노선번호 검색"
-                className="w-full pl-9 pr-9 py-2.5 bg-slate-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-9 pr-9 py-2.5 bg-slate-100 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               {query && (
                 <button

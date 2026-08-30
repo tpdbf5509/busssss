@@ -5,7 +5,13 @@
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
+    /* manipulation(=pan-x pan-y pinch-zoom)은 핀치줌을 허용한다. 이 앱의
+       루트 셸이 position:fixed 카드형 레이아웃이라 핀치줌으로 축소하면
+       고정 요소가 레이아웃 뷰포트에 다시 맞춰지지 않고 화면 한쪽에 작게
+       붙박인 채 나머지가 빈 배경으로 보이는 버그가 있다. pan-x pan-y만
+       남겨 핀치줌 자체를 막는다 — 뷰포트 meta의 user-scalable=no와 달리
+       OS 접근성 확대(트리플탭 확대 등)에는 영향을 주지 않는다. */
+    touch-action: pan-x pan-y;
     height: 100%;
     overflow: hidden;
     overscroll-behavior: none;
@@ -13,7 +19,7 @@
   body {
     font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background-color: #ffffff;
-    touch-action: manipulation;
+    touch-action: pan-x pan-y;
     height: 100%;
     overflow: hidden;
     overscroll-behavior: none;

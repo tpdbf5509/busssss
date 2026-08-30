@@ -56,7 +56,7 @@ export function AuthScreen() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="이메일을 입력하세요"
-                className="w-full bg-transparent py-3 text-sm outline-none"
+                className="w-full bg-transparent py-3 text-base outline-none"
               />
             </div>
           </label>
@@ -71,7 +71,7 @@ export function AuthScreen() {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="6자 이상 입력하세요"
-                className="w-full bg-transparent py-3 text-sm outline-none"
+                className="w-full bg-transparent py-3 text-base outline-none"
               />
             </div>
           </label>

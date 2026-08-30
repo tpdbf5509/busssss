@@ -187,7 +187,7 @@ export function MyScreen() {
                           value={editLabel}
                           onChange={(e) => setEditLabel(e.target.value)}
                           autoFocus
-                          className="flex-1 px-2.5 py-1.5 bg-slate-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="flex-1 px-2.5 py-1.5 bg-slate-100 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <button
                           onClick={saveEdit}
