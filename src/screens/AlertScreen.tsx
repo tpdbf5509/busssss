@@ -358,7 +358,9 @@ function AddAlertModal({
             )}
             {routesStatus === "success" && (
               <div className="space-y-1 max-h-[50vh] overflow-y-auto">
-                {filteredRoutes.map((route) => (
+                {filteredRoutes.map((route) => {
+                  const isMain = !route.name?.startsWith("분선");
+                  return (
                   <button
                     key={`${route.id}-${route.number}`}
                     onClick={() => {
@@ -367,8 +369,12 @@ function AddAlertModal({
                     }}
                     className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 text-left"
                   >
-                    <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                      <span className="text-blue-700 font-bold text-xs">{route.number}</span>
+                    <div
+                      className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                        isMain ? "bg-blue-500" : "bg-emerald-500"
+                      }`}
+                    >
+                      <span className="text-white font-bold text-xs">{route.number}</span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-slate-800">
@@ -380,7 +386,8 @@ function AddAlertModal({
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-300" />
                   </button>
-                ))}
+                  );
+                })}
                 {filteredRoutes.length === 0 && (
                   <p className="text-sm text-slate-400 text-center py-8">검색 결과가 없어요</p>
                 )}
