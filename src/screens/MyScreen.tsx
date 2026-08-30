@@ -130,10 +130,13 @@ export function MyScreen() {
   return (
     <div className="h-full flex flex-col overflow-hidden bg-slate-50">
       <div className="flex-1 overflow-hidden overscroll-contain">
-      <header className="relative bg-gradient-to-b from-blue-600 to-blue-500 px-5 pt-16 pb-9 text-white">
+      <header className="relative bg-gradient-to-b from-blue-600 to-blue-500 px-5 pt-safe-16 pb-9 text-white">
           <button
             onClick={() => setMenuOpen(true)}
-            className="absolute top-14 right-4 p-2 text-white"
+            className="absolute right-4 p-2 text-white"
+            // 고정 top-14(56px)는 Dynamic Island(59px 안전영역) 안으로 들어간다 —
+            // 안전영역 기준으로 계산하고, 없는 기기에서는 기존 위치(3.5rem)를 유지.
+            style={{ top: "max(calc(env(safe-area-inset-top) + 0.5rem), 3.5rem)" }}
           >
             <Menu className="w-6 h-6" />
           </button>
@@ -175,7 +178,7 @@ export function MyScreen() {
                     key={fav.id}
                     className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 transition-colors"
                   >
-                    <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+                    <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center shrink-0">
                       <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
                     </div>
                     {editingId === fav.id ? (
@@ -184,7 +187,7 @@ export function MyScreen() {
                           value={editLabel}
                           onChange={(e) => setEditLabel(e.target.value)}
                           autoFocus
-                          className="flex-1 px-2.5 py-1.5 bg-slate-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="flex-1 px-2.5 py-1.5 bg-slate-100 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <button
                           onClick={saveEdit}

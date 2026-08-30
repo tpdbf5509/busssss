@@ -122,7 +122,10 @@ function AppContent() {
     <div className="max-w-md mx-auto bg-slate-50 fixed inset-0 overflow-hidden flex flex-col">
       {dropoffAlarm && (
         <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-6">
-          <div className="w-full max-w-sm rounded-3xl bg-white shadow-2xl p-7 text-center animate-pulse">
+          {/* animate-pulse는 로딩 스켈레톤용 무한 opacity 깜빡임이다. 사용자가
+              급하게 읽고 눌러야 하는 실제 알람 내용에 걸려 있으면 계속 흐려졌다
+              밝아지길 반복해 방해가 된다 — 알람 카드에는 붙이지 않는다. */}
+          <div className="w-full max-w-sm rounded-3xl bg-white shadow-2xl p-7 text-center">
             <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-red-100 flex items-center justify-center text-3xl">
               🔔
             </div>

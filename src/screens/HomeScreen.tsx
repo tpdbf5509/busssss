@@ -134,19 +134,23 @@ export function HomeScreen({
 
   return (
     <div className="flex flex-col bg-slate-50">
-       <header className="bg-gradient-to-b from-blue-600 to-blue-500 text-white px-5 pt-16 pb-9 shrink-0">
-         <div className="flex items-center justify-between mb-1.5">
-          <h1 className="text-2xl font-bold tracking-tight">BUS STOP</h1>
-          <button
-            onClick={() => setRegionUnderDevOpen(true)}
-            className="flex items-center gap-1 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1.5 text-sm font-medium hover:bg-white/25 transition-colors"
-          >
-            <MapPin className="w-4 h-4" />
-            <span>{state.region.sigungu}</span>
-            <ChevronDown className="w-3.5 h-3.5" />
-          </button>
-        </div>
-        <p className="text-blue-100 text-sm">전주시 버스 노선 정보</p>
+       <header className="bg-gradient-to-b from-blue-600 to-blue-500 text-white px-5 pt-safe-16 pb-9 shrink-0">
+         {/* My탭 헤더는 아바타(h-16=64px)가 기준이라 더 높다. 텍스트만 있는
+             이 헤더도 min-h-16으로 같은 높이를 맞추고 세로 중앙 정렬한다. */}
+         <div className="min-h-16 flex flex-col justify-center">
+           <div className="flex items-center justify-between mb-1.5">
+            <h1 className="text-2xl font-bold tracking-tight">BUS STOP</h1>
+            <button
+              onClick={() => setRegionUnderDevOpen(true)}
+              className="flex items-center gap-1 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1.5 text-sm font-medium hover:bg-white/25 transition-colors"
+            >
+              <MapPin className="w-4 h-4" />
+              <span>{state.region.sigungu}</span>
+              <ChevronDown className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <p className="text-blue-100 text-sm">전주시 버스 노선 정보</p>
+         </div>
       </header>
   
       <section className="px-4 -mt-3 shrink-0">
@@ -154,7 +158,7 @@ export function HomeScreen({
           onClick={() => onNavigate("bus")}
           className="w-full bg-white rounded-2xl border border-slate-200 shadow-sm px-4 py-3.5 flex items-center gap-3 hover:border-blue-300 hover:shadow transition-all active:scale-[0.99]"
         >
-          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
             <Search className="w-5 h-5 text-blue-600" />
           </div>
           <div className="text-left flex-1">
@@ -210,36 +214,36 @@ export function HomeScreen({
     <div className="max-h-[50vh] overflow-y-auto bg-white rounded-2xl border border-slate-100 p-3 space-y-2.5">
   {state.favorites.map((fav) => {
         const isRoute = fav.type === "route";
+        const isStopRoute = fav.type === "stop_route";
+        const isStation = fav.type === "station";
+        const targetId = isStopRoute ? fav.appRouteId : fav.refId;
+
         const matchedRoute = isRoute
           ? routes?.find((r) => r.id === fav.refId)
           : undefined;
-        const isMain = matchedRoute ? getRouteTypeLabel(matchedRoute.name) === "본선" : true;
 
-        const badgeBg = isRoute
+        // stop_route: appRouteId로 실제 노선 방향을 찾아 기점→종점 표시
+        const stopRoute = isStopRoute && fav.appRouteId
+          ? routes?.find((r) => r.id === fav.appRouteId)
+          : undefined;
+        const directionLabel = stopRoute
+          ? `${stopRoute.start || "기점"} → ${stopRoute.end || "종점"}`
+          : undefined;
+
+        // route와 stop_route는 둘 다 실제 버스 노선이라 본선/분선 카테고리 색을
+        // 적용한다. station(집/회사)은 노선이 아니라 저장한 장소라 중립 유지.
+        const categoryRoute = matchedRoute ?? stopRoute;
+        const isMain = categoryRoute ? getRouteTypeLabel(categoryRoute.name) === "본선" : true;
+        const isCategorized = isRoute || isStopRoute;
+        const badgeBg = isCategorized
           ? isMain
-            ? "bg-blue-50"
-            : "bg-emerald-50"
-          : "bg-blue-50";
-        const badgeText = isRoute
-          ? isMain
-            ? "text-blue-700"
-            : "text-emerald-700"
-          : "text-blue-700";
+            ? "bg-blue-500"
+            : "bg-emerald-500"
+          : "bg-slate-100";
+        const badgeText = isCategorized ? "text-white" : "text-blue-700";
 
         const routeNumber =
           matchedRoute?.number ?? fav.name.replace(/번$/, "").trim();
-
-          const isStopRoute = fav.type === "stop_route";
-          const isStation = fav.type === "station";
-          const targetId = isStopRoute ? fav.appRouteId : fav.refId;
-
-          // stop_route: appRouteId로 실제 노선 방향을 찾아 기점→종점 표시
-          const stopRoute = isStopRoute && fav.appRouteId
-            ? routes?.find((r) => r.id === fav.appRouteId)
-            : undefined;
-          const directionLabel = stopRoute
-            ? `${stopRoute.start || "기점"} → ${stopRoute.end || "종점"}`
-            : undefined;
 
         return (
           <div key={fav.id} className="relative">
@@ -266,7 +270,7 @@ export function HomeScreen({
                 className={`min-w-[64px] h-11 rounded-xl flex items-center justify-center shrink-0 px-2 ${badgeBg}`}
               >
                 <span
-                  className={`font-bold text-sm leading-tight text-center truncate ${badgeText}`}
+                  className={`font-black text-sm leading-tight text-center truncate ${badgeText}`}
                 >
                   {isRoute ? (isMain ? "본선" : "분선") : fav.label}
                 </span>

@@ -264,8 +264,14 @@ export async function checkDropoffAlerts(
 
           fired.add(key);
 
+          // 폴링 사이에 버스가 목표 정류장까지 통째로 지나쳤으면 stopsRemaining이
+          // 0 이하가 된다. 그대로 표시하면 "약 -2정거장"처럼 나오므로 문구를 분기한다.
+          const stopsRemaining = targetIndex - busIndex;
           const title = "하차 알람";
-          const body = `${alert.routeName} · ${bus.nodeName} 부근\n${alert.targetStation} 하차까지 약 ${targetIndex - busIndex}정거장`;
+          const body =
+            stopsRemaining > 0
+              ? `${alert.routeName} · ${bus.nodeName} 부근\n${alert.targetStation} 하차까지 약 ${stopsRemaining}정거장`
+              : `${alert.routeName} · ${bus.nodeName} 부근\n${alert.targetStation} 정류장에 이미 도착했거나 지나쳤을 수 있어요`;
 
           if (alert.sound) startDropoffAlarm(title, body);
           if (alert.vibrate) vibrate();

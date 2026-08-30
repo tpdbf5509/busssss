@@ -125,7 +125,7 @@ export function CardScreen() {
                   value={customInput}
                   onChange={(e) => applyCustomInput(e.target.value)}
                   placeholder="충전 금액 입력"
-                  className="w-full px-4 py-3 pr-12 bg-slate-100 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 pr-12 bg-slate-100 rounded-xl text-base font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">
                   원

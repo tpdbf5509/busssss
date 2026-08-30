@@ -11,7 +11,7 @@ export function LoadingSkeleton({ className = "" }: { className?: string }) {
 export function ErrorState({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-      <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mb-4">
+      <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-4">
         <AlertTriangle className="w-7 h-7 text-red-500" />
       </div>
       <p className="text-slate-700 font-medium mb-1">정보를 불러오지 못했어요</p>
@@ -79,9 +79,9 @@ export function ArrivalBadge({
 }) {
   const color =
     minutes <= 3
-      ? "bg-red-50 text-red-600"
+      ? "bg-slate-100 text-red-600"
       : minutes <= 10
-      ? "bg-blue-50 text-blue-600"
+      ? "bg-slate-100 text-blue-600"
       : "bg-slate-100 text-slate-500";
   return (
     <span

@@ -36,7 +36,7 @@ export function AuthScreen() {
     <div className="min-h-screen bg-gradient-to-b from-blue-600 to-blue-500 px-5 py-16 flex items-center justify-center">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6">
         <div className="text-center mb-7">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mb-4">
+          <div className="mx-auto w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
             <LockKeyhole className="w-7 h-7 text-blue-600" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900">BUS STOP</h1>
@@ -56,7 +56,7 @@ export function AuthScreen() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="이메일을 입력하세요"
-                className="w-full bg-transparent py-3 text-sm outline-none"
+                className="w-full bg-transparent py-3 text-base outline-none"
               />
             </div>
           </label>
@@ -71,7 +71,7 @@ export function AuthScreen() {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="6자 이상 입력하세요"
-                className="w-full bg-transparent py-3 text-sm outline-none"
+                className="w-full bg-transparent py-3 text-base outline-none"
               />
             </div>
           </label>
