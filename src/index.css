@@ -56,6 +56,30 @@
   .pt-safe-14 {
     padding-top: max(calc(env(safe-area-inset-top) + 0.75rem), 3.5rem);
   }
+
+  /* 하단 네비게이션 안전영역.
+   *
+   * env(safe-area-inset-bottom)을 쓰지 않는다. iOS 홈 화면 PWA(standalone)에서
+   * 이 값을 min()/max() 같은 중첩 수학 함수 안에 넣으면 상한이 무시되고 값이
+   * 비정상적으로 부풀어 오르는 WebKit 문제가 있다. 실측 결과 같은 빌드에서
+   * Safari는 padding-bottom 8px(nav 55.5pt)로 정상 렌더링되는데, standalone
+   * PWA에서는 max(min(env(...), 20px), 8px)이 약 66px(nav 114pt)로 계산됐다.
+   *
+   * 대신 display-mode로 환경을 직접 구분한다. 두 경우 모두 고정값이라 부풀어
+   * 오를 여지가 없다.
+   * - 브라우저 탭: 하단 툴바가 이미 안전영역을 차지하므로 8px면 충분
+   * - standalone: 홈 인디케이터가 화면 하단 8~13pt 구간이라 20px면 7pt 여유를
+   *   두고 완전히 비켜가고, iOS 홈 스와이프 제스처 구간(하단 ~20pt) 밖에 탭
+   *   버튼이 놓여 탭이 제스처에 먹히지도 않는다.
+   */
+  .pb-nav-safe {
+    padding-bottom: 8px;
+  }
+  @media (display-mode: standalone) {
+    .pb-nav-safe {
+      padding-bottom: 20px;
+    }
+  }
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;

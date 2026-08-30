@@ -5,7 +5,10 @@
 // 오프라인일 때 이전에 열어본 화면(앱 셸)은 뜨게 하는 게 목표이고, 실시간
 // 도착정보 같은 API 응답은 절대 캐시하지 않습니다(오래된 값을 보여주면 더
 // 위험하기 때문).
-const CACHE_NAME = "bus-stop-runtime-v1";
+// 버전을 올리면 activate 핸들러가 이전 캐시를 전부 지운다. iOS 홈 화면 PWA는
+// Safari 탭과 저장소가 분리돼 있어, Safari에서는 최신 빌드가 보이는데 PWA만
+// 옛 자산을 계속 쓰는 경우가 있다. 그럴 때 강제로 갈아끼우기 위한 버전이다.
+const CACHE_NAME = "bus-stop-runtime-v2";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
