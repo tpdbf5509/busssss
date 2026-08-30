@@ -308,7 +308,7 @@ function AddAlertModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-2xl">
+      <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-2xl animate-slide-up">
         <div className="px-5 py-4 border-b border-slate-100 sticky top-0 bg-white z-10 flex items-center gap-2">
           {step !== "route" && (
             <button

@@ -122,7 +122,10 @@ function AppContent() {
     <div className="max-w-md mx-auto bg-slate-50 fixed inset-0 overflow-hidden flex flex-col">
       {dropoffAlarm && (
         <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-6">
-          <div className="w-full max-w-sm rounded-3xl bg-white shadow-2xl p-7 text-center animate-pulse">
+          {/* 소리+진동이 이미 울리고 있어 카드가 전체 화면의 유일한 초점이다.
+              계속 깜빡이는 animate-pulse는 추가 정보 없이 화면만 어지럽혀
+              장식에 가까웠다 — "방금 나타났다"만 전달하는 1회성 진입으로 교체 */}
+          <div className="w-full max-w-sm rounded-3xl bg-white shadow-2xl p-7 text-center animate-dialog-in">
             <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-red-100 flex items-center justify-center text-3xl">
               🔔
             </div>
