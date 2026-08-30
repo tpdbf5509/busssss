@@ -125,19 +125,10 @@ function StepIcon({ type }: { type: RouteStep["icon"] }) {
   }
 }
 
-function stepIconBg(type: RouteStep["icon"]) {
-  switch (type) {
-    case "walk":
-      return "bg-emerald-50";
-    case "bus":
-      return "bg-blue-50";
-    case "pin":
-      return "bg-orange-50";
-    case "target":
-      return "bg-red-50";
-    default:
-      return "bg-slate-100";
-  }
+function stepIconBg(_type: RouteStep["icon"]) {
+  // 연한 색 배경을 종류별로 다르게 쓰면 아이콘 색과 겹쳐 톤온톤이 된다.
+  // 배경은 항상 중립으로 통일하고, 종류 구분은 StepIcon의 아이콘 색으로만 전달한다.
+  return "bg-slate-100";
 }
 
 export function RouteScreen() {
@@ -209,7 +200,7 @@ export function RouteScreen() {
   return (
     <div className="h-full flex flex-col overflow-hidden bg-slate-50">
       {/* 버스/알림과 동일한 흰 헤더 */}
-      <header className="bg-white px-5 pt-16 pb-5 border-b border-slate-100 sticky top-0 z-30 shrink-0">
+      <header className="bg-white px-5 pt-safe-16 pb-5 border-b border-slate-100 sticky top-0 z-30 shrink-0">
         <h1 className="text-xl font-bold text-slate-900">길찾기</h1>
         <p className="text-xs text-slate-400 mt-0.5">
           목적지까지 버스 타는 방법
@@ -297,7 +288,7 @@ export function RouteScreen() {
                     현재 위치 · {result.currentArea}
                   </p>
                 </div>
-                <span className="shrink-0 rounded-full bg-blue-50 text-blue-600 text-xs font-semibold px-2.5 py-1">
+                <span className="shrink-0 rounded-full bg-slate-100 text-blue-600 text-xs font-semibold px-2.5 py-1">
                   {result.summary}
                 </span>
               </div>

@@ -20,7 +20,10 @@ export function BottomNav({
   return (
     <nav
       className="shrink-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200"
-      style={{ paddingBottom: "min(env(safe-area-inset-bottom), 8px)" }}
+      // min()은 Home Indicator가 있는 기기에서 오히려 패딩을 8px로 깎아버려
+      // 탭 라벨이 인디케이터에 가려진다 — 실제 안전영역만큼은 항상 확보하고,
+      // 안전영역이 없는 기기에서만 8px 기본값을 쓰도록 max()를 쓴다.
+      style={{ paddingBottom: "max(env(safe-area-inset-bottom), 8px)" }}
     >
       <div className="max-w-md mx-auto grid grid-cols-5">
         {tabs.map((tab) => {

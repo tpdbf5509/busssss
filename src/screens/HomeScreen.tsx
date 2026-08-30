@@ -134,7 +134,7 @@ export function HomeScreen({
 
   return (
     <div className="flex flex-col bg-slate-50">
-       <header className="bg-gradient-to-b from-blue-600 to-blue-500 text-white px-5 pt-16 pb-9 shrink-0">
+       <header className="bg-gradient-to-b from-blue-600 to-blue-500 text-white px-5 pt-safe-16 pb-9 shrink-0">
          <div className="flex items-center justify-between mb-1.5">
           <h1 className="text-2xl font-bold tracking-tight">BUS STOP</h1>
           <button
@@ -154,7 +154,7 @@ export function HomeScreen({
           onClick={() => onNavigate("bus")}
           className="w-full bg-white rounded-2xl border border-slate-200 shadow-sm px-4 py-3.5 flex items-center gap-3 hover:border-blue-300 hover:shadow transition-all active:scale-[0.99]"
         >
-          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
             <Search className="w-5 h-5 text-blue-600" />
           </div>
           <div className="text-left flex-1">
@@ -215,11 +215,9 @@ export function HomeScreen({
           : undefined;
         const isMain = matchedRoute ? getRouteTypeLabel(matchedRoute.name) === "본선" : true;
 
-        const badgeBg = isRoute
-          ? isMain
-            ? "bg-blue-50"
-            : "bg-emerald-50"
-          : "bg-blue-50";
+        // 톤온톤(연한 배경+같은 색 진한 글자) 대신 중립 배경 + 색상 텍스트로
+        // 본선/분선/정류장 구분은 badgeText 색만으로 전달한다.
+        const badgeBg = "bg-slate-100";
         const badgeText = isRoute
           ? isMain
             ? "text-blue-700"

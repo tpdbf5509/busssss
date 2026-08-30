@@ -35,6 +35,15 @@
 }
 
 @layer utilities {
+  /* iPhone notch / Dynamic Island / status bar 안전영역. 값 없는 기기에서는
+     기존 pt-16/pt-14와 동일하게 보이도록 max()의 두 번째 인자를 기존 고정값으로
+     둔다 — 안전영역이 있는 기기에서만 그만큼 더 내려간다. */
+  .pt-safe-16 {
+    padding-top: max(calc(env(safe-area-inset-top) + 1rem), 4rem);
+  }
+  .pt-safe-14 {
+    padding-top: max(calc(env(safe-area-inset-top) + 0.75rem), 3.5rem);
+  }
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
