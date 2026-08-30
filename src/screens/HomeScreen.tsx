@@ -134,22 +134,24 @@ export function HomeScreen({
 
   return (
     <div className="flex flex-col bg-slate-50">
-       {/* 다른 화면(버스/알림/길찾기)은 전부 흰 배경+구분선 헤더를 쓴다.
-           이 화면만 파란 그라디언트였던 걸 같은 패턴으로 통일 — 새 트렌드가
-           아니라 이 앱 안에 이미 있는 스타일을 따른 것 */}
-       <header className="bg-white border-b border-slate-100 px-5 pt-safe-16 pb-5 shrink-0">
+       {/* Home/My/Auth는 Brand Screen — 브랜드 블루가 화면의 첫인상을 담당한다.
+           배경색이 헤더 박스 전체(safe-area 패딩 포함)를 채우므로 상단 Safe
+           Area와 자연스럽게 이어지고, pt-safe-16(env(safe-area-inset-top)
+           기반)이 제목/아이콘만 노치 아래로 밀어낸다. Bus/Alert/Route 같은
+           Information Screen은 정보 밀도가 우선이라 흰 헤더를 그대로 유지. */}
+       <header className="bg-blue-600 px-5 pt-safe-16 pb-5 shrink-0">
          <div className="flex items-center justify-between mb-0.5">
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">BUS STOP</h1>
+          <h1 className="text-xl font-bold text-white tracking-tight">BUS STOP</h1>
           <button
             onClick={() => setRegionUnderDevOpen(true)}
-            className="flex items-center gap-1 text-slate-500 hover:text-slate-700 text-sm font-medium transition-colors"
+            className="flex items-center gap-1 text-blue-100 hover:text-white text-sm font-medium transition-colors"
           >
             <MapPin className="w-4 h-4" />
             <span>{state.region.sigungu}</span>
             <ChevronDown className="w-3.5 h-3.5" />
           </button>
         </div>
-        <p className="text-slate-500 text-xs">전주시 버스 노선 정보</p>
+        <p className="text-blue-100 text-xs">전주시 버스 노선 정보</p>
       </header>
   
       <section className="px-4 shrink-0">
