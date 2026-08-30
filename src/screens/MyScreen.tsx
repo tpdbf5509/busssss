@@ -130,11 +130,10 @@ export function MyScreen() {
   return (
     <div className="h-full flex flex-col overflow-hidden bg-slate-50">
       <div className="flex-1 overflow-hidden overscroll-contain">
-      {/* Home과 동일한 Brand Screen 헤더 — 브랜드 블루가 safe-area까지 이어짐 */}
-      <header className="relative bg-blue-600 px-5 pt-safe-16 pb-5">
+      <header className="relative bg-white border-b border-slate-100 px-5 pt-safe-16 pb-5">
           <button
             onClick={() => setMenuOpen(true)}
-            className="absolute right-4 p-3 -m-1 rounded-full text-white hover:bg-white/10"
+            className="absolute right-4 p-3 -m-1 rounded-full text-slate-500 hover:bg-slate-100"
             // 절대위치라 헤더 패딩의 영향을 받지 않는다. 고정 56px이면 다이내믹
             // 아일랜드(59pt) 안으로 들어가므로 상단 인셋 기준으로 계산한다.
             // max()로 감싸 인셋이 없는 기기에서는 기존 top-14(3.5rem)를 유지.
@@ -143,14 +142,14 @@ export function MyScreen() {
             <Menu className="w-6 h-6" />
           </button>
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-white/15 flex items-center justify-center text-xl font-bold text-white">
+            <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center text-xl font-bold text-slate-600">
               승
             </div>
             <div>
-              <h1 className="text-lg font-bold text-white">승객님</h1>
+              <h1 className="text-lg font-bold text-slate-900">승객님</h1>
               <button
                 onClick={() => setRegionOpen(true)}
-                className="flex items-center gap-1 text-sm text-blue-100 mt-0.5 hover:text-white transition-colors"
+                className="flex items-center gap-1 text-sm text-slate-500 mt-0.5 hover:text-slate-700 transition-colors"
               >
                 <MapPin className="w-3.5 h-3.5" />
                 {state.region.sido} {state.region.sigungu}

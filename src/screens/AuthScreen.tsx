@@ -38,11 +38,8 @@ export function AuthScreen() {
   // 이 화면은 body 밖 최상위에 그대로 렌더링돼 스크롤 가능한 조상이 아예
   // 없었다 — 키보드가 비밀번호 입력창을 가려도 스크롤해서 볼 방법이
   // 없었다. overflow-y-auto를 추가해 그 조상 역할을 하게 한다.
-  // Auth는 Brand Screen — 브랜드 블루 단색을 화면 전체 배경으로 사용한다
-  // (그라디언트 금지). min-h-screen 배경이 뷰포트 전체를 채우므로 상단/하단
-  // Safe Area에도 별도 처리 없이 브랜드 블루가 자연스럽게 이어진다.
   return (
-    <div className="min-h-screen overflow-y-auto bg-blue-600 px-5 py-16 flex items-center justify-center">
+    <div className="min-h-screen overflow-y-auto bg-slate-50 px-5 py-16 flex items-center justify-center">
       <div className="w-full max-w-md bg-white rounded-3xl border border-slate-100 p-6">
         <div className="text-center mb-7">
           <div className="mx-auto w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mb-4">
