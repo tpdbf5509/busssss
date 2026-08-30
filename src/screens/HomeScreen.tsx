@@ -214,34 +214,36 @@ export function HomeScreen({
     <div className="max-h-[50vh] overflow-y-auto bg-white rounded-2xl border border-slate-100 p-3 space-y-2.5">
   {state.favorites.map((fav) => {
         const isRoute = fav.type === "route";
+        const isStopRoute = fav.type === "stop_route";
+        const isStation = fav.type === "station";
+        const targetId = isStopRoute ? fav.appRouteId : fav.refId;
+
         const matchedRoute = isRoute
           ? routes?.find((r) => r.id === fav.refId)
           : undefined;
-        const isMain = matchedRoute ? getRouteTypeLabel(matchedRoute.name) === "본선" : true;
 
-        // 본선/분선 배지만 진하지 않은 파랑/초록 배경 + 흰 글씨로 구분.
-        // 정류장(집/회사 등) 배지는 기존 중립 배경을 유지.
-        const badgeBg = isRoute
+        // stop_route: appRouteId로 실제 노선 방향을 찾아 기점→종점 표시
+        const stopRoute = isStopRoute && fav.appRouteId
+          ? routes?.find((r) => r.id === fav.appRouteId)
+          : undefined;
+        const directionLabel = stopRoute
+          ? `${stopRoute.start || "기점"} → ${stopRoute.end || "종점"}`
+          : undefined;
+
+        // route와 stop_route는 둘 다 실제 버스 노선이라 본선/분선 카테고리 색을
+        // 적용한다. station(집/회사)은 노선이 아니라 저장한 장소라 중립 유지.
+        const categoryRoute = matchedRoute ?? stopRoute;
+        const isMain = categoryRoute ? getRouteTypeLabel(categoryRoute.name) === "본선" : true;
+        const isCategorized = isRoute || isStopRoute;
+        const badgeBg = isCategorized
           ? isMain
             ? "bg-blue-500"
             : "bg-emerald-500"
           : "bg-slate-100";
-        const badgeText = isRoute ? "text-white" : "text-blue-700";
+        const badgeText = isCategorized ? "text-white" : "text-blue-700";
 
         const routeNumber =
           matchedRoute?.number ?? fav.name.replace(/번$/, "").trim();
-
-          const isStopRoute = fav.type === "stop_route";
-          const isStation = fav.type === "station";
-          const targetId = isStopRoute ? fav.appRouteId : fav.refId;
-
-          // stop_route: appRouteId로 실제 노선 방향을 찾아 기점→종점 표시
-          const stopRoute = isStopRoute && fav.appRouteId
-            ? routes?.find((r) => r.id === fav.appRouteId)
-            : undefined;
-          const directionLabel = stopRoute
-            ? `${stopRoute.start || "기점"} → ${stopRoute.end || "종점"}`
-            : undefined;
 
         return (
           <div key={fav.id} className="relative">
@@ -268,7 +270,7 @@ export function HomeScreen({
                 className={`min-w-[64px] h-11 rounded-xl flex items-center justify-center shrink-0 px-2 ${badgeBg}`}
               >
                 <span
-                  className={`font-bold text-sm leading-tight text-center truncate ${badgeText}`}
+                  className={`font-black text-sm leading-tight text-center truncate ${badgeText}`}
                 >
                   {isRoute ? (isMain ? "본선" : "분선") : fav.label}
                 </span>
