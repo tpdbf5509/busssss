@@ -215,14 +215,14 @@ export function HomeScreen({
           : undefined;
         const isMain = matchedRoute ? getRouteTypeLabel(matchedRoute.name) === "본선" : true;
 
-        // 톤온톤(연한 배경+같은 색 진한 글자) 대신 중립 배경 + 색상 텍스트로
-        // 본선/분선/정류장 구분은 badgeText 색만으로 전달한다.
-        const badgeBg = "bg-slate-100";
-        const badgeText = isRoute
+        // 본선/분선 배지만 진하지 않은 파랑/초록 배경 + 흰 글씨로 구분.
+        // 정류장(집/회사 등) 배지는 기존 중립 배경을 유지.
+        const badgeBg = isRoute
           ? isMain
-            ? "text-blue-700"
-            : "text-emerald-700"
-          : "text-blue-700";
+            ? "bg-blue-500"
+            : "bg-emerald-500"
+          : "bg-slate-100";
+        const badgeText = isRoute ? "text-white" : "text-blue-700";
 
         const routeNumber =
           matchedRoute?.number ?? fav.name.replace(/번$/, "").trim();

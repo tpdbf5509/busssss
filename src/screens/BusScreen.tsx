@@ -269,13 +269,11 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                           const isMain = label === "본선";
                           return (
                             <div
-                              className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-slate-100"
+                              className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+                                isMain ? "bg-blue-500" : "bg-emerald-500"
+                              }`}
                             >
-                              <span
-                                className={`font-bold text-xs leading-tight text-center ${
-                                  isMain ? "text-blue-700" : "text-emerald-700"
-                                }`}
-                              >
+                              <span className="font-bold text-xs leading-tight text-center text-white">
                                 {label}
                               </span>
                             </div>
