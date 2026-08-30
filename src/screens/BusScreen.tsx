@@ -220,7 +220,7 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                 {query && (
                   <button
                     onClick={() => setQuery("")}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 p-2"
                   >
                     <X className="w-4 h-4 text-slate-400" />
                   </button>
@@ -722,7 +722,7 @@ const isAllRouteFavorited = (route: Route) =>
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            className="p-1.5 -ml-1.5 rounded-full hover:bg-slate-100"
+            className="p-3 -ml-3 rounded-full hover:bg-slate-100"
           >
             <ArrowLeft className="w-5 h-5 text-slate-700" />
           </button>
@@ -1058,7 +1058,7 @@ const handleStopClick = async (stop: BusStop) => {
     <div className="bg-slate-50">
       <header className="bg-white px-4 pt-safe-14 pb-5 border-b border-slate-100 sticky top-0 z-30">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="p-1.5 -ml-1.5 rounded-full hover:bg-slate-100">
+          <button onClick={onBack} className="p-3 -ml-3 rounded-full hover:bg-slate-100">
             <ArrowLeft className="w-5 h-5 text-slate-700" />
           </button>
           <div className="flex-1">
@@ -1299,7 +1299,7 @@ function DispatchScheduleModal({
             <Clock className="w-5 h-5 text-blue-600" />
             <h2 className="text-lg font-bold text-slate-900">배차시간</h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-slate-100">
+          <button onClick={onClose} className="p-3 -m-3 rounded-full hover:bg-slate-100">
             <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
@@ -1339,7 +1339,7 @@ function DispatchScheduleModal({
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="flex-1 overflow-y-auto px-5 py-4 pb-safe-4">
           {realStatus === "loading" && (
             <div className="grid grid-cols-4 gap-2">
               {Array.from({ length: 8 }).map((_, i) => (

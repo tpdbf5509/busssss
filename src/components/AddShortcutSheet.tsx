@@ -24,7 +24,7 @@ export function AddShortcutSheet({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl p-6 animate-slide-up">
+      <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl p-6 pb-safe-6 animate-slide-up">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
             <MapPin className="w-5 h-5 text-blue-600" />

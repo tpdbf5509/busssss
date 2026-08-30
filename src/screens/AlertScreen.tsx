@@ -320,7 +320,7 @@ function AddAlertModal({
                   setSelectedStop(null);
                 }
               }}
-              className="p-1 -ml-1 rounded-full hover:bg-slate-100"
+              className="p-3 -ml-3 rounded-full hover:bg-slate-100"
             >
               <ArrowLeft className="w-5 h-5 text-slate-600" />
             </button>
@@ -345,7 +345,7 @@ function AddAlertModal({
               {query && (
                 <button
                   onClick={() => setQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 p-2"
                 >
                   <X className="w-4 h-4 text-slate-400" />
                 </button>
@@ -425,7 +425,7 @@ function AddAlertModal({
         )}
 
         {step === "options" && selectedRoute && selectedStop && (
-          <div className="px-5 py-5 space-y-5">
+          <div className="px-5 py-5 pb-safe-5 space-y-5">
             <div className="bg-slate-50 rounded-xl p-3">
               <p className="text-sm font-semibold text-slate-800">
                 {selectedRoute.name || `${selectedRoute.number}번`}

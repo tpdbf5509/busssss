@@ -40,7 +40,7 @@ export function ToastContainer() {
               onClick={() =>
                 setToasts((prev) => prev.filter((t) => t.id !== toast.id))
               }
-              className="text-slate-300 hover:text-slate-500"
+              className="p-2.5 -m-2.5 text-slate-300 hover:text-slate-500"
             >
               <X className="w-4 h-4" />
             </button>

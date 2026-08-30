@@ -278,7 +278,7 @@ export function MyScreen() {
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setLogoutConfirmOpen(false)}
           />
-          <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 shadow-2xl animate-slide-up">
+          <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 pb-safe-6 shadow-2xl animate-slide-up">
             <h2 className="text-lg font-bold text-slate-900 mb-2">로그아웃 할까요?</h2>
             <p className="text-sm text-slate-500 leading-relaxed mb-5">로컬 설정은 유지됩니다.</p>
             <div className="flex gap-2">
@@ -305,7 +305,7 @@ export function MyScreen() {
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setHelpOpen(false)}
           />
-          <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 shadow-2xl">
+          <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 pb-safe-5 shadow-2xl">
             <h2 className="text-lg font-bold text-slate-900 mb-3">도움말</h2>
             <ul className="space-y-2 text-sm text-slate-600 leading-relaxed">
               <li>· 홈에서 즐겨찾기를 관리하고 도착 정보를 확인해요.</li>
@@ -334,7 +334,7 @@ export function MyScreen() {
             <div className="pt-[15vh]" />
             <div className="p-4 border-b border-slate-100 flex items-center justify-between">
               <h2 className="font-bold text-slate-900">설정</h2>
-              <button onClick={() => setMenuOpen(false)}>
+              <button onClick={() => setMenuOpen(false)} className="p-3 -m-3 rounded-full hover:bg-slate-100">
                 <X className="w-5 h-5 text-slate-400" />
               </button>
             </div>
@@ -413,6 +413,9 @@ export function MyScreen() {
               onClick={() => setLogoutConfirmOpen(true)}
               last
             />
+            {/* 드로어가 화면 세로 전체(h-full)라 마지막 행이 홈 인디케이터
+                바로 위에 붙는다 — 안전영역만큼 여유를 준다 */}
+            <div className="pb-safe-4" />
           </div>
         </div>
       )}

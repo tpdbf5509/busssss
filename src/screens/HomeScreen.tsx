@@ -306,13 +306,13 @@ export function HomeScreen({
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setRegionUnderDevOpen(false)}
           />
-          <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl p-6 animate-slide-up">
+          <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl p-6 pb-safe-6 animate-slide-up">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-slate-900">지역 설정</h2>
               <button
                 type="button"
                 onClick={() => setRegionUnderDevOpen(false)}
-                className="p-1.5 rounded-full hover:bg-slate-100"
+                className="p-3 -m-3 rounded-full hover:bg-slate-100"
               >
                 <X className="w-5 h-5 text-slate-500" />
               </button>
