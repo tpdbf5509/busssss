@@ -13,7 +13,7 @@ import { showToast } from "@/lib/toastStore";
 import type { Station } from "@/types/route";
 import { MapPin } from "lucide-react";
 import { resolveNodeId, resolveNodeIdForRoute, resolveRouteId } from "@/services/arrivalService";
-import { searchStations, fetchRoutesForStation, type StationRoute } from "@/services/stationService";
+import { searchStations, fetchRoutesForStation, stripCityPrefix, type StationRoute } from "@/services/stationService";
 import { parseInterval, parseTimeToMinutes } from "@/lib/interval";
 
 function getRouteTypeLabel(routeName: string) {
@@ -571,14 +571,20 @@ function StationDetail({
     };
   }, [detailTab, station.id]);
 
-  // 실시간 노선 즐겨찾기 여부
-  const isArrivalFavorited = (routeNo: string) =>
-  state.favorites.some(
-    (f) =>
-      f.type === "stop_route" &&
-      f.routeNumber === routeNo &&
-      f.stopName === station.name
-  );
+  // 실시간 노선 즐겨찾기 여부.
+  //
+  // 노선 "번호"로 비교하면 안 된다. 같은 번호를 여러 방향이 공유하기 때문에
+  // (운영 DB 기준 "85"번 11개, "48"·"84"번 각 10개), 한 정류장을 양방향이
+  // 지나가면 반대 방향 즐겨찾기가 서로를 같은 것으로 인식한다.
+  // sr.routeId는 방향별로 고유하므로(stationService가 `JUB${route.id}`로 생성)
+  // 그것으로 비교한다.
+  const isArrivalFavorited = (sr: StationRoute) =>
+    state.favorites.some(
+      (f) =>
+        f.type === "stop_route" &&
+        f.tagoRouteId === sr.routeId &&
+        f.stopName === station.name
+    );
 
 // 전체 경유노선 즐겨찾기 여부
 const isAllRouteFavorited = (route: Route) =>
@@ -591,10 +597,12 @@ const isAllRouteFavorited = (route: Route) =>
 
   // 실시간 노선 즐겨찾기
   const handleRouteClick = async (sr: StationRoute) => {
+    // 중복 판정도 번호가 아니라 방향별 고유 ID로 한다. 번호로 비교하면
+    // 반대 방향을 추가하려 할 때 기존 즐겨찾기를 "이미 있다"고 보고 지워버린다.
     const existing = state.favorites.find(
       (f) =>
         f.type === "stop_route" &&
-        f.routeNumber === sr.routeNo &&
+        f.tagoRouteId === sr.routeId &&
         f.stopName === station.name
     );
 
@@ -611,11 +619,14 @@ const isAllRouteFavorited = (route: Route) =>
     setAddingRouteNo(sr.routeNo);
 
     try {
-      const appRoute = allRoutes?.find(
-        (r) =>
-          r.number === sr.routeNo ||
-          r.rawNumber === sr.routeNo
-      );
+      // 번호로 찾으면 같은 번호의 다른 방향이 먼저 걸릴 수 있다.
+      // sr.routeId는 stationService가 우리 route.id로 만든 값(`JUB${id}`)이라
+      // 접두사만 떼면 방향까지 정확한 노선을 바로 집을 수 있다.
+      const appRouteId = stripCityPrefix(sr.routeId);
+      const appRoute =
+        allRoutes?.find((r) => r.id === appRouteId) ??
+        // 혹시 목록에 없으면(캐시 시점 차이 등) 기존처럼 번호로 폴백
+        allRoutes?.find((r) => r.number === sr.routeNo || r.rawNumber === sr.routeNo);
 
       dispatch({
         type: "ADD_FAVORITE",
@@ -815,7 +826,7 @@ const isAllRouteFavorited = (route: Route) =>
                           key={sr.routeId}
                           sr={sr}
                           hero
-                          isFavorited={isArrivalFavorited(sr.routeNo)}
+                          isFavorited={isArrivalFavorited(sr)}
                           isAdding={addingRouteNo === sr.routeNo}
                           onSelect={() => {
                             const appRoute = allRoutes?.find(
@@ -850,7 +861,7 @@ const isAllRouteFavorited = (route: Route) =>
                       <StationRouteCard
                         key={sr.routeId}
                         sr={sr}
-                        isFavorited={isArrivalFavorited(sr.routeNo)}
+                        isFavorited={isArrivalFavorited(sr)}
                         isAdding={addingRouteNo === sr.routeNo}
                         onSelect={() => {
                           const appRoute = allRoutes?.find(
@@ -1007,8 +1018,10 @@ const isArrivalFavorited = (stopName: string) =>
   );
 
 const handleStopClick = async (stop: BusStop) => {
+  // 바로 위 isArrivalFavorited와 같은 기준(appRouteId)으로 찾아야 한다.
+  // routeNumber로 찾으면 같은 번호의 반대 방향 즐겨찾기를 지워버린다.
   const existing = state.favorites.find(
-    (f) => f.type === "stop_route" && f.routeNumber === route.number && f.stopName === stop.name
+    (f) => f.type === "stop_route" && f.appRouteId === route.id && f.stopName === stop.name
   );
   if (existing) {
     dispatch({ type: "REMOVE_FAVORITE", id: existing.id });

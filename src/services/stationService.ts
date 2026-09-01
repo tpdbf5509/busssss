@@ -28,7 +28,7 @@ export interface StationRoute {
 }
 
 /** TAGO nodeid/routeid("JUB305001094")에서 우리 앱의 brtStdid 숫자만 뽑아낸다. */
-function stripCityPrefix(id: string): string {
+export function stripCityPrefix(id: string): string {
   return (id ?? "").replace(/^[A-Za-z]+/, "");
 }
 
