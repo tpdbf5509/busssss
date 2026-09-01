@@ -242,7 +242,12 @@ export async function findNearestApproachingBus(
 
     let best: { stopsAway: number; vehicleNo: string } | null = null;
     for (const location of locations) {
-      const { index } = resolveBusStopIndex(stops, location.nodeId, location.nodeOrder);
+      const { index } = resolveBusStopIndex(
+        stops,
+        location.nodeId,
+        location.nodeOrder,
+        location.nodeName,
+      );
       // index === -1: 위치를 환산하지 못함. index > targetIndex: 이미 지나감.
       // 둘 다 "이 버스는 접근 중인 후보가 아니다"로 취급한다.
       if (index === -1 || index > targetIndex) continue;

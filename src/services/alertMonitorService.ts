@@ -243,6 +243,7 @@ export async function checkDropoffAlerts(
           stops,
           bus.nodeId,
           bus.nodeOrder,
+          bus.nodeName,
         );
         if (busIndex === -1) continue;
 
