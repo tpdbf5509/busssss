@@ -16,6 +16,7 @@ import { resolveNodeId, resolveNodeIdForRoute, resolveRouteId } from "@/services
 import { searchStations, fetchRoutesForStation, stripCityPrefix, type StationRoute } from "@/services/stationService";
 import { parseInterval, parseTimeToMinutes } from "@/lib/interval";
 import { getRouteCategory, isMainRoute } from "@/lib/routeCategory";
+import { normalizeStopName } from "@/lib/stopPosition";
 
 
 export function BusScreen({
@@ -991,9 +992,6 @@ function RouteDetail({ route, onBack }: { route: Route; onBack: () => void }) {
     lastUpdated,
     retry: retryBuses,
   } = useBusLocations(route);
-  const normalizeStopName = (s: string) =>
-    (s ?? "").replace(/\s+/g, "").replace(/\(.*?\)/g, "").trim();
-
   // 실시간 버스를 정류장에 붙일 때 정류장 ID를 우선으로 쓴다.
   //
   // 이름으로만 묶으면 같은 이름의 서로 다른 정류장이 한 칸으로 합쳐진다.

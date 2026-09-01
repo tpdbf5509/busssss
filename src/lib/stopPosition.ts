@@ -1,5 +1,9 @@
 import type { BusStop } from "@/types/route";
 
+export function normalizeStopName(name: string): string {
+  return (name ?? "").replace(/\s+/g, "").replace(/\(.*?\)/g, "").trim();
+}
+
 /**
  * 정류장 순번(sequence_no)은 위치 인덱스가 아니다.
  *
@@ -33,7 +37,7 @@ export interface BusPositionResolution {
   /** 정류장 목록에서의 위치. -1이면 환산 실패. */
   index: number;
   /** 무엇을 근거로 환산했는지 (신뢰도 판단·로깅용). */
-  resolvedBy: "nodeId" | "order" | "none";
+  resolvedBy: "nodeId" | "name" | "order" | "none";
 }
 
 /**
@@ -41,11 +45,18 @@ export interface BusPositionResolution {
  *
  * 1순위 — 정류장 ID 일치. 정적 캐시와 실시간 GW가 같은 정류장을 가리키는지
  *   ID로 직접 확인하므로 순번 체계가 서로 달라도 안전하다.
- * 2순위 — GW의 `nodeOrder`를 sequence_no로 보고, 그 값을 넘지 않는 마지막
+ * 2순위 — 정류장 이름 일치. 전주시 GW가 nodeId를 안 내려주는 버스가 실제로
+ *   있다(busLocationService의 nodeId 주석 참고). 노선상세의 버스 배지가
+ *   바로 이 순서로 정류장을 찾는데, 여기서는 3순위(순번 환산)로만 폴백하고
+ *   있어서 nodeId가 비어 있고 순번 체계가 어긋나는 노선(예: 104번)에서
+ *   노선상세는 정확한 정류장에 배지를 그리는데 "N정거장 전" 계산은 엉뚱한
+ *   위치로 새는 불일치가 있었다. 이름 매칭을 여기도 추가해 두 계산을
+ *   같은 근거로 맞춘다.
+ * 3순위 — GW의 `nodeOrder`를 sequence_no로 보고, 그 값을 넘지 않는 마지막
  *   정류장으로 환산한다. 순번에 구멍이 있어도 "버스가 이미 지난 마지막
  *   정류장"으로 해석되므로 알림이 너무 늦게 울리는 쪽으로는 치우치지 않는다.
  *
- * 2순위로 내려간 경우 `resolvedBy: "order"`가 되며, 이는 두 데이터 소스의
+ * 3순위로 내려간 경우 `resolvedBy: "order"`가 되며, 이는 두 데이터 소스의
  * 순번 체계가 같다는 검증되지 않은 가정에 의존한 결과다. 호출부에서 로그를
  * 남겨 실제 운영 데이터로 이 가정을 확인할 수 있게 한다.
  */
@@ -53,10 +64,19 @@ export function resolveBusStopIndex(
   stops: BusStop[],
   nodeId: string,
   nodeOrder: number,
+  nodeName?: string,
 ): BusPositionResolution {
   if (nodeId) {
     const byId = stops.findIndex((stop) => stop.id === nodeId);
     if (byId !== -1) return { index: byId, resolvedBy: "nodeId" };
+  }
+
+  if (nodeName) {
+    const key = normalizeStopName(nodeName);
+    if (key) {
+      const byName = stops.findIndex((stop) => normalizeStopName(stop.name) === key);
+      if (byName !== -1) return { index: byName, resolvedBy: "name" };
+    }
   }
 
   if (Number.isFinite(nodeOrder) && nodeOrder > 0) {
