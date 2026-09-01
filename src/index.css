@@ -181,6 +181,15 @@ html.color-blind .bg-blue-50 {
 html.color-blind .bg-emerald-50 {
   background-color: #fef3c7 !important;
 }
+/* 본선/분선 배지는 연한 배경(-50)이 아니라 채워진 배경(-500)에 흰 글씨다.
+   초록/파랑 구분이 어려운 사용자를 위해 분선 배지를 주황 계열로 바꾼다.
+   흰 글씨 대비를 유지해야 하므로 충분히 진한 값을 쓴다. */
+html.color-blind .bg-emerald-500 {
+  background-color: #b45309 !important;
+}
+html.color-blind .bg-emerald-600 {
+  background-color: #92400e !important;
+}
 html.color-blind .text-emerald-600,
 html.color-blind .text-emerald-700 {
   color: #b45309 !important;

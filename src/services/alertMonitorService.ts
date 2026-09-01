@@ -280,7 +280,12 @@ export async function checkDropoffAlerts(
           const record: AlertRecord = {
             id: `ar_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
             title,
-            body: `${alert.routeName} 버스가 ${alert.targetStation} 정류장에 ${alert.stopsBefore}정거장 전입니다. (${bus.nodeName})`,
+            // 팝업(body)과 같은 값을 쓴다. 설정값(stopsBefore)을 그대로 저장하면
+            // 나중에 기록을 봤을 때 실제 울린 시점과 숫자가 어긋난다.
+            body:
+              stopsRemaining > 0
+                ? `${alert.routeName} 버스가 ${alert.targetStation} 정류장에 ${stopsRemaining}정거장 전입니다. (${bus.nodeName})`
+                : `${alert.routeName} 버스가 ${alert.targetStation} 정류장에 이미 도착했거나 지나쳤을 수 있어요. (${bus.nodeName})`,
             time: new Date().toLocaleString("ko-KR", {
               month: "numeric",
               day: "numeric",

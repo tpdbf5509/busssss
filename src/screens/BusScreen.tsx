@@ -991,20 +991,29 @@ function RouteDetail({ route, onBack }: { route: Route; onBack: () => void }) {
     lastUpdated,
     retry: retryBuses,
   } = useBusLocations(route);
+  const normalizeStopName = (s: string) =>
+    (s ?? "").replace(/\s+/g, "").replace(/\(.*?\)/g, "").trim();
+
+  // 실시간 버스를 정류장에 붙일 때 정류장 ID를 우선으로 쓴다.
+  //
+  // 이름으로만 묶으면 같은 이름의 서로 다른 정류장이 한 칸으로 합쳐진다.
+  // 운영 DB 확인 결과 454개 노선 중 142개(31%)가 한 노선 안에서 같은 이름을
+  // 서로 다른 node_id로 갖고 있어(524건), 버스가 실제로 있지도 않은 정류장에
+  // 표시될 수 있었다. 전주시 GW가 정류장 ID를 안 내려주는 경우가 있어
+  // (busLocationService의 nodeId 주석 참고) 이름 매칭은 폴백으로 남긴다.
   const busesByStop = useMemo(() => {
-    const normalize = (s: string) => (s ?? "").replace(/\s+/g, "").replace(/\(.*?\)/g, "").trim();
     const map = new Map<string, typeof buses>();
     if (!buses) return map;
     for (const bus of buses) {
-      const key = normalize(bus.nodeName);
-      if (!key) continue;
+      const key = bus.nodeId
+        ? `id:${bus.nodeId}`
+        : `nm:${normalizeStopName(bus.nodeName)}`;
+      if (key === "nm:") continue;
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(bus);
     }
     return map;
   }, [buses]);
-  const normalizeStopName = (s: string) =>
-    (s ?? "").replace(/\s+/g, "").replace(/\(.*?\)/g, "").trim();
     const [addingStopId, setAddingStopId] = useState<string | null>(null);
 
 const isArrivalFavorited = (stopName: string) =>
@@ -1181,7 +1190,10 @@ const handleStopClick = async (stop: BusStop) => {
             <div className="absolute left-[19px] top-2 bottom-2 w-0.5 bg-slate-200" />
             <div className="space-y-1">
             {stops.map((stop) => {
-                const stopBuses = busesByStop.get(normalizeStopName(stop.name)) ?? [];
+                const stopBuses =
+                  busesByStop.get(`id:${stop.id}`) ??
+                  busesByStop.get(`nm:${normalizeStopName(stop.name)}`) ??
+                  [];
                 const hasBus = stopBuses.length > 0;
 
                 return (
