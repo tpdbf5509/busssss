@@ -18,6 +18,7 @@ import { fetchAllRoutes, fetchStopsForRoute } from "@/services/routeService";
 import { Toggle, EmptyState, LoadingSkeleton } from "@/components/ui";
 import { showToast } from "@/lib/toastStore";
 import { indexOfStopByOrder, maxStopsBefore } from "@/lib/stopPosition";
+import { isMainRoute } from "@/lib/routeCategory";
 import type { AlertSetting, AlertRecord } from "@/types";
 import type { Route, BusStop } from "@/types/route";
 import {
@@ -359,7 +360,7 @@ function AddAlertModal({
             {routesStatus === "success" && (
               <div className="space-y-1 max-h-[50vh] overflow-y-auto">
                 {filteredRoutes.map((route) => {
-                  const isMain = !route.name?.startsWith("분선");
+                  const isMain = isMainRoute(route.name);
                   return (
                   <button
                     key={`${route.id}-${route.number}`}

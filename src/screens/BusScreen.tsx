@@ -15,11 +15,8 @@ import { MapPin } from "lucide-react";
 import { resolveNodeId, resolveNodeIdForRoute, resolveRouteId } from "@/services/arrivalService";
 import { searchStations, fetchRoutesForStation, stripCityPrefix, type StationRoute } from "@/services/stationService";
 import { parseInterval, parseTimeToMinutes } from "@/lib/interval";
+import { getRouteCategory, isMainRoute } from "@/lib/routeCategory";
 
-function getRouteTypeLabel(routeName: string) {
-  // bus_routes_master.category가 정답이라 route.name에 이미 반영돼 있다.
-  return routeName.startsWith("분선") ? "분선" : "본선";
-}
 
 export function BusScreen({
   initialRouteId,
@@ -265,7 +262,7 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         {(() => {
-                          const label = getRouteTypeLabel(route.name);
+                          const label = getRouteCategory(route.name);
                           const isMain = label === "본선";
                           return (
                             <div
@@ -415,7 +412,7 @@ function StationRouteCard({
   // 값이 있으면 항상 "실시간"으로 표시합니다(A1).
   const reliability: ReliabilityState =
     minutes != null ? { source: "realtime", delayed: false } : { source: "unknown", delayed: false };
-  const isMain = sr.routeTp !== "분선";
+  const isMain = sr.category === "본선";
 
   return (
     <button
@@ -920,7 +917,7 @@ const isAllRouteFavorited = (route: Route) =>
               allViaRoutes.length > 0 && (
                 <div className="space-y-2">
                   {allViaRoutes.map((route) => {
-                    const isMain = getRouteTypeLabel(route.name) === "본선";
+                    const isMain = isMainRoute(route.name);
                     return (
                     <div
                       key={route.id}
@@ -1080,7 +1077,7 @@ const handleStopClick = async (stop: BusStop) => {
           </button>
           <div className="flex-1">
             <h1 className="text-lg font-bold text-slate-900">
-              {getRouteTypeLabel(route.name)}
+              {getRouteCategory(route.name)}
               {route.number}
             </h1>
             <p className="text-xs text-slate-400 mt-0.5">

@@ -10,11 +10,8 @@ import { formatArrivalText } from "@/lib/formatArrival";
 import { ReliabilityTag } from "@/components/ui";
 import { triggerArrivalRefresh } from "@/services/arrivalService";
 import type { Favorite } from "@/types";
+import { isMainRoute } from "@/lib/routeCategory";
 
-function getRouteTypeLabel(routeName: string) {
-  // bus_routes_master.category가 정답이라 route.name에 이미 반영돼 있다.
-  return routeName.startsWith("분선") ? "분선" : "본선";
-}
 function FavoriteArrivalInfo({
   fav,
   isRoute,
@@ -234,7 +231,7 @@ export function HomeScreen({
         // 적용한다. station(집/회사)은 노선 카테고리가 없어 브랜드 블루로
         // 통일 — 셋 다 배경을 칠해 즐겨찾기 배지끼리 시각적으로 일관되게 한다.
         const categoryRoute = matchedRoute ?? stopRoute;
-        const isMain = categoryRoute ? getRouteTypeLabel(categoryRoute.name) === "본선" : true;
+        const isMain = categoryRoute ? isMainRoute(categoryRoute.name) : true;
         const badgeBg = isMain ? "bg-blue-500" : "bg-emerald-500";
         const badgeText = "text-white";
 

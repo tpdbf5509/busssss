@@ -1,5 +1,6 @@
 import { getSttnNoList, getSttnAcctoArvlPrearngeInfoList } from "@/api/tago";
 import { fetchRoutesForStop } from "@/services/routeService";
+import { getRouteCategory, type RouteCategory } from "@/lib/routeCategory";
 import type { Station } from "@/types/route";
 
 function mapToStation(raw: Record<string, string>): Station {
@@ -22,7 +23,10 @@ export async function searchStations(query: string): Promise<Station[]> {
 export interface StationRoute {
   routeId: string;
   routeNo: string;
+  /** TAGO 원문 노선유형("일반버스" 등). 표시용이며 본선/분선 판정에는 쓰지 않는다. */
   routeTp: string;
+  /** 우리 DB 기준 본선/분선. 목록을 만드는 시점의 route.name에서 판정한다. */
+  category: RouteCategory;
   arrtime?: number;
   arrprevstationcnt?: number;
 }
@@ -83,6 +87,7 @@ export async function fetchRoutesForStation(nodeId: string): Promise<StationRout
       routeId: `JUB${route.id}`,
       routeNo: route.number,
       routeTp: live?.routeTp ?? "",
+      category: getRouteCategory(route.name),
       arrtime: live?.arrtime,
       arrprevstationcnt: live?.arrprevstationcnt,
     };
