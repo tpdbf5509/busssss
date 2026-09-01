@@ -72,11 +72,21 @@ function AppContent() {
     document.title = `${fav.name} - BUS STOP`;
     setQuickViewBanner(fav.name);
 
-    // URL은 정리하되(공유 시 매번 딥링크가 새로 뜨는 걸 방지), 히스토리는 남기지 않습니다.
+    // 여기서 URL의 ?favorite= 를 지우면 안 된다. 이 딥링크로 들어온 사용자가
+    // 지금부터 하려는 일이 바로 "Safari 공유 → 홈 화면에 추가"인데(아래 안내
+    // 배너와 AddShortcutSheet의 안내가 그 순서다), 주소를 미리 일반 URL로
+    // 되돌리면 홈 화면에 저장되는 건 그 즐겨찾기가 아니라 앱 첫 화면이 된다.
+    // 재진입 방지는 deepLinkHandledRef가 이미 담당하므로 URL을 남겨도 안전하고,
+    // 정리는 사용자가 안내 배너를 닫을 때 한다(clearDeepLinkParam).
+  }, [state.favorites]);
+
+  // 안내 배너를 닫으면 그때 주소를 정리한다. 히스토리에는 남기지 않는다.
+  const clearDeepLinkParam = () => {
     const url = new URL(window.location.href);
+    if (!url.searchParams.has("favorite")) return;
     url.searchParams.delete("favorite");
     window.history.replaceState(null, "", url.toString());
-  }, [state.favorites]);
+  };
 
   useEffect(() => {
     const onAlarm = (event: Event) => {
@@ -155,7 +165,10 @@ function AppContent() {
           </span>
           <button
             type="button"
-            onClick={() => setQuickViewBanner(null)}
+            onClick={() => {
+              setQuickViewBanner(null);
+              clearDeepLinkParam();
+            }}
             className="p-1 -m-1 shrink-0 rounded-full hover:bg-white/10"
             aria-label="닫기"
           >
@@ -188,15 +201,52 @@ function AppContent() {
 function App() {
   const [authReady, setAuthReady] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  /**
+   * 로그인 상태 확인이 네트워크 때문에 실패했을 때만 채워진다.
+   * 이유를 알리지 않으면 사용자는 계정이 풀린 줄 안다(QA #12).
+   */
+  const [authNotice, setAuthNotice] = useState("");
 
   useEffect(() => {
     let mounted = true;
 
+    /**
+     * 저장된 토큰이 만료돼 있으면 getClaims()는 갱신을 위해 네트워크를 탄다.
+     * 그런데 오프라인에서는 이 Promise가 reject되지 않는다 — supabase-js가
+     * 갱신 요청을 백오프로 계속 재시도하고, 자동 갱신 타이머가 그 재시도를
+     * 다시 살려낸다. 실측(오프라인 재현) 결과 60초가 넘도록 22회를 재시도하며
+     * 끝내 settle하지 않았고, 그동안 앱은 "로그인 상태를 확인하는 중..."
+     * 화면에 갇혀 있었다. try/catch만으로는 이 경우를 못 잡는다.
+     *
+     * 그래서 시간 제한을 함께 둔다. 제한을 넘기면 일단 로그인 화면으로
+     * 내보내되 원인이 네트워크임을 안내하고, 뒤늦게 갱신이 성공하면 아래
+     * settle()이 다시 호출돼 그대로 로그인 상태로 넘어간다(재로그인 불필요).
+     */
+    const AUTH_CHECK_TIMEOUT_MS = 5000;
+    const NETWORK_NOTICE =
+      "네트워크 문제로 로그인 상태를 확인하지 못했어요. 연결을 확인한 뒤 다시 시도하면 로그인 상태가 그대로 유지될 수 있어요.";
+
+    const settle = (authenticated: boolean, notice: string) => {
+      if (!mounted) return;
+      setIsAuthenticated(authenticated);
+      setAuthNotice(notice);
+      setAuthReady(true);
+    };
+
+    const timeoutId = window.setTimeout(() => {
+      console.warn(`[App] 로그인 상태 확인이 ${AUTH_CHECK_TIMEOUT_MS}ms 안에 끝나지 않았습니다.`);
+      settle(false, NETWORK_NOTICE);
+    }, AUTH_CHECK_TIMEOUT_MS);
+
     const loadAuth = async () => {
-      const { data } = await supabase.auth.getClaims();
-      if (mounted) {
-        setIsAuthenticated(Boolean(data?.claims?.sub));
-        setAuthReady(true);
+      try {
+        const { data } = await supabase.auth.getClaims();
+        window.clearTimeout(timeoutId);
+        settle(Boolean(data?.claims?.sub), "");
+      } catch (err) {
+        console.warn("[App] 로그인 상태 확인 실패:", err);
+        window.clearTimeout(timeoutId);
+        settle(false, NETWORK_NOTICE);
       }
     };
 
@@ -210,10 +260,13 @@ function App() {
         return;
       }
       setIsAuthenticated(Boolean(session));
+      // 세션이 살아났으면 남아 있던 네트워크 안내는 더 이상 사실이 아니다.
+      if (session) setAuthNotice("");
     });
 
     return () => {
       mounted = false;
+      window.clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, []);
@@ -227,7 +280,7 @@ function App() {
   }
 
   if (!isAuthenticated) {
-    return <AuthScreen />;
+    return <AuthScreen notice={authNotice} />;
   }
 
   return (

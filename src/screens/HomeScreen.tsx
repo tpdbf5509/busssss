@@ -10,11 +10,8 @@ import { formatArrivalText } from "@/lib/formatArrival";
 import { ReliabilityTag } from "@/components/ui";
 import { triggerArrivalRefresh } from "@/services/arrivalService";
 import type { Favorite } from "@/types";
+import { isMainRoute } from "@/lib/routeCategory";
 
-function getRouteTypeLabel(routeName: string) {
-  // bus_routes_master.category가 정답이라 route.name에 이미 반영돼 있다.
-  return routeName.startsWith("분선") ? "분선" : "본선";
-}
 function FavoriteArrivalInfo({
   fav,
   isRoute,
@@ -234,7 +231,7 @@ export function HomeScreen({
         // 적용한다. station(집/회사)은 노선 카테고리가 없어 브랜드 블루로
         // 통일 — 셋 다 배경을 칠해 즐겨찾기 배지끼리 시각적으로 일관되게 한다.
         const categoryRoute = matchedRoute ?? stopRoute;
-        const isMain = categoryRoute ? getRouteTypeLabel(categoryRoute.name) === "본선" : true;
+        const isMain = categoryRoute ? isMainRoute(categoryRoute.name) : true;
         const badgeBg = isMain ? "bg-blue-500" : "bg-emerald-500";
         const badgeText = "text-white";
 
@@ -255,10 +252,20 @@ export function HomeScreen({
                 return;
               }
             if (isRoute || isStopRoute) {
+              // appRouteId가 없는 stop_route는 targetId가 undefined라
+              // onNavigate가 탭만 바꾸고 끝나 아무 반응이 없어 보인다.
+              // 딥링크(App.tsx)와 동일하게 정류장 화면으로라도 보낸다.
+              if (!targetId && isStopRoute && fav.tagoNodeId && fav.stopName) {
+                onNavigate("bus", undefined, {
+                  id: fav.tagoNodeId,
+                  name: fav.stopName,
+                });
+                return;
+              }
               onNavigate("bus", targetId);
               return;
             }
-          }}              
+          }}
               className="w-full bg-slate-50 rounded-xl border border-slate-100 px-4 py-5 flex items-center gap-3 text-left hover:bg-blue-50 hover:border-blue-100 transition-all"
             >
               {/* 왼쪽: 본선/분선 글씨 + 색 */}

@@ -43,7 +43,7 @@ const initialState: AppState = {
   alerts: alertsLoad.data,
   storageError:
     favoritesLoad.failed || alertsLoad.failed
-      ? { favorites: favoritesLoad.failed, alerts: alertsLoad.failed }
+      ? { favorites: favoritesLoad.failed, alerts: alertsLoad.failed, dismissed: false }
       : null,
 };
 
@@ -133,7 +133,11 @@ function reducer(state: AppState, action: Action): AppState {
         storageError: clearStorageError(state.storageError, "alerts"),
       };
     case "DISMISS_STORAGE_ERROR":
-      return { ...state, storageError: null };
+      // 배너만 숨긴다. 저장 잠금(favorites/alerts 플래그)은 그대로 둔다 —
+      // 여기서 같이 풀면 직후에 도는 SYNC_FAVORITE_* 자동 보정만으로
+      // 예시 데이터가 원래 저장값을 덮어쓴다.
+      if (!state.storageError) return state;
+      return { ...state, storageError: { ...state.storageError, dismissed: true } };
     default:
       return state;
   }

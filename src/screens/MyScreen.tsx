@@ -9,7 +9,6 @@ import {
   Bell,
   HelpCircle,
   LogOut,
-  Moon,
   Type,
   Eye,
   Volume2,
@@ -19,7 +18,6 @@ import {
   Smartphone,
 } from "lucide-react";
 import { useApp } from "@/store/appContext";
-import { RegionModal } from "@/components/RegionModal";
 import { AddShortcutSheet } from "@/components/AddShortcutSheet";
 import { Toggle } from "@/components/ui";
 import { showToast } from "@/lib/toastStore";
@@ -46,7 +44,9 @@ const defaultSettings: AppSettings = {
 function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) return { ...defaultSettings, ...JSON.parse(raw) };
+    // darkMode는 토글을 숨긴 동안 강제로 꺼둔다. 예전에 켜둔 사용자가
+    // 끄는 방법 없이 반쪽짜리 다크 화면에 갇히는 걸 막는다.
+    if (raw) return { ...defaultSettings, ...JSON.parse(raw), darkMode: false };
   } catch (err) {
     console.warn("[MyScreen] 설정 로드 실패:", err);
   }
@@ -62,7 +62,6 @@ function applySettings(s: AppSettings) {
 
 export function MyScreen() {
   const { state, dispatch } = useApp();
-  const [regionOpen, setRegionOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState("");
   const [settings, setSettings] = useState<AppSettings>(() => loadSettings());
@@ -146,14 +145,13 @@ export function MyScreen() {
             </div>
             <div>
               <h1 className="text-lg font-bold">승객님</h1>
-              <button
-                onClick={() => setRegionOpen(true)}
-                className="flex items-center gap-1 text-sm text-blue-100 mt-0.5 hover:text-white transition-colors"
-              >
+              {/* 지역은 전주시 고정이다. 모든 API가 JEONJU_CITY_CODE로 나가기
+                  때문에 다른 지역을 골라도 전주 데이터만 나온다. 고를 수 있는
+                  것처럼 보이지 않도록 표시 전용으로 둔다(홈 화면도 동일). */}
+              <p className="flex items-center gap-1 text-sm text-blue-100 mt-0.5">
                 <MapPin className="w-3.5 h-3.5" />
                 {state.region.sido} {state.region.sigungu}
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
+              </p>
             </div>
           </div>
         </header>
@@ -252,18 +250,6 @@ export function MyScreen() {
         <p className="text-center text-xs text-slate-300 pt-4 pb-6">BUS STOP v1.0.0</p>
       </div>
 
-      <RegionModal
-        open={regionOpen}
-        currentSido={state.region.sido}
-        currentSigungu={state.region.sigungu}
-        onClose={() => setRegionOpen(false)}
-        onSelect={(sido, sigungu) => {
-          dispatch({ type: "SET_REGION", sido, sigungu });
-          setRegionOpen(false);
-          showToast(`${sido} ${sigungu}로 설정되었어요`);
-        }}
-      />
-
       {shortcutFavorite && (
         <AddShortcutSheet
           favorite={shortcutFavorite}
@@ -311,7 +297,7 @@ export function MyScreen() {
               <li>· 버스 탭에서 노선을 검색하고 실시간 위치를 볼 수 있어요.</li>
               <li>· 알림 탭에서 하차 알림을 설정하면 정거장 전에 알려줘요.</li>
               <li>· 카드 탭은 미리보기용이며 실제 결제는 지원하지 않아요.</li>
-              <li>· 다크모드·큰 글씨·색약 모드는 이 기기에서만 적용돼요.</li>
+              <li>· 큰 글씨·색약 모드는 이 기기에서만 적용돼요.</li>
             </ul>
             <button
               onClick={() => setHelpOpen(false)}
@@ -348,25 +334,21 @@ export function MyScreen() {
               subtitleTone={notifPermission === "granted" ? "ok" : "warn"}
             />
 
+            {/* settings.voiceGuide를 실제로 읽어서 동작하는 코드가 아직 없다.
+                켜지는 것처럼 보이면 안 되므로 "준비 중"으로 표시하고 잠근다. */}
             <SettingToggle
               icon={Volume2}
               label="음성 안내"
-              checked={settings.voiceGuide}
-              onChange={(v) => {
-                updateSetting("voiceGuide", v);
-                showToast(v ? "음성 안내를 켰어요" : "음성 안내를 껐어요");
-              }}
+              checked={false}
+              onChange={() => {}}
+              disabled
+              note="준비 중"
             />
 
-            <SettingToggle
-              icon={Moon}
-              label="다크모드"
-              checked={settings.darkMode}
-              onChange={(v) => {
-                updateSetting("darkMode", v);
-                showToast(v ? "다크모드를 켰어요" : "다크모드를 껐어요");
-              }}
-            />
+            {/* 다크모드 토글은 임시로 숨긴다. index.css의 대응이 bg-white·
+                bg-slate-50과 일부 텍스트 색까지만이라, 실제로 켜면 bg-slate-100·
+                border-slate-200 등이 밝은 채로 남아 화면이 뒤섞인다.
+                전면 대응 후 다시 노출한다(loadSettings에서 값도 꺼둔다). */}
 
             <SettingRow
               icon={MoreHorizontal}
@@ -477,17 +459,32 @@ function SettingToggle({
   label,
   checked,
   onChange,
+  disabled,
+  note,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   checked: boolean;
   onChange: (v: boolean) => void;
+  /** 아직 동작하지 않는 기능을 조작 가능한 것처럼 보이지 않게 잠글 때 */
+  disabled?: boolean;
+  /** "준비 중"처럼 상태를 알려주는 짧은 문구 */
+  note?: string;
 }) {
   return (
     <div className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-slate-50">
-      <Icon className="w-4.5 h-4.5 text-slate-500" />
-      <span className="flex-1 text-left text-sm font-medium text-slate-700">{label}</span>
-      <Toggle checked={checked} onChange={onChange} />
+      <Icon className={`w-4.5 h-4.5 ${disabled ? "text-slate-300" : "text-slate-500"}`} />
+      <span
+        className={`flex-1 text-left text-sm font-medium ${
+          disabled ? "text-slate-400" : "text-slate-700"
+        }`}
+      >
+        {label}
+      </span>
+      {note && <span className="text-xs font-medium text-slate-400">{note}</span>}
+      <div className={disabled ? "opacity-40 pointer-events-none" : undefined}>
+        <Toggle checked={checked} onChange={onChange} />
+      </div>
     </div>
   );
 }

@@ -13,13 +13,10 @@ import { showToast } from "@/lib/toastStore";
 import type { Station } from "@/types/route";
 import { MapPin } from "lucide-react";
 import { resolveNodeId, resolveNodeIdForRoute, resolveRouteId } from "@/services/arrivalService";
-import { searchStations, fetchRoutesForStation, type StationRoute } from "@/services/stationService";
+import { searchStations, fetchRoutesForStation, stripCityPrefix, type StationRoute } from "@/services/stationService";
 import { parseInterval, parseTimeToMinutes } from "@/lib/interval";
+import { getRouteCategory, isMainRoute } from "@/lib/routeCategory";
 
-function getRouteTypeLabel(routeName: string) {
-  // bus_routes_master.category가 정답이라 route.name에 이미 반영돼 있다.
-  return routeName.startsWith("분선") ? "분선" : "본선";
-}
 
 export function BusScreen({
   initialRouteId,
@@ -265,7 +262,7 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         {(() => {
-                          const label = getRouteTypeLabel(route.name);
+                          const label = getRouteCategory(route.name);
                           const isMain = label === "본선";
                           return (
                             <div
@@ -415,7 +412,7 @@ function StationRouteCard({
   // 값이 있으면 항상 "실시간"으로 표시합니다(A1).
   const reliability: ReliabilityState =
     minutes != null ? { source: "realtime", delayed: false } : { source: "unknown", delayed: false };
-  const isMain = sr.routeTp !== "분선";
+  const isMain = sr.category === "본선";
 
   return (
     <button
@@ -571,14 +568,20 @@ function StationDetail({
     };
   }, [detailTab, station.id]);
 
-  // 실시간 노선 즐겨찾기 여부
-  const isArrivalFavorited = (routeNo: string) =>
-  state.favorites.some(
-    (f) =>
-      f.type === "stop_route" &&
-      f.routeNumber === routeNo &&
-      f.stopName === station.name
-  );
+  // 실시간 노선 즐겨찾기 여부.
+  //
+  // 노선 "번호"로 비교하면 안 된다. 같은 번호를 여러 방향이 공유하기 때문에
+  // (운영 DB 기준 "85"번 11개, "48"·"84"번 각 10개), 한 정류장을 양방향이
+  // 지나가면 반대 방향 즐겨찾기가 서로를 같은 것으로 인식한다.
+  // sr.routeId는 방향별로 고유하므로(stationService가 `JUB${route.id}`로 생성)
+  // 그것으로 비교한다.
+  const isArrivalFavorited = (sr: StationRoute) =>
+    state.favorites.some(
+      (f) =>
+        f.type === "stop_route" &&
+        f.tagoRouteId === sr.routeId &&
+        f.stopName === station.name
+    );
 
 // 전체 경유노선 즐겨찾기 여부
 const isAllRouteFavorited = (route: Route) =>
@@ -591,10 +594,12 @@ const isAllRouteFavorited = (route: Route) =>
 
   // 실시간 노선 즐겨찾기
   const handleRouteClick = async (sr: StationRoute) => {
+    // 중복 판정도 번호가 아니라 방향별 고유 ID로 한다. 번호로 비교하면
+    // 반대 방향을 추가하려 할 때 기존 즐겨찾기를 "이미 있다"고 보고 지워버린다.
     const existing = state.favorites.find(
       (f) =>
         f.type === "stop_route" &&
-        f.routeNumber === sr.routeNo &&
+        f.tagoRouteId === sr.routeId &&
         f.stopName === station.name
     );
 
@@ -611,11 +616,14 @@ const isAllRouteFavorited = (route: Route) =>
     setAddingRouteNo(sr.routeNo);
 
     try {
-      const appRoute = allRoutes?.find(
-        (r) =>
-          r.number === sr.routeNo ||
-          r.rawNumber === sr.routeNo
-      );
+      // 번호로 찾으면 같은 번호의 다른 방향이 먼저 걸릴 수 있다.
+      // sr.routeId는 stationService가 우리 route.id로 만든 값(`JUB${id}`)이라
+      // 접두사만 떼면 방향까지 정확한 노선을 바로 집을 수 있다.
+      const appRouteId = stripCityPrefix(sr.routeId);
+      const appRoute =
+        allRoutes?.find((r) => r.id === appRouteId) ??
+        // 혹시 목록에 없으면(캐시 시점 차이 등) 기존처럼 번호로 폴백
+        allRoutes?.find((r) => r.number === sr.routeNo || r.rawNumber === sr.routeNo);
 
       dispatch({
         type: "ADD_FAVORITE",
@@ -815,7 +823,7 @@ const isAllRouteFavorited = (route: Route) =>
                           key={sr.routeId}
                           sr={sr}
                           hero
-                          isFavorited={isArrivalFavorited(sr.routeNo)}
+                          isFavorited={isArrivalFavorited(sr)}
                           isAdding={addingRouteNo === sr.routeNo}
                           onSelect={() => {
                             const appRoute = allRoutes?.find(
@@ -850,7 +858,7 @@ const isAllRouteFavorited = (route: Route) =>
                       <StationRouteCard
                         key={sr.routeId}
                         sr={sr}
-                        isFavorited={isArrivalFavorited(sr.routeNo)}
+                        isFavorited={isArrivalFavorited(sr)}
                         isAdding={addingRouteNo === sr.routeNo}
                         onSelect={() => {
                           const appRoute = allRoutes?.find(
@@ -909,7 +917,7 @@ const isAllRouteFavorited = (route: Route) =>
               allViaRoutes.length > 0 && (
                 <div className="space-y-2">
                   {allViaRoutes.map((route) => {
-                    const isMain = getRouteTypeLabel(route.name) === "본선";
+                    const isMain = isMainRoute(route.name);
                     return (
                     <div
                       key={route.id}
@@ -983,20 +991,29 @@ function RouteDetail({ route, onBack }: { route: Route; onBack: () => void }) {
     lastUpdated,
     retry: retryBuses,
   } = useBusLocations(route);
+  const normalizeStopName = (s: string) =>
+    (s ?? "").replace(/\s+/g, "").replace(/\(.*?\)/g, "").trim();
+
+  // 실시간 버스를 정류장에 붙일 때 정류장 ID를 우선으로 쓴다.
+  //
+  // 이름으로만 묶으면 같은 이름의 서로 다른 정류장이 한 칸으로 합쳐진다.
+  // 운영 DB 확인 결과 454개 노선 중 142개(31%)가 한 노선 안에서 같은 이름을
+  // 서로 다른 node_id로 갖고 있어(524건), 버스가 실제로 있지도 않은 정류장에
+  // 표시될 수 있었다. 전주시 GW가 정류장 ID를 안 내려주는 경우가 있어
+  // (busLocationService의 nodeId 주석 참고) 이름 매칭은 폴백으로 남긴다.
   const busesByStop = useMemo(() => {
-    const normalize = (s: string) => (s ?? "").replace(/\s+/g, "").replace(/\(.*?\)/g, "").trim();
     const map = new Map<string, typeof buses>();
     if (!buses) return map;
     for (const bus of buses) {
-      const key = normalize(bus.nodeName);
-      if (!key) continue;
+      const key = bus.nodeId
+        ? `id:${bus.nodeId}`
+        : `nm:${normalizeStopName(bus.nodeName)}`;
+      if (key === "nm:") continue;
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(bus);
     }
     return map;
   }, [buses]);
-  const normalizeStopName = (s: string) =>
-    (s ?? "").replace(/\s+/g, "").replace(/\(.*?\)/g, "").trim();
     const [addingStopId, setAddingStopId] = useState<string | null>(null);
 
 const isArrivalFavorited = (stopName: string) =>
@@ -1007,8 +1024,10 @@ const isArrivalFavorited = (stopName: string) =>
   );
 
 const handleStopClick = async (stop: BusStop) => {
+  // 바로 위 isArrivalFavorited와 같은 기준(appRouteId)으로 찾아야 한다.
+  // routeNumber로 찾으면 같은 번호의 반대 방향 즐겨찾기를 지워버린다.
   const existing = state.favorites.find(
-    (f) => f.type === "stop_route" && f.routeNumber === route.number && f.stopName === stop.name
+    (f) => f.type === "stop_route" && f.appRouteId === route.id && f.stopName === stop.name
   );
   if (existing) {
     dispatch({ type: "REMOVE_FAVORITE", id: existing.id });
@@ -1067,7 +1086,7 @@ const handleStopClick = async (stop: BusStop) => {
           </button>
           <div className="flex-1">
             <h1 className="text-lg font-bold text-slate-900">
-              {getRouteTypeLabel(route.name)}
+              {getRouteCategory(route.name)}
               {route.number}
             </h1>
             <p className="text-xs text-slate-400 mt-0.5">
@@ -1171,7 +1190,10 @@ const handleStopClick = async (stop: BusStop) => {
             <div className="absolute left-[19px] top-2 bottom-2 w-0.5 bg-slate-200" />
             <div className="space-y-1">
             {stops.map((stop) => {
-                const stopBuses = busesByStop.get(normalizeStopName(stop.name)) ?? [];
+                const stopBuses =
+                  busesByStop.get(`id:${stop.id}`) ??
+                  busesByStop.get(`nm:${normalizeStopName(stop.name)}`) ??
+                  [];
                 const hasBus = stopBuses.length > 0;
 
                 return (

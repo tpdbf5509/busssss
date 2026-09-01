@@ -12,7 +12,9 @@ import { useApp } from "@/store/appContext";
 export function StorageErrorBanner() {
   const { state, dispatch } = useApp();
   const error = state.storageError;
-  if (!error) return null;
+  // dismissed는 배너만 숨긴다. 저장 잠금은 사용자가 실제로 목록을 편집할 때만
+  // 풀린다(AppContext의 clearStorageError 참고).
+  if (!error || error.dismissed) return null;
 
   const failed = [error.favorites && "즐겨찾기", error.alerts && "알림 설정"]
     .filter(Boolean)
