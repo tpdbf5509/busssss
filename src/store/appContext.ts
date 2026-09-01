@@ -14,10 +14,18 @@ import type { Favorite, AlertSetting } from "@/types";
  * 이때 화면에는 예시(mock) 데이터가 대신 뜨는데, 그 사실을 사용자가 모르면
  * 목록을 건드리는 순간 원래 저장돼 있던 내용이 예시 데이터로 덮어써진다.
  * 그래서 조용히 넘기지 않고 배너로 알린다(StorageErrorBanner).
+ *
+ * `dismissed`는 "배너를 닫았다"는 뜻일 뿐, 저장 잠금과는 무관하다. 둘을 같이
+ * 묶으면 배너를 닫는 순간 저장이 재개되고, 그 직후 앱이 자동으로 도는
+ * 즐겨찾기 보정(SYNC_FAVORITE_*)만으로도 예시 데이터가 원래 저장값을
+ * 덮어쓴다 — 배너가 막으려던 사고를 배너 닫기가 여는 셈이었다.
+ * 저장 재개는 오직 사용자가 직접 목록을 편집했을 때만 일어난다.
  */
 export interface StorageLoadError {
   favorites: boolean;
   alerts: boolean;
+  /** 사용자가 배너를 닫았는지 (저장 잠금 해제와는 무관) */
+  dismissed: boolean;
 }
 
 export interface AppState {
