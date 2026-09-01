@@ -10,6 +10,7 @@ import { formatArrivalText } from "@/lib/formatArrival";
 import { ReliabilityTag } from "@/components/ui";
 import { triggerArrivalRefresh } from "@/services/arrivalService";
 import type { Favorite } from "@/types";
+import type { Route } from "@/types/route";
 import { isMainRoute } from "@/lib/routeCategory";
 
 function FavoriteArrivalInfo({
@@ -18,6 +19,8 @@ function FavoriteArrivalInfo({
   routeNumber,
   directionLabel,
   routeInterval,
+  route,
+  routesLoaded,
 }: {
   fav: Favorite;
   isRoute: boolean;
@@ -26,13 +29,22 @@ function FavoriteArrivalInfo({
   directionLabel?: string;
   /** A1 지연 판정 기준(배차간격) 계산용 */
   routeInterval?: string;
+  /** 있으면 노선상세와 같은 GPS 위치로 정거장 수를 검증한다 */
+  route?: Route;
+  /** allRoutes 조회가 끝났는지. 끝나기 전엔 route가 "아직 못 찾음"과
+   *  "이 노선은 없음"을 구분할 수 없어, 조회를 시작하지 않고 기다린다 —
+   *  안 그러면 route 없이 한 번 조회해 GPS 검증 없는 값이 화면에 잠깐
+   *  찍혔다가 바뀌는 깜빡임이 생긴다. */
+  routesLoaded: boolean;
 }) {
   const isStopRoute = fav.type === "stop_route";
+  const canFetch = isStopRoute && routesLoaded;
   const { data, status, isRefreshing, reliability } = useArrivalInfo(
-    isStopRoute ? fav.tagoNodeId : undefined,
-    isStopRoute ? fav.tagoRouteId : undefined,
-    isStopRoute ? (fav.routeNumber ?? routeNumber) : undefined,
-    isStopRoute ? routeInterval : undefined,
+    canFetch ? fav.tagoNodeId : undefined,
+    canFetch ? fav.tagoRouteId : undefined,
+    canFetch ? (fav.routeNumber ?? routeNumber) : undefined,
+    canFetch ? routeInterval : undefined,
+    canFetch ? route : undefined,
   );
 
   let subtitle: string;
@@ -286,6 +298,8 @@ export function HomeScreen({
               routeNumber={routeNumber}
               directionLabel={directionLabel}
               routeInterval={stopRoute?.interval}
+              route={stopRoute}
+              routesLoaded={routes !== undefined}
             />
             </button>
 

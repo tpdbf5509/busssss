@@ -1,5 +1,6 @@
 import { getSttnNoList, getSttnAcctoArvlPrearngeInfoList } from "@/api/tago";
 import { fetchRoutesForStop } from "@/services/routeService";
+import { findNearestApproachingBus } from "@/services/busLocationService";
 import { getRouteCategory, type RouteCategory } from "@/lib/routeCategory";
 import type { Station } from "@/types/route";
 
@@ -78,6 +79,38 @@ export async function fetchRoutesForStation(nodeId: string): Promise<StationRout
         arrtime: isNaN(arrtime) ? undefined : arrtime,
         arrprevstationcnt: isNaN(prevStationCount) ? undefined : prevStationCount,
       });
+    }
+  }
+
+  // TAGO의 도착예측(arrprevstationcnt1)은 노선상세 화면의 버스 아이콘이 쓰는
+  // GPS 위치와 다른 시스템이라 서로 어긋날 수 있다(정류장 목록엔 "2정거장
+  // 전"이라 나온 노선이, 상세로 들어가면 이미 그 정류장을 지나 있던 사례).
+  // 실시간 정보가 잡힌 노선만 GPS로 재검증해서, 두 화면이 다른 답을 주지
+  // 않게 한다. 한 노선의 검증이 실패해도 다른 노선에는 영향이 없어야 하므로
+  // allSettled로 묶는다.
+  const liveRoutes = staticRoutes.filter((route) => arrivalByRouteId.has(route.id));
+  const verifications = await Promise.allSettled(
+    liveRoutes.map(async (route) => ({
+      routeId: route.id,
+      gps: await findNearestApproachingBus(route, jeonjuNodeId),
+    })),
+  );
+
+  for (const result of verifications) {
+    if (result.status !== "fulfilled") continue;
+    const { routeId, gps } = result.value;
+    if (!gps.hasLiveData) continue; // 검증할 GPS 데이터가 없으면 TAGO 값을 유지
+
+    if (!gps.bus) {
+      // GPS로 확인되는 모든 버스가 이미 이 정류장을 지났다 — TAGO 예측을
+      // 믿을 근거가 없으므로 도착정보 자체를 없앤다(minutes까지 함께).
+      arrivalByRouteId.delete(routeId);
+      continue;
+    }
+
+    const existing = arrivalByRouteId.get(routeId);
+    if (existing) {
+      arrivalByRouteId.set(routeId, { ...existing, arrprevstationcnt: gps.bus.stopsAway });
     }
   }
 

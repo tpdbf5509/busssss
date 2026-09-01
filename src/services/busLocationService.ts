@@ -1,7 +1,8 @@
 import { getBusLocationsByRoute } from "@/api/jeonju";
 import { getRouteNoList } from "@/api/tago";
 import type { Route, BusLocation, RouteDirection } from "@/types/route";
-import { resolveJeonjuBrtStdid } from "@/services/routeService";
+import { resolveJeonjuBrtStdid, fetchStopsForRoute } from "@/services/routeService";
+import { resolveBusStopIndex } from "@/lib/stopPosition";
 
 function firstValue(item: Record<string, string>, keys: string[]): string {
   const entries = Object.entries(item);
@@ -196,5 +197,65 @@ export async function fetchBusLocations(route: Route): Promise<BusLocation[]> {
     return await request;
   } finally {
     locationInFlight.delete(cacheKey);
+  }
+}
+
+export interface NearestBusResult {
+  /** 이 노선에 실시간 GPS 위치 데이터가 하나라도 있었는지.
+   *  false면 검증할 근거가 없으므로 호출부는 기존(TAGO) 값을 그대로 믿어야 한다. */
+  hasLiveData: boolean;
+  /** 목표 정류장에 아직 도착하지 않은 버스 중 가장 가까운 것. 실시간 데이터는
+   *  있는데 이 값이 null이면, 보고된 모든 버스가 이미 그 정류장을 지났다는 뜻. */
+  bus: { stopsAway: number; vehicleNo: string } | null;
+}
+
+/**
+ * 정류장 카드의 "N정거장"이 노선상세 화면의 버스 위치 아이콘과 다른 값을
+ * 보여주던 문제의 근본 원인은, 서로 다른 두 실시간 소스를 썼기 때문이다.
+ *
+ * - 홈 즐겨찾기 / 정류장 노선목록의 "N정거장"은 TAGO 자체 도착예측
+ *   (`arrprevstationcnt1`)이었다.
+ * - 노선상세의 버스 아이콘 위치는 전주시 GPS 위치 + 우리 DB 정류장 순서
+ *   (resolveBusStopIndex)였다.
+ *
+ * 두 소스는 독립적인 시스템이라 근본적으로 어긋날 수 있고, 실제로 사용자가
+ * 같은 버스를 두 화면에서 다른 값으로 봤다(정류장 도착 예정이라던 즐겨찾기가,
+ * 열어보면 이미 그 정류장을 지나쳐 있었음). 정확성이 최우선인 버스 앱에서는
+ * 화면마다 다른 답을 주면 안 되므로, 노선상세와 같은 GPS 기반 계산 하나로
+ * 통일한다. TAGO 자체 예측(arrprevstationcnt1)은 더 이상 신뢰하지 않는다.
+ */
+export async function findNearestApproachingBus(
+  route: Route,
+  targetNodeId: string,
+): Promise<NearestBusResult> {
+  const NO_DATA: NearestBusResult = { hasLiveData: false, bus: null };
+  if (!targetNodeId) return NO_DATA;
+
+  try {
+    const [stops, locations] = await Promise.all([
+      fetchStopsForRoute(route),
+      fetchBusLocations(route),
+    ]);
+
+    const targetIndex = stops.findIndex((stop) => stop.id === targetNodeId);
+    if (targetIndex === -1 || locations.length === 0) return NO_DATA;
+
+    let best: { stopsAway: number; vehicleNo: string } | null = null;
+    for (const location of locations) {
+      const { index } = resolveBusStopIndex(stops, location.nodeId, location.nodeOrder);
+      // index === -1: 위치를 환산하지 못함. index > targetIndex: 이미 지나감.
+      // 둘 다 "이 버스는 접근 중인 후보가 아니다"로 취급한다.
+      if (index === -1 || index > targetIndex) continue;
+
+      const stopsAway = targetIndex - index;
+      if (!best || stopsAway < best.stopsAway) {
+        best = { stopsAway, vehicleNo: location.vehicleNo };
+      }
+    }
+
+    return { hasLiveData: true, bus: best };
+  } catch (err) {
+    console.debug("[busLocationService] GPS 기반 정거장 검증 실패:", err);
+    return NO_DATA;
   }
 }
