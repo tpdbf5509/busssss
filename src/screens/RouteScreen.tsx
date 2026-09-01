@@ -23,82 +23,9 @@ type RecommendedRoute = {
   summary: string;
 };
 
-const MOCK_ROUTES: Record<string, RecommendedRoute> = {
-  전주한옥마을: {
-    destination: "전주한옥마을",
-    currentArea: "전주 ○○동",
-    summary: "약 25분 · 환승 없음",
-    steps: [
-      {
-        type: "walk_to_stop",
-        title: "가까운 정류장으로 이동",
-        detail: "○○정류장까지 도보 약 3분",
-        icon: "walk",
-      },
-      {
-        type: "board",
-        title: "79번 버스 탑승",
-        detail: "한옥마을 방향",
-        icon: "bus",
-      },
-      {
-        type: "ride",
-        title: "6개 정류장 이동",
-        detail: "약 15분 소요",
-        icon: "bus",
-      },
-      {
-        type: "alight",
-        title: "전주한옥마을 정류장에서 하차",
-        detail: "",
-        icon: "pin",
-      },
-      {
-        type: "walk_to_dest",
-        title: "목적지까지 이동",
-        detail: "도보 약 4분",
-        icon: "target",
-      },
-    ],
-  },
-  전북대학교: {
-    destination: "전북대학교",
-    currentArea: "전주 ○○동",
-    summary: "약 20분 · 환승 없음",
-    steps: [
-      {
-        type: "walk_to_stop",
-        title: "가까운 정류장으로 이동",
-        detail: "○○정류장까지 도보 약 2분",
-        icon: "walk",
-      },
-      {
-        type: "board",
-        title: "101번 버스 탑승",
-        detail: "전북대 방향",
-        icon: "bus",
-      },
-      {
-        type: "ride",
-        title: "8개 정류장 이동",
-        detail: "약 12분 소요",
-        icon: "bus",
-      },
-      {
-        type: "alight",
-        title: "전북대학교 정류장에서 하차",
-        detail: "",
-        icon: "pin",
-      },
-      {
-        type: "walk_to_dest",
-        title: "목적지까지 이동",
-        detail: "도보 약 3분",
-        icon: "target",
-      },
-    ],
-  },
-};
+// 하드코딩된 예시 경로(MOCK_ROUTES)는 제거했다. 특정 목적지에만 진짜
+// 계산 결과처럼 보이는 가짜 경로를 보여주고 있었기 때문이다(git 이력 참고).
+// 실제 경로 계산을 붙일 때 이 자리에 연동한다.
 
 const POPULAR_DESTINATIONS = [
   "전주한옥마을",
@@ -125,11 +52,9 @@ function StepIcon({ type }: { type: RouteStep["icon"] }) {
   }
 }
 
-function stepIconBg(_type: RouteStep["icon"]) {
-  // 연한 색 배경을 종류별로 다르게 쓰면 아이콘 색과 겹쳐 톤온톤이 된다.
-  // 배경은 항상 중립으로 통일하고, 종류 구분은 StepIcon의 아이콘 색으로만 전달한다.
-  return "bg-slate-100";
-}
+// 연한 색 배경을 종류별로 다르게 쓰면 아이콘 색과 겹쳐 톤온톤이 된다.
+// 배경은 항상 중립으로 통일하고, 종류 구분은 StepIcon의 아이콘 색으로만 전달한다.
+const STEP_ICON_BG = "bg-slate-100";
 
 export function RouteScreen() {
   const [query, setQuery] = useState("");
@@ -144,12 +69,12 @@ export function RouteScreen() {
     setQuery(q);
 
     setTimeout(() => {
-      const key = Object.keys(MOCK_ROUTES).find(
-        (k) => q.includes(k) || k.includes(q)
-      );
-      if (key) {
-        setResult(MOCK_ROUTES[key]);
-      } else {
+      // 예전에는 "전주한옥마을"·"전북대학교"만 하드코딩된 가짜 경로(구체적인
+      // 버스 번호·소요시간까지 포함)를 보여줬고, 그 둘에만 "준비 중" 안내가
+      // 빠져 있어 진짜 계산 결과처럼 보였다. 게다가 부분 문자열 매칭이라
+      // "전주"만 쳐도 한옥마을 가짜 경로가 떴다. 실제 경로 계산을 붙이기
+      // 전까지는 목적지와 무관하게 준비 중 안내로 통일한다.
+      {
         setResult({
           destination: q,
           currentArea: "전주 ○○동",
@@ -311,7 +236,7 @@ export function RouteScreen() {
                   >
                     <div className="flex flex-col items-center">
                       <div
-                        className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${stepIconBg(step.icon)}`}
+                        className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${STEP_ICON_BG}`}
                       >
                         <StepIcon type={step.icon} />
                       </div>
