@@ -72,11 +72,21 @@ function AppContent() {
     document.title = `${fav.name} - BUS STOP`;
     setQuickViewBanner(fav.name);
 
-    // URL은 정리하되(공유 시 매번 딥링크가 새로 뜨는 걸 방지), 히스토리는 남기지 않습니다.
+    // 여기서 URL의 ?favorite= 를 지우면 안 된다. 이 딥링크로 들어온 사용자가
+    // 지금부터 하려는 일이 바로 "Safari 공유 → 홈 화면에 추가"인데(아래 안내
+    // 배너와 AddShortcutSheet의 안내가 그 순서다), 주소를 미리 일반 URL로
+    // 되돌리면 홈 화면에 저장되는 건 그 즐겨찾기가 아니라 앱 첫 화면이 된다.
+    // 재진입 방지는 deepLinkHandledRef가 이미 담당하므로 URL을 남겨도 안전하고,
+    // 정리는 사용자가 안내 배너를 닫을 때 한다(clearDeepLinkParam).
+  }, [state.favorites]);
+
+  // 안내 배너를 닫으면 그때 주소를 정리한다. 히스토리에는 남기지 않는다.
+  const clearDeepLinkParam = () => {
     const url = new URL(window.location.href);
+    if (!url.searchParams.has("favorite")) return;
     url.searchParams.delete("favorite");
     window.history.replaceState(null, "", url.toString());
-  }, [state.favorites]);
+  };
 
   useEffect(() => {
     const onAlarm = (event: Event) => {
@@ -155,7 +165,10 @@ function AppContent() {
           </span>
           <button
             type="button"
-            onClick={() => setQuickViewBanner(null)}
+            onClick={() => {
+              setQuickViewBanner(null);
+              clearDeepLinkParam();
+            }}
             className="p-1 -m-1 shrink-0 rounded-full hover:bg-white/10"
             aria-label="닫기"
           >

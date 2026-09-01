@@ -255,10 +255,20 @@ export function HomeScreen({
                 return;
               }
             if (isRoute || isStopRoute) {
+              // appRouteId가 없는 stop_route는 targetId가 undefined라
+              // onNavigate가 탭만 바꾸고 끝나 아무 반응이 없어 보인다.
+              // 딥링크(App.tsx)와 동일하게 정류장 화면으로라도 보낸다.
+              if (!targetId && isStopRoute && fav.tagoNodeId && fav.stopName) {
+                onNavigate("bus", undefined, {
+                  id: fav.tagoNodeId,
+                  name: fav.stopName,
+                });
+                return;
+              }
               onNavigate("bus", targetId);
               return;
             }
-          }}              
+          }}
               className="w-full bg-slate-50 rounded-xl border border-slate-100 px-4 py-5 flex items-center gap-3 text-left hover:bg-blue-50 hover:border-blue-100 transition-all"
             >
               {/* 왼쪽: 본선/분선 글씨 + 색 */}
