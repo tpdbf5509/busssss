@@ -1,5 +1,5 @@
 import { getSttnNoList, getSttnAcctoArvlPrearngeInfoList, getRouteAcctoThrghSttnList } from "@/api/tago";
-import { resolveDirections } from "@/services/busLocationService";
+import { resolveDirections, findNearestApproachingBus } from "@/services/busLocationService";
 import type { Route } from "@/types/route";
 
 export interface ArrivalInfo {
@@ -276,9 +276,15 @@ export async function fetchArrivalInfo(
   routeId: string,
   routeNumber?: string,
   options?: FetchArrivalOptions,
+  route?: Route,
 ): Promise<ArrivalInfo | null> {
   const force = options?.force === true;
-  const key = `${nodeId}|${routeId}|${routeNumber ?? ""}`;
+  // route 유무를 키에 포함한다. route 없이 시작한 요청이 아직 진행 중일 때
+  // route가 막 준비된 재조회가 오면, 같은 키의 in-flight 요청을 그대로
+  // 돌려주면서 GPS 검증 없이 끝나버리는 경쟁 상태가 있었다(HomeScreen이
+  // fetchAllRoutes보다 먼저 이 훅을 마운트하는 경우 실제로 발생 확인).
+  // route 유무별로 슬롯을 분리해 서로의 진행 중인 요청을 가로채지 않게 한다.
+  const key = `${nodeId}|${routeId}|${routeNumber ?? ""}|${route ? "gps" : "tago"}`;
   const now = Date.now();
   const startedAt = Date.now();
 
@@ -303,7 +309,20 @@ export async function fetchArrivalInfo(
   const request = enqueueArrivalRequest(async (): Promise<ArrivalInfo | null> => {
     try {
       const items = await fetchStationArrivalItems(nodeId, force);
-      return pickNearestArrival(items, routeId);
+      const tagoInfo = pickNearestArrival(items, routeId);
+      // TAGO가 이 노선에 다가오는 버스가 없다고 하면 GPS로 검증할 대상 자체가
+      // 없다. route가 없어도(호출부가 아직 Route를 못 구했으면) 기존과 동일.
+      if (!tagoInfo || !route) return tagoInfo;
+
+      // 노선상세 화면의 버스 아이콘과 같은 GPS 소스로 stopsAway를 재확인한다.
+      // TAGO 예측과 실제 GPS 위치가 다른 시스템이라 어긋날 수 있는데(예:
+      // TAGO는 "2정거장 전"이라 해도 실측 GPS로는 이미 그 정류장을 지난
+      // 경우), 두 화면이 서로 다른 답을 주면 안 되므로 GPS를 우선한다.
+      const gps = await findNearestApproachingBus(route, nodeId);
+      if (!gps.hasLiveData) return tagoInfo; // 검증할 GPS 데이터가 없으면 TAGO를 믿는다
+      if (!gps.bus) return null; // GPS로 확인되는 모든 버스가 이미 지나감 — TAGO 예측을 믿을 근거가 없다
+
+      return { minutes: tagoInfo.minutes, stopsAway: gps.bus.stopsAway };
     } catch (error) {
       console.warn("[BUS STOP] Arrival request failed; keeping previous value", {
         nodeId,
