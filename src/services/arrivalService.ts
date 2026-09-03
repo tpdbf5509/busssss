@@ -1,15 +1,14 @@
-import { getSttnNoList, getSttnAcctoArvlPrearngeInfoList, getRouteAcctoThrghSttnList } from "@/api/tago";
-import { resolveDirections, findNearestApproachingBus } from "@/services/busLocationService";
+import { getSttnNoList, getSttnAcctoArvlPrearngeInfoList } from "@/api/tago";
+import { findNearestApproachingBus } from "@/services/busLocationService";
+import { fetchStopsForRoute } from "@/services/routeService";
+import { stripCityPrefix } from "@/services/stationService";
+import { normalizeStopName } from "@/lib/stopPosition";
 import type { Route } from "@/types/route";
 
 export interface ArrivalInfo {
   minutes: number;
   /** API가 제공하지 않으면 null — UI에서 정거장 문구를 숨김 */
   stopsAway: number | null;
-}
-
-function normalize(s: string): string {
-  return (s ?? "").replace(/\s+/g, "").replace(/\(.*?\)/g, "").trim();
 }
 
 const nodeIdCache = new Map<string, string>();
@@ -19,12 +18,6 @@ const arrivalInFlight = new Map<string, Promise<ArrivalInfo | null>>();
 /** 정류장(nodeId) 단위 원본 응답 캐시 — 같은 정류장의 여러 노선이 API를 1번만 호출 */
 const stationItemsCache = new Map<string, { items: Awaited<ReturnType<typeof getSttnAcctoArvlPrearngeInfoList>>; expiresAt: number }>();
 const stationItemsInFlight = new Map<string, Promise<Awaited<ReturnType<typeof getSttnAcctoArvlPrearngeInfoList>>>>();
-const routeDirectionsCache = new Map<string, RouteDirectionCache>();
-
-type RouteDirectionCache = {
-  directions: Awaited<ReturnType<typeof resolveDirections>>;
-  expiresAt: number;
-};
 
 type ArrivalTask = {
   run: () => Promise<ArrivalInfo | null>;
@@ -85,90 +78,56 @@ function enqueueArrivalRequest(run: () => Promise<ArrivalInfo | null>) {
 }
 
 export async function resolveNodeId(stopName: string): Promise<string | null> {
-  const key = normalize(stopName);
+  const key = normalizeStopName(stopName);
   if (!key) return null;
 
   const cached = nodeIdCache.get(key);
   if (cached) return cached;
 
   const results = await getSttnNoList(stopName);
-  const matched = results.find((r) => normalize(r.nodenm ?? "") === key) ?? results[0];
+  const matched = results.find((r) => normalizeStopName(r.nodenm ?? "") === key) ?? results[0];
   if (!matched?.nodeid) return null;
 
   nodeIdCache.set(key, matched.nodeid);
   return matched.nodeid;
 }
 
-const routeStopsCache = new Map<string, { items: Awaited<ReturnType<typeof getRouteAcctoThrghSttnList>>; expiresAt: number }>();
-const routeStopsInFlight = new Map<string, Promise<Awaited<ReturnType<typeof getRouteAcctoThrghSttnList>>>>();
-const ROUTE_STOPS_CACHE_TTL_MS = 5 * 60_000;
-
 /**
  * 같은 이름의 정류장이 방향별로 다른 물리적 위치(= 다른 nodeId)에 있는
  * 경우가 있다(예: 104번 평화동↔송천동 양방향). 정류장명만으로 전체
  * 도시 기준 nodeId를 검색하면(resolveNodeId) 반대 방향 정류장을 잘못
  * 골라 실제로는 버스가 오고 있어도 도착정보가 "정보 없음"으로 나오는
- * 버그가 있었다. 노선(routeId)이 실제로 경유하는 정류장 목록에서 이름을
- * 찾으면 이 노선·방향에 해당하는 nodeId를 정확히 얻을 수 있다.
+ * 버그가 있었다. 노선이 실제로 경유하는 정류장 목록에서 이름을 찾으면
+ * 이 노선·방향에 해당하는 nodeId를 정확히 얻을 수 있다.
  *
- * 같은 노선의 즐겨찾기 정류장 여러 개가 동시에 이 함수를 호출할 수 있으므로
- * (예: 앱 기동 시 즐겨찾기 일괄 보정), 캐시가 아직 없을 때도 같은 routeId에
- * 대한 요청은 하나만 실제로 나가도록 in-flight 요청을 공유한다.
+ * 예전에는 이 목록을 TAGO API(getRouteAcctoThrghSttnList)로 매번 실시간
+ * 조회했다. 하지만 이 노선-정류장 관계는 이미 우리 Supabase 캐시
+ * (bus_route_stops_cache, fetchStopsForRoute)에 정적 데이터로 들어있고,
+ * 노선 상세 화면·GPS 위치 계산 등 이 세션에서 고친 모든 정확성 작업이
+ * 이미 이 데이터를 신뢰하고 있다 — 굳이 TAGO를 한 번 더 불러 같은 답을
+ * 늦게 받을 이유가 없다. DB 조회로 바꿔서 네트워크 왕복을 없앤다
+ * (fetchStopsForRoute 자체에 5분 캐시가 있어 반복 호출도 저렴하다).
  */
 export async function resolveNodeIdForRoute(stopName: string, routeId: string): Promise<string | null> {
-  const key = normalize(stopName);
-  if (!key || !routeId) return null;
+  const key = normalizeStopName(stopName);
+  const appRouteId = stripCityPrefix(routeId);
+  if (!key || !appRouteId) return null;
 
-  const now = Date.now();
-  const cached = routeStopsCache.get(routeId);
-
-  let items: Awaited<ReturnType<typeof getRouteAcctoThrghSttnList>>;
-  if (cached && cached.expiresAt > now) {
-    items = cached.items;
-  } else {
-    const running = routeStopsInFlight.get(routeId);
-    if (running) {
-      items = await running;
-    } else {
-      const request = getRouteAcctoThrghSttnList(routeId).finally(() => {
-        routeStopsInFlight.delete(routeId);
-      });
-      routeStopsInFlight.set(routeId, request);
-      items = await request;
-      routeStopsCache.set(routeId, { items, expiresAt: Date.now() + ROUTE_STOPS_CACHE_TTL_MS });
-    }
-  }
-
-  const matched = items.find((s) => normalize(s.nodenm ?? "") === key);
-  return matched?.nodeid ?? null;
+  const stops = await fetchStopsForRoute(appRouteId).catch(() => []);
+  const matched = stops.find((s) => normalizeStopName(s.name) === key);
+  return matched?.id ?? null;
 }
 
-export async function resolveRouteId(route: Route): Promise<string | null> {
-  const key = `${route.id}|${route.number}|${normalize(route.start)}|${normalize(route.end)}`;
-  const now = Date.now();
-  const cached = routeDirectionsCache.get(key);
-
-  if (cached && cached.expiresAt > now) {
-    return cached.directions.find(
-      (direction) =>
-        normalize(direction.start) === normalize(route.start) &&
-        normalize(direction.end) === normalize(route.end)
-    )?.routeId ?? null;
-  }
-
-  const directions = await resolveDirections(route);
-  routeDirectionsCache.set(key, {
-    directions,
-    expiresAt: now + 60_000,
-  });
-
-  const exact = directions.find(
-    (direction) =>
-      normalize(direction.start) === normalize(route.start) &&
-      normalize(direction.end) === normalize(route.end)
-  );
-
-  return exact?.routeId ?? null;
+/**
+ * TAGO가 전주시 노선에 매기는 routeId는 "JUB" + 우리 brtStdid(route.id) 형식을
+ * 그대로 쓴다 — fetchRoutesForStation에서 실제 TAGO 응답의 routeid를
+ * stripCityPrefix해서 route.id와 직접 대조해 이미 검증된 사실이다.
+ * 예전에는 이 값을 얻으려고 TAGO의 노선 검색 API(getRouteNoList)를 매번
+ * 호출해 기점/종점 이름을 매칭했지만, 같은 답을 계산만으로 바로 얻을 수
+ * 있으므로 네트워크 호출이 불필요하다.
+ */
+export async function resolveRouteId(route: Pick<Route, "id">): Promise<string | null> {
+  return route.id ? `JUB${route.id}` : null;
 }
 
 /** 정류장 도착정보 원본을 한 번만 조회하고 공유합니다. */
