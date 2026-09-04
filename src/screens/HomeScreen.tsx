@@ -55,61 +55,73 @@ function FavoriteArrivalInfo({
   } else if (directionLabel) {
     // 같은 번호 반대 방향을 구분하기 위해 기점→종점을 표시
     subtitle = directionLabel;
-  } else if (status === "loading") {
-    subtitle = "정거장 확인 중";
-  } else if (status === "success" && data) {
-    subtitle =
-      data.stopsAway == null
-        ? data.minutes <= 0
-          ? "곧 도착"
-          : `${data.minutes}분 후`
-        : data.stopsAway <= 0
-          ? "곧 도착"
-          : `${data.stopsAway}정거장 전`;
   } else {
-    subtitle = fav.routeNumber ? `${fav.routeNumber}번` : "정류장";
+    /* 도착 시간은 카드에서 가장 큰 글자로 따로 표시되고, 노선 번호는 왼쪽
+       배지에 이미 들어 있다. 방향 정보가 없을 때 여기에 번호를 다시 쓰면
+       같은 값이 한 카드에 두 번 나오므로 비워 둔다. */
+    subtitle = "";
   }
 
-  return (
-    <>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-slate-800 truncate">
-          {isRoute ? `${routeNumber}번` : fav.name}
-        </p>
-        <p className="text-xs text-slate-400 mt-0.5 truncate">{subtitle}</p>
-      </div>
+  /* formatArrivalText는 "12분 후 · 3정거장"처럼 두 정보를 한 문자열로 합친다.
+     이걸 통째로 26px로 키우면 좁은 화면에서 배지 옆 공간을 넘어간다. 큰
+     글자에는 시간만 넣고 정거장 수는 작은 글자로 옆에 붙인다. */
+  const full = data ? formatArrivalText(data.minutes, data.stopsAway) : "";
+  const [timeLabel, stopsLabel] = full.includes(" · ")
+    ? full.split(" · ")
+    : [full, ""];
 
-      <div className="text-right shrink-0">
-        <p className="text-xs font-medium text-slate-300">
-          {isStopRoute && isRefreshing ? "갱신 중" : "도착정보"}
-        </p>
-        {!isStopRoute && <p className="text-sm font-semibold text-slate-400">준비중</p>}
+  const bottomLabel = isStopRoute && isRefreshing ? "갱신 중" : subtitle;
+
+  /* 이 카드에서 사용자가 가장 먼저 알고 싶은 것은 "내 버스 언제 오지?"다.
+     그래서 도착 시간을 카드에서 제일 큰 글자로 두고, 정류장명과 방향은 그
+     위아래에 보조로 붙인다. 이전에는 정류장명(text-sm semibold)과 도착
+     시간(text-sm bold)이 사실상 같은 크기라 눈이 어디로 갈지 정해지지
+     않았다. */
+  return (
+    <div className="flex-1 min-w-0">
+      <p className="text-[13px] font-semibold text-ink truncate">
+        {isRoute ? `${routeNumber}번` : fav.name}
+      </p>
+
+      <div className="mt-0.5 flex items-baseline gap-2 min-w-0">
+        {!isStopRoute && (
+          <span className="text-lg font-semibold text-faint">준비중</span>
+        )}
         {isStopRoute && status === "loading" && !data && (
-          <p className="text-sm font-semibold text-slate-300">조회 중</p>
+          <span className="text-lg font-semibold text-faint">조회 중</span>
         )}
         {isStopRoute && data && (
           <>
-            <p
-              className={`text-sm font-bold ${
+            <span
+              className={`text-[26px] leading-none font-bold tracking-tight shrink-0 ${
                 reliability.delayed
                   ? "text-amber-600"
                   : data.minutes <= 3
-                    ? "text-blue-600"
-                    : "text-slate-700"
+                    ? "text-brand"
+                    : "text-ink"
               }`}
             >
-              {formatArrivalText(data.minutes, data.stopsAway)}
-            </p>
-            <div className="mt-0.5 flex justify-end">
-              <ReliabilityTag reliability={reliability} />
-            </div>
+              {timeLabel}
+            </span>
+            {stopsLabel && (
+              <span className="text-xs text-muted shrink-0">{stopsLabel}</span>
+            )}
           </>
         )}
         {isStopRoute && status === "error" && !data && (
-          <p className="text-sm font-semibold text-slate-300">정보 없음</p>
+          <span className="text-lg font-semibold text-faint">정보 없음</span>
         )}
       </div>
-    </>
+
+      {/* 신뢰도 태그와 방향 정보는 같은 아랫줄에 둔다. 도착 시간 옆에 함께
+          두면 좁은 화면에서 한 줄에 세 덩어리가 몰려 넘친다. */}
+      <div className="mt-1 flex items-center gap-2 min-w-0">
+        {isStopRoute && data && <ReliabilityTag reliability={reliability} />}
+        {bottomLabel && (
+          <p className="text-xs text-faint truncate">{bottomLabel}</p>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -142,7 +154,7 @@ export function HomeScreen({
   };
 
   return (
-    <div className="flex flex-col bg-slate-50">
+    <div className="flex flex-col bg-canvas">
        <header className="bg-gradient-to-b from-blue-600 to-blue-500 text-white px-5 pt-safe-16 pb-9 shrink-0">
          {/* My탭 헤더는 아바타(h-16=64px)가 기준이라 더 높다. 텍스트만 있는
              이 헤더도 min-h-16으로 같은 높이를 맞추고 세로 중앙 정렬한다. */}
@@ -182,7 +194,7 @@ export function HomeScreen({
 
       <section className="px-4 mt-6 flex flex-col min-h-0 overflow-y-auto">
       <div className="flex items-center justify-between mb-3 shrink-0">
-        <h3 className="text-sm font-bold text-slate-700">즐겨찾기</h3>
+        <h3 className="text-sm font-bold text-ink">즐겨찾기</h3>
         <div className="flex items-center gap-3">
           {/* 새로고침 버튼 */}
           <button
@@ -220,7 +232,7 @@ export function HomeScreen({
       <p className="text-sm text-slate-400">즐겨찾기를 추가해 보세요</p>
     </button>
   ) : (
-    <div className="max-h-[50vh] overflow-y-auto bg-white rounded-2xl border border-slate-100 p-3 space-y-2.5">
+    <div className="max-h-[50vh] overflow-y-auto rounded-2xl p-0 space-y-2">
   {state.favorites.map((fav) => {
         const isRoute = fav.type === "route";
         const isStopRoute = fav.type === "stop_route";
@@ -250,6 +262,14 @@ export function HomeScreen({
         const routeNumber =
           matchedRoute?.number ?? fav.name.replace(/번$/, "").trim();
 
+        /* 배지에 넣을 노선 번호. stop_route는 name이 정류장 이름이라
+           routeNumber를 그대로 쓰면 배지에 정류장명이 들어간다. */
+        const badgeNumber =
+          matchedRoute?.number ??
+          fav.routeNumber ??
+          stopRoute?.number ??
+          routeNumber;
+
         return (
           <div key={fav.id} className="relative">
             <button
@@ -278,16 +298,21 @@ export function HomeScreen({
               return;
             }
           }}
-              className="w-full bg-slate-50 rounded-xl border border-slate-100 px-4 py-5 flex items-center gap-3 text-left hover:bg-blue-50 hover:border-blue-100 transition-all"
+              className="w-full bg-surface rounded-xl border border-line px-3.5 py-4 flex items-center gap-3 text-left hover:border-brand/40 transition-colors"
             >
-              {/* 왼쪽: 본선/분선 글씨 + 색 */}
+              {/* 왼쪽 배지: 노선번호(크게) 위에 본선/분선(작게)을 한 덩어리로.
+                  전에는 배지에 "본선"만 있고 번호는 옆 텍스트에 "101번"으로
+                  떨어져 있어서, 어느 노선인지 두 군데를 봐야 알 수 있었다. */}
               <div
-                className={`min-w-[64px] h-11 rounded-xl flex items-center justify-center shrink-0 px-2 ${badgeBg}`}
+                className={`min-w-[56px] py-1.5 rounded-xl flex flex-col items-center justify-center shrink-0 px-2 ${badgeBg}`}
               >
                 <span
-                  className={`font-black text-sm leading-tight text-center truncate ${badgeText}`}
+                  className={`font-bold text-base leading-none tracking-tight truncate max-w-full ${badgeText}`}
                 >
-                  {isRoute ? (isMain ? "본선" : "분선") : fav.label}
+                  {isStation ? fav.label : badgeNumber}
+                </span>
+                <span className={`text-[10px] leading-none mt-1 opacity-80 ${badgeText}`}>
+                  {isStation ? "정류장" : isMain ? "본선" : "분선"}
                 </span>
               </div>
 
