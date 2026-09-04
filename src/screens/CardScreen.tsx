@@ -67,7 +67,7 @@ export function CardScreen() {
           </div>
         </div>
       </header>
-      <div className="flex-1 overflow-y-auto overscroll-contain">
+      <div className="flex-1 overflow-y-auto overscroll-none">
           <section className="px-4 -mt-4 mb-7">
             <div className="bg-surface rounded-2xl border border-line px-4 py-4 flex items-start gap-3">
               <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
