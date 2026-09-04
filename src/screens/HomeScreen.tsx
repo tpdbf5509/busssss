@@ -155,7 +155,7 @@ export function HomeScreen({
 
   return (
     <div className="flex flex-col bg-canvas">
-       <header className="bg-gradient-to-b from-blue-600 to-blue-500 text-white px-5 pt-safe-16 pb-9 shrink-0">
+       <header className="bg-brand text-white px-5 pt-safe-16 pb-9 shrink-0">
          {/* My탭 헤더는 아바타(h-16=64px)가 기준이라 더 높다. 텍스트만 있는
              이 헤더도 min-h-16으로 같은 높이를 맞추고 세로 중앙 정렬한다. */}
          <div className="min-h-16 flex flex-col justify-center">
@@ -177,7 +177,7 @@ export function HomeScreen({
       <section className="px-4 -mt-3 shrink-0">
         <button
           onClick={() => onNavigate("bus")}
-          className="w-full bg-white rounded-2xl border border-slate-200 shadow-sm px-4 py-3.5 flex items-center gap-3 hover:border-blue-300 hover:shadow transition-all active:scale-[0.99]"
+          className="w-full bg-surface rounded-2xl border border-line px-4 py-3.5 flex items-center gap-3 hover:border-brand/40 transition-colors active:scale-[0.99]"
         >
           <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
             <Search className="w-5 h-5 text-blue-600" />
@@ -226,7 +226,7 @@ export function HomeScreen({
       {state.favorites.length === 0 ? (
     <button
       onClick={() => onNavigate("bus")}
-      className="w-full bg-white rounded-2xl p-6 text-center border border-slate-100 hover:border-blue-200 hover:shadow-sm transition-all active:scale-[0.99]"
+      className="w-full bg-surface rounded-2xl p-6 text-center border border-line hover:border-brand/40 transition-colors active:scale-[0.99]"
     >
       <Star className="w-8 h-8 text-slate-300 mx-auto mb-2" />
       <p className="text-sm text-slate-400">즐겨찾기를 추가해 보세요</p>

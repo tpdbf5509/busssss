@@ -69,7 +69,7 @@ export function CardScreen() {
       </header>
       <div className="flex-1 overflow-y-auto overscroll-contain">
           <section className="px-4 -mt-4 mb-7">
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 px-4 py-4 flex items-start gap-3">
+            <div className="bg-surface rounded-2xl border border-line px-4 py-4 flex items-start gap-3">
               <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
                 <CreditCard className="w-4 h-4 text-amber-500" />
               </div>
@@ -86,7 +86,7 @@ export function CardScreen() {
           <section className="px-4 mt-1"></section>
 
       <section className="px-4 -mt-4">
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+        <div className="bg-surface rounded-2xl border border-line p-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-bold text-slate-700">충전하기</h2>
             <button
