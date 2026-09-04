@@ -232,14 +232,20 @@ export async function getRouteIdsForStop(nodeId: string): Promise<string[]> {
  * node_id 기준으로 중복 제거한 것)로 우리 DB에 들어있다. 좌표(lat/lng)는
  * 이 정적 데이터에 없지만, 앱 어디서도 정류장 좌표를 실제로 쓰지 않으므로
  * (내 주변 정류장 같은 기능이 없음) 문제가 되지 않는다.
+ *
+ * query가 비어 있으면 전체 정류장(2,600여 개)을 이름순으로 반환한다 —
+ * DB 조회라 TAGO 실시간 검색과 달리 전체 목록을 한 번에 불러와도 비용이
+ * 크지 않다.
  */
 export async function searchStationsCache(query: string): Promise<RawRouteField[]> {
   const q = query.trim();
-  if (!q) return [];
+  const params = q
+    ? `select=node_id,node_name,ars_id&node_name=ilike.*${encodeURIComponent(q)}*&order=node_name.asc&limit=30`
+    : `select=node_id,node_name,ars_id&order=node_name.asc&limit=3000`;
 
   const rows = await supabaseFetch<{ node_id: string; node_name: string; ars_id: string | null }>(
     "bus_stations_cache",
-    `select=node_id,node_name,ars_id&node_name=ilike.*${encodeURIComponent(q)}*&order=node_name.asc&limit=30`
+    params
   );
 
   return rows.map((row) => ({

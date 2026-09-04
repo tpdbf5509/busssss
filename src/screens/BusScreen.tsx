@@ -93,34 +93,36 @@ export function BusScreen({
       });
       onConsumeInitialStationRef.current?.();
     }, [initialStation]);
-    // 검색어로 정류장 검색
+    // 정류장 검색. 검색어가 비어 있으면 전체 정류장 목록을 보여준다 —
+    // DB 조회라 TAGO 실시간 검색과 달리 전체 목록을 매번 불러와도 부담이
+    // 없다. 검색 탭을 보고 있을 때만 조회한다(노선 탭에서는 불필요).
     useEffect(() => {
+      if (searchTab !== "station") return;
+
       const q = query.trim();
-      if (!q) {
-        setStations([]);
-        setStationStatus("idle");
-        return;
-      }
       let cancelled = false;
       setStationStatus("loading");
-      const t = setTimeout(() => {
-        searchStations(q)
-          .then((list) => {
-            if (cancelled) return;
-            setStations(list);
-            setStationStatus("success");
-          })
-          .catch(() => {
-            if (cancelled) return;
-            setStations([]);
-            setStationStatus("error");
-          });
-      }, 300);
+      const t = setTimeout(
+        () => {
+          searchStations(q)
+            .then((list) => {
+              if (cancelled) return;
+              setStations(list);
+              setStationStatus("success");
+            })
+            .catch(() => {
+              if (cancelled) return;
+              setStations([]);
+              setStationStatus("error");
+            });
+        },
+        q ? 300 : 0,
+      );
       return () => {
         cancelled = true;
         clearTimeout(t);
       };
-    }, [query]);
+    }, [query, searchTab]);
 
   const filtered = routes?.filter(
     (r) =>
@@ -339,33 +341,26 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
 
         {searchTab === "station" && (
           <>
-            {!query.trim() && (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <MapPin className="w-10 h-10 text-slate-300 mb-3" />
-                <p className="text-sm text-slate-400">정류장 이름을 검색해 보세요</p>
-                <p className="text-xs text-slate-300 mt-1">전주시 버스 정류장</p>
-              </div>
-            )}
-            {query.trim() && stationStatus === "loading" && (
+            {(stationStatus === "idle" || stationStatus === "loading") && (
               <div className="space-y-2">
                 {[1, 2, 3, 4].map((i) => (
                   <LoadingSkeleton key={i} className="h-14 w-full" />
                 ))}
               </div>
             )}
-            {query.trim() && stationStatus === "error" && (
+            {stationStatus === "error" && (
               <p className="text-sm text-red-500 text-center py-8">
-                정류장 검색에 실패했어요
+                정류장 목록을 불러오지 못했어요
               </p>
             )}
-            {query.trim() && stationStatus === "success" && stations.length === 0 && (
+            {stationStatus === "success" && stations.length === 0 && (
               <EmptyState
                 icon={MapPin}
                 title="검색 결과가 없어요"
                 subtitle="다른 정류장명으로 검색해 보세요"
               />
             )}
-            {query.trim() && stationStatus === "success" && stations.length > 0 && (
+            {stationStatus === "success" && stations.length > 0 && (
               <div className="space-y-2">
                 {stations.map((station) => (
                   <div
