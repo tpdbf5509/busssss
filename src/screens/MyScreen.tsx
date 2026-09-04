@@ -160,7 +160,7 @@ export function MyScreen() {
         <div className="flex-1 overscroll-contain">
         {/* 즐겨찾기 카드 — 파란 헤더 위로 겹침 */}
         <section className="px-4 -mt-3 relative z-10">
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+          <div className="bg-surface rounded-2xl border border-line p-4">
             <div className="flex items-center gap-1.5 text-sm font-bold text-slate-700 mb-3">
               <Star className="w-4 h-4 text-amber-400" />
               즐겨찾기 관리

@@ -28,9 +28,24 @@ export interface StorageLoadError {
   dismissed: boolean;
 }
 
+/**
+ * 최근에 열어 본 노선. 홈 화면 아래쪽 빈 공간을 채우는 용도라 화면에 필요한
+ * 최소한만 담는다. 노선 정보 전체를 저장하면 저장값이 오래돼 실제 노선과
+ * 어긋날 수 있으므로, 상세 화면 이동에 필요한 id와 표시용 값만 둔다.
+ */
+export interface RecentRoute {
+  id: string;
+  number: string;
+  start: string;
+  end: string;
+  /** 마지막으로 연 시각(ms). 최신순 정렬과 오래된 항목 정리에 쓴다. */
+  viewedAt: number;
+}
+
 export interface AppState {
   region: { sido: string; sigungu: string };
   favorites: Favorite[];
+  recentRoutes: RecentRoute[];
   cardBalance: number;
   alerts: AlertSetting[];
   /** null이면 정상 로드됐거나 사용자가 안내를 확인한 상태 */
@@ -41,6 +56,7 @@ export type Action =
   | { type: "SET_REGION"; sido: string; sigungu: string }
   | { type: "ADD_FAVORITE"; favorite: Favorite }
   | { type: "REMOVE_FAVORITE"; id: string }
+  | { type: "ADD_RECENT_ROUTE"; route: Omit<RecentRoute, "viewedAt"> }
   | { type: "RENAME_FAVORITE"; id: string; label: string }
   | { type: "SYNC_FAVORITE_ROUTE_ID"; id: string; tagoRouteId: string }
   | { type: "SYNC_FAVORITE_NODE_ID"; id: string; tagoNodeId: string }

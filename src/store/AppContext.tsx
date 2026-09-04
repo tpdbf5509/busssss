@@ -9,11 +9,16 @@ import {
   AppContext,
   type AppState,
   type Action,
+  type RecentRoute,
   type StorageLoadError,
 } from "@/store/appContext";
 
 const FAVORITES_STORAGE_KEY = "busssss_favorites_v1";
 const ALERTS_STORAGE_KEY = "busssss_alerts_v1";
+const RECENT_ROUTES_STORAGE_KEY = "busssss_recent_routes_v1";
+
+/** 홈에 몇 줄만 보여줄 목록이라 이 이상 쌓아둘 이유가 없다. */
+const RECENT_ROUTES_LIMIT = 5;
 
 /**
  * 저장값을 읽지 못하면 예시 데이터로 대체하되, "실패했다"는 사실을 함께
@@ -35,10 +40,15 @@ function loadStored<T>(key: string, fallback: T[], label: string): { data: T[]; 
 
 const favoritesLoad = loadStored<Favorite>(FAVORITES_STORAGE_KEY, FAVORITES, "즐겨찾기");
 const alertsLoad = loadStored<AlertSetting>(ALERTS_STORAGE_KEY, ALERT_SETTINGS, "알림 설정");
+/* 최근 본 노선은 사용자가 직접 만든 자료가 아니라 다시 쌓이면 그만인
+   기록이다. 못 읽으면 빈 목록으로 시작하고 storageError로 잠그지 않는다 —
+   덮어써서 잃을 원본이 없다. */
+const recentRoutesLoad = loadStored<RecentRoute>(RECENT_ROUTES_STORAGE_KEY, [], "최근 본 노선");
 
 const initialState: AppState = {
   region: { sido: "전북특별자치도", sigungu: "전주시" },
   favorites: favoritesLoad.data,
+  recentRoutes: recentRoutesLoad.data.slice(0, RECENT_ROUTES_LIMIT),
   cardBalance: CARD_INFO.balance,
   alerts: alertsLoad.data,
   storageError:
@@ -94,6 +104,18 @@ function reducer(state: AppState, action: Action): AppState {
         ),
         storageError: clearStorageError(state.storageError, "favorites"),
       };
+    case "ADD_RECENT_ROUTE": {
+      /* 같은 노선을 다시 열면 새 항목을 쌓지 않고 맨 앞으로 끌어올린다.
+         그러지 않으면 자주 타는 노선 하나가 목록을 전부 차지한다. */
+      const rest = state.recentRoutes.filter((r) => r.id !== action.route.id);
+      return {
+        ...state,
+        recentRoutes: [
+          { ...action.route, viewedAt: Date.now() },
+          ...rest,
+        ].slice(0, RECENT_ROUTES_LIMIT),
+      };
+    }
     case "SYNC_FAVORITE_ROUTE_ID":
       return {
         ...state,
@@ -184,6 +206,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       notifySaveFailure();
     }
   }, [state.alerts]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        RECENT_ROUTES_STORAGE_KEY,
+        JSON.stringify(state.recentRoutes),
+      );
+    } catch (err) {
+      // 다시 쌓이면 그만인 기록이라 토스트로 사용자를 방해하지 않는다.
+      console.warn("[AppContext] 최근 본 노선 저장 실패:", err);
+    }
+  }, [state.recentRoutes]);
 
   // 저장된 즐겨찾기의 TAGO routeId를 보정할 때 버스 번호만 보지 않습니다.
   // appRouteId가 가리키는 우리 앱의 기점/종점 방향과 정확히 일치하는

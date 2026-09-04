@@ -51,6 +51,26 @@ export function BusScreen({
   const onConsumeInitialStationRef = useRef(onConsumeInitialStation);
   onConsumeInitialStationRef.current = onConsumeInitialStation;
 
+  /* 최근 본 노선 기록.
+     setSelectedRoute를 부르는 곳이 검색 결과 클릭, 정류장 상세에서 노선
+     선택, 홈 딥링크로 흩어져 있어서, 호출 지점마다 dispatch를 넣으면 새
+     경로가 생길 때 빠뜨리기 쉽다. 선택된 노선이 바뀌는 순간을 한 곳에서
+     보고 기록한다. */
+  const dispatchRef = useRef(dispatch);
+  dispatchRef.current = dispatch;
+  useEffect(() => {
+    if (!selectedRoute) return;
+    dispatchRef.current({
+      type: "ADD_RECENT_ROUTE",
+      route: {
+        id: selectedRoute.id,
+        number: selectedRoute.number,
+        start: selectedRoute.start ?? "",
+        end: selectedRoute.end ?? "",
+      },
+    });
+  }, [selectedRoute]);
+
   useEffect(() => {
     if (!initialRouteId || !routes) return;
     const target = routes.find((r) => r.id === initialRouteId);
@@ -170,11 +190,11 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
     );
   }
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-slate-50">
+    <div className="h-full flex flex-col overflow-hidden bg-canvas">
             <header className="bg-white px-5 pt-safe-16 pb-5 border-b border-slate-100 sticky top-0 z-30 shrink-0">
               <h1 className="text-xl font-bold text-slate-900 mb-3">버스 검색</h1>
 
-              <div className="flex bg-slate-100 rounded-xl p-1 mb-3">
+              <div className="flex bg-canvas rounded-xl p-1 mb-3">
                 <button
                   onClick={() => {
                     setSearchTab("route");
@@ -182,8 +202,8 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                   }}
                   className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
                     searchTab === "route"
-                      ? "bg-white text-blue-600 shadow-sm"
-                      : "text-slate-500"
+                      ? "bg-surface text-brand border border-line"
+                      : "text-muted"
                   }`}
                 >
                   노선
@@ -195,8 +215,8 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                   }}
                   className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
                     searchTab === "station"
-                      ? "bg-white text-blue-600 shadow-sm"
-                      : "text-slate-500"
+                      ? "bg-surface text-brand border border-line"
+                      : "text-muted"
                   }`}
                 >
                   정류장
@@ -237,7 +257,7 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
             {status === "loading" && (
               <div className="space-y-2">
                 {[1, 2, 3, 4].map((i) => (
-                  <LoadingSkeleton key={i} className="h-24 w-full" />
+                  <LoadingSkeleton key={i} className="h-[66px] w-full" />
                 ))}
               </div>
             )}
@@ -258,58 +278,58 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                     tabIndex={0}
                     onClick={() => setSelectedRoute(route)}
                     onKeyDown={(e) => e.key === "Enter" && setSelectedRoute(route)}
-                    className="w-full bg-white rounded-2xl p-4 border border-slate-100 text-left hover:border-blue-200 hover:shadow-sm transition-all cursor-pointer"
+                    className="w-full bg-surface rounded-2xl px-3.5 py-3 border border-line text-left hover:border-brand/40 transition-colors cursor-pointer flex items-center gap-3"
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        {(() => {
-                          const label = getRouteCategory(route.name);
-                          const isMain = label === "본선";
-                          return (
-                            <div
-                              className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
-                                isMain ? "bg-blue-500" : "bg-emerald-500"
-                              }`}
-                            >
-                              <span className="font-bold text-xs leading-tight text-center text-white">
-                                {label}
-                              </span>
-                            </div>
-                          );
-                        })()}
-                        <div>
-                          <span className="font-semibold text-slate-900 text-base">
+                    {/* 검색 결과는 여러 노선을 스크롤하며 비교하는 화면이라
+                        한 항목이 차지하는 높이가 중요하다. 배지를 왼쪽으로
+                        빼고 번호를 배지 안에 넣어 3단 스택을 2단으로 줄였다. */}
+                    {(() => {
+                      const label = getRouteCategory(route.name);
+                      const isMain = label === "본선";
+                      return (
+                        <div
+                          className={`min-w-[56px] py-1.5 px-2 rounded-xl flex flex-col items-center justify-center shrink-0 ${
+                            isMain ? "bg-blue-500" : "bg-emerald-500"
+                          }`}
+                        >
+                          <span className="font-bold text-base leading-none tracking-tight text-white truncate max-w-full">
                             {route.number}
                           </span>
+                          <span className="text-[10px] leading-none mt-1 text-white opacity-80">
+                            {label}
+                          </span>
                         </div>
+                      );
+                    })()}
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 text-sm min-w-0">
+                        <span className="font-semibold text-ink truncate">
+                          {route.start || "기점 정보 없음"}
+                        </span>
+                        <span className="text-faint shrink-0">→</span>
+                        <span className="font-semibold text-ink truncate">
+                          {route.end || "종점 정보 없음"}
+                        </span>
                       </div>
-                      <button
-                        onClick={(e) => toggleFavorite(route, e)}
-                        className="p-1 -m-1 rounded-full hover:bg-amber-50"
-                      >
-                        <Star
-                          className={`w-4 h-4 transition-colors ${
-                            isFavorited(route.id)
-                              ? "text-amber-400 fill-amber-400"
-                              : "text-slate-300 hover:text-amber-400"
-                          }`}
-                        />
-                      </button>
+                      <p className="mt-1 text-[11px] text-muted truncate">
+                        첫차 {route.firstBus} · 막차 {route.lastBus} · 배차{" "}
+                        {route.interval}
+                      </p>
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                      <span className="font-medium text-slate-600">
-                        {route.start || "기점 정보 없음"}
-                      </span>
-                      <span className="text-slate-300">→</span>
-                      <span className="font-medium text-slate-600">
-                        {route.end || "종점 정보 없음"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 mt-2 text-[11px] text-slate-400">
-                      <span>첫차 {route.firstBus}</span>
-                      <span>막차 {route.lastBus}</span>
-                      <span>배차 {route.interval}</span>
-                    </div>
+
+                    <button
+                      onClick={(e) => toggleFavorite(route, e)}
+                      className="p-1 -m-1 rounded-full hover:bg-amber-50 shrink-0"
+                    >
+                      <Star
+                        className={`w-4 h-4 transition-colors ${
+                          isFavorited(route.id)
+                            ? "text-amber-400 fill-amber-400"
+                            : "text-faint hover:text-amber-400"
+                        }`}
+                      />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -354,7 +374,7 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                     tabIndex={0}
                     onClick={() => setSelectedStation(station)}
                     onKeyDown={(e) => e.key === "Enter" && setSelectedStation(station)}
-                    className="w-full bg-white rounded-2xl p-4 border border-slate-100 flex items-center gap-3 cursor-pointer hover:border-blue-200 hover:shadow-sm transition-all"
+                    className="w-full bg-surface rounded-2xl px-3.5 py-3 border border-line flex items-center gap-3 cursor-pointer hover:border-brand/40 transition-colors"
                   >
                     <div className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
                       <MapPin className="w-5 h-5 text-emerald-600" />
@@ -420,7 +440,7 @@ function StationRouteCard({
       type="button"
       onClick={onSelect}
       disabled={isAdding}
-      className={`w-full bg-white rounded-2xl border border-slate-100 text-left hover:border-blue-200 hover:shadow-sm transition-all flex items-center gap-3 ${
+      className={`w-full bg-surface rounded-2xl border border-line text-left hover:border-brand/40 transition-colors flex items-center gap-3 ${
         hero ? "p-5" : "p-3"
       }`}
     >
@@ -749,13 +769,13 @@ const isAllRouteFavorited = (route: Route) =>
 
       {/* 탭 */}
       <div className="px-4 pt-3">
-        <div className="flex bg-slate-100 rounded-xl p-1">
+        <div className="flex bg-canvas rounded-xl p-1">
           <button
             onClick={() => setDetailTab("arrival")}
             className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
               detailTab === "arrival"
-                ? "bg-white text-blue-600 shadow-sm"
-                : "text-slate-500"
+                ? "bg-surface text-brand border border-line"
+                : "text-muted"
             }`}
           >
             실시간 도착
@@ -765,8 +785,8 @@ const isAllRouteFavorited = (route: Route) =>
             onClick={() => setDetailTab("all")}
             className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
               detailTab === "all"
-                ? "bg-white text-blue-600 shadow-sm"
-                : "text-slate-500"
+                ? "bg-surface text-brand border border-line"
+                : "text-muted"
             }`}
           >
             전체 경유노선
@@ -926,7 +946,7 @@ const isAllRouteFavorited = (route: Route) =>
                       tabIndex={0}
                       onClick={() => onSelectRoute(route)}
                       onKeyDown={(e) => e.key === "Enter" && onSelectRoute(route)}
-                      className="w-full bg-white rounded-2xl p-4 border border-slate-100 text-left hover:border-blue-200 hover:shadow-sm transition-all flex items-center gap-3 cursor-pointer"
+                      className="w-full bg-surface rounded-2xl px-3.5 py-3 border border-line text-left hover:border-brand/40 transition-colors flex items-center gap-3 cursor-pointer"
                     >
                       <div
                         className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${

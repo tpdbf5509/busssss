@@ -75,7 +75,7 @@ export function AlertScreen() {
         </div>
       </header>
         {notifPermission !== "granted" && (
-          <div className="mx-4 mt-4 p-4 bg-white border border-slate-100 rounded-2xl flex items-center justify-between gap-3 shadow-sm">
+          <div className="mx-4 mt-4 p-4 bg-white border border-slate-100 rounded-2xl flex items-center justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0">
               <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
                 <Bell className="w-4 h-4 text-blue-600" />
