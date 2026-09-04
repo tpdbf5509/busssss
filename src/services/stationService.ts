@@ -1,4 +1,5 @@
-import { getSttnNoList, getSttnAcctoArvlPrearngeInfoList } from "@/api/tago";
+import { getSttnAcctoArvlPrearngeInfoList } from "@/api/tago";
+import { searchStationsCache } from "@/api/jeonju";
 import { fetchRoutesForStop } from "@/services/routeService";
 import { findNearestApproachingBus } from "@/services/busLocationService";
 import { getRouteCategory, type RouteCategory } from "@/lib/routeCategory";
@@ -15,7 +16,7 @@ function mapToStation(raw: Record<string, string>): Station {
 }
 
 export async function searchStations(query: string): Promise<Station[]> {
-  const raw = await getSttnNoList(query);
+  const raw = await searchStationsCache(query);
   return raw
     .filter((r) => r.nodeid && r.nodenm)
     .map(mapToStation);

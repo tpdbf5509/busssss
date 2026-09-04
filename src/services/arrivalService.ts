@@ -1,4 +1,4 @@
-import { getSttnNoList, getSttnAcctoArvlPrearngeInfoList } from "@/api/tago";
+import { getSttnAcctoArvlPrearngeInfoList } from "@/api/tago";
 import { findNearestApproachingBus } from "@/services/busLocationService";
 import { fetchStopsForRoute } from "@/services/routeService";
 import { stripCityPrefix } from "@/services/stationService";
@@ -11,7 +11,6 @@ export interface ArrivalInfo {
   stopsAway: number | null;
 }
 
-const nodeIdCache = new Map<string, string>();
 const ARRIVAL_CACHE_TTL_MS = 15_000;
 const arrivalCache = new Map<string, { value: ArrivalInfo | null; expiresAt: number }>();
 const arrivalInFlight = new Map<string, Promise<ArrivalInfo | null>>();
@@ -77,26 +76,11 @@ function enqueueArrivalRequest(run: () => Promise<ArrivalInfo | null>) {
   });
 }
 
-export async function resolveNodeId(stopName: string): Promise<string | null> {
-  const key = normalizeStopName(stopName);
-  if (!key) return null;
-
-  const cached = nodeIdCache.get(key);
-  if (cached) return cached;
-
-  const results = await getSttnNoList(stopName);
-  const matched = results.find((r) => normalizeStopName(r.nodenm ?? "") === key) ?? results[0];
-  if (!matched?.nodeid) return null;
-
-  nodeIdCache.set(key, matched.nodeid);
-  return matched.nodeid;
-}
-
 /**
  * 같은 이름의 정류장이 방향별로 다른 물리적 위치(= 다른 nodeId)에 있는
  * 경우가 있다(예: 104번 평화동↔송천동 양방향). 정류장명만으로 전체
- * 도시 기준 nodeId를 검색하면(resolveNodeId) 반대 방향 정류장을 잘못
- * 골라 실제로는 버스가 오고 있어도 도착정보가 "정보 없음"으로 나오는
+ * 도시 기준에서 찾으면 반대 방향 정류장을 잘못 골라 실제로는 버스가 오고
+ * 있어도 도착정보가 "정보 없음"으로 나오는
  * 버그가 있었다. 노선이 실제로 경유하는 정류장 목록에서 이름을 찾으면
  * 이 노선·방향에 해당하는 nodeId를 정확히 얻을 수 있다.
  *
