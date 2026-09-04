@@ -51,6 +51,26 @@ export function BusScreen({
   const onConsumeInitialStationRef = useRef(onConsumeInitialStation);
   onConsumeInitialStationRef.current = onConsumeInitialStation;
 
+  /* 최근 본 노선 기록.
+     setSelectedRoute를 부르는 곳이 검색 결과 클릭, 정류장 상세에서 노선
+     선택, 홈 딥링크로 흩어져 있어서, 호출 지점마다 dispatch를 넣으면 새
+     경로가 생길 때 빠뜨리기 쉽다. 선택된 노선이 바뀌는 순간을 한 곳에서
+     보고 기록한다. */
+  const dispatchRef = useRef(dispatch);
+  dispatchRef.current = dispatch;
+  useEffect(() => {
+    if (!selectedRoute) return;
+    dispatchRef.current({
+      type: "ADD_RECENT_ROUTE",
+      route: {
+        id: selectedRoute.id,
+        number: selectedRoute.number,
+        start: selectedRoute.start ?? "",
+        end: selectedRoute.end ?? "",
+      },
+    });
+  }, [selectedRoute]);
+
   useEffect(() => {
     if (!initialRouteId || !routes) return;
     const target = routes.find((r) => r.id === initialRouteId);

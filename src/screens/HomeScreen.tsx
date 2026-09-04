@@ -192,7 +192,7 @@ export function HomeScreen({
   
       {/* 이 아래에 기존 즐겨찾기 섹션 그대로 유지 */}
 
-      <section className="px-4 mt-6 flex flex-col min-h-0 overflow-y-auto">
+      <section className="px-4 mt-6 shrink-0">
       <div className="flex items-center justify-between mb-3 shrink-0">
         <h3 className="text-sm font-bold text-ink">즐겨찾기</h3>
         <div className="flex items-center gap-3">
@@ -232,7 +232,7 @@ export function HomeScreen({
       <p className="text-sm text-slate-400">즐겨찾기를 추가해 보세요</p>
     </button>
   ) : (
-    <div className="max-h-[50vh] overflow-y-auto rounded-2xl p-0 space-y-2">
+    <div className="space-y-2">
   {state.favorites.map((fav) => {
         const isRoute = fav.type === "route";
         const isStopRoute = fav.type === "stop_route";
@@ -345,6 +345,36 @@ export function HomeScreen({
     </div>
   )}
 </section>
+
+      {/* 즐겨찾기 아래 빈 공간. 비워두면 화면이 목업처럼 보이고, 즐겨찾기에
+          없는 노선을 다시 찾으려면 매번 검색해야 한다. 최근에 연 노선을
+          바로 다시 열 수 있게 둔다. */}
+      {state.recentRoutes.length > 0 && (
+        <section className="px-4 mt-6 shrink-0">
+          <h3 className="text-sm font-bold text-ink mb-3">최근 본 노선</h3>
+          <div className="space-y-2">
+            {state.recentRoutes.map((recent) => (
+              <button
+                key={recent.id}
+                onClick={() => onNavigate("bus", recent.id)}
+                className="w-full bg-surface rounded-xl border border-line px-3.5 py-3 flex items-center gap-3 text-left hover:border-brand/40 transition-colors"
+              >
+                <span className="min-w-[56px] text-center font-bold text-sm text-ink shrink-0">
+                  {recent.number}
+                </span>
+                <span className="flex-1 min-w-0 text-xs text-muted truncate">
+                  {recent.start && recent.end
+                    ? `${recent.start} → ${recent.end}`
+                    : "노선 정보"}
+                </span>
+                <span className="text-faint text-lg shrink-0">›</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <div className="h-6 shrink-0" />
 
       {regionUnderDevOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
