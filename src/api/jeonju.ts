@@ -224,3 +224,27 @@ export async function getRouteIdsForStop(nodeId: string): Promise<string[]> {
 
   return Array.from(new Set(rows.map((row) => row.route_id).filter(Boolean)));
 }
+
+/**
+ * 정류장 이름으로 검색합니다. 예전에는 TAGO 실시간 검색 API를 입력마다
+ * 호출했지만, 정류장번호(ARS ID)까지 포함한 이 데이터는 이미
+ * bus_stations_cache 뷰(sync-bus-data가 3시간마다 채우는 bus_route_stops_cache를
+ * node_id 기준으로 중복 제거한 것)로 우리 DB에 들어있다. 좌표(lat/lng)는
+ * 이 정적 데이터에 없지만, 앱 어디서도 정류장 좌표를 실제로 쓰지 않으므로
+ * (내 주변 정류장 같은 기능이 없음) 문제가 되지 않는다.
+ */
+export async function searchStationsCache(query: string): Promise<RawRouteField[]> {
+  const q = query.trim();
+  if (!q) return [];
+
+  const rows = await supabaseFetch<{ node_id: string; node_name: string; ars_id: string | null }>(
+    "bus_stations_cache",
+    `select=node_id,node_name,ars_id&node_name=ilike.*${encodeURIComponent(q)}*&order=node_name.asc&limit=30`
+  );
+
+  return rows.map((row) => ({
+    nodeid: row.node_id,
+    nodenm: row.node_name,
+    nodeno: row.ars_id ?? "",
+  }));
+}
