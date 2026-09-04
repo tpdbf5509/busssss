@@ -179,7 +179,7 @@ function AppContent() {
 
       <StorageErrorBanner />
 
-      <main ref={mainRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain">
+      <main ref={mainRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-none">
         {tab === "home" && <HomeScreen key={homeRefreshKey} onNavigate={handleNavigate} />}
         {tab === "bus" && (
           <BusScreen
