@@ -1,6 +1,7 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { LockKeyhole, Mail, WifiOff } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import { AuthDebugProbe } from "@/components/AuthDebugProbe";
 
 /**
  * Supabase/브라우저가 주는 영어 원문을 한국어 안내로 바꾼다.
@@ -49,6 +50,7 @@ export function AuthScreen({ notice }: AuthScreenProps = {}) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -74,7 +76,11 @@ export function AuthScreen({ notice }: AuthScreenProps = {}) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-600 to-blue-500 px-5 py-16 flex items-center justify-center">
+    <div
+      ref={rootRef}
+      className="min-h-screen bg-gradient-to-b from-blue-600 to-blue-500 px-5 py-16 flex items-center justify-center"
+    >
+      <AuthDebugProbe rootRef={rootRef} />
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6">
         <div className="text-center mb-7">
           <div className="mx-auto w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
