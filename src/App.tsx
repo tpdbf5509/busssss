@@ -13,7 +13,7 @@ import { AuthScreen } from "@/screens/AuthScreen";
 import { useDropoffAlertMonitor } from "@/hooks/useDropoffAlertMonitor";
 import { stopDropoffAlarm } from "@/services/alertMonitorService";
 import { supabase } from "@/lib/supabaseClient";
-import { X } from "lucide-react";
+import { Info, X } from "lucide-react";
 
 type DropoffAlarm = { title: string; body: string };
 
@@ -171,8 +171,9 @@ function AppContent() {
       {showTopBanner && (
         <div className="shrink-0 pt-safe-0">
           {quickViewBanner && (
-            <div className="z-20 bg-blue-600 text-white px-4 py-2.5 flex items-center gap-2 text-xs">
-              <span className="flex-1">
+            <div className="z-20 mx-4 mt-3 flex items-center gap-3 bg-white rounded-2xl shadow-lg border border-slate-100 px-4 py-3">
+              <Info className="w-5 h-5 text-blue-500 shrink-0" />
+              <span className="flex-1 text-sm text-slate-700">
                 지금 화면을 <strong className="font-semibold">Safari 공유 → 홈 화면에 추가</strong>로 저장하면,
                 다음부터 앱을 열지 않고 "{quickViewBanner}" 도착정보를 바로 볼 수 있어요.
               </span>
@@ -182,10 +183,10 @@ function AppContent() {
                   setQuickViewBanner(null);
                   clearDeepLinkParam();
                 }}
-                className="p-1 -m-1 shrink-0 rounded-full hover:bg-white/10"
+                className="text-slate-300 hover:text-slate-500 shrink-0"
                 aria-label="닫기"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
           )}
