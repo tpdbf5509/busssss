@@ -21,3 +21,6 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Claude Code agent worktrees (ephemeral per-agent checkouts, never project content)
+.claude/worktrees/
