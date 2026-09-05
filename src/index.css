@@ -24,7 +24,10 @@
   }
   body {
     font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background-color: #ffffff;
+    /* 흰색이면 셸 높이가 화면보다 짧게 계산되는 경우(정확한 원인은 아래
+       h-app-shell 주석 참고) 그 틈이 흰 띠로 도드라진다. 앱 배경 톤과
+       같은 색으로 둬서 몇 px이 남아도 안 튀게 하는 안전망이다. */
+    background-color: #F7F8FA;
     touch-action: pan-x pan-y;
     height: 100%;
     overflow: hidden;
@@ -47,6 +50,27 @@
 }
 
 @layer utilities {
+  /* iOS standalone PWA WebKit 결함: viewport-fit=cover를 켜도 vh 계열 단위
+   * (100vh/100dvh)와 fixed 요소의 크기 계산 둘 다 상단 safe-area-inset-top만큼
+   * 실제 화면보다 짧게 나온다. 실기기 진단(innerHeight/clientHeight/
+   * visualViewport.height/100dvh 전부 797, safe-area-inset-top 47,
+   * 화면 전체 844 = 797 + 47로 정확히 일치)으로 확인했다. 화면 최상단(y=0)은
+   * 이미 실제 화면 끝에 정확히 붙어 있어서, 모자란 47px은 전부 하단에 빈
+   * 공간으로 남는다 — 로그인 화면 하단 흰 띠, 홈 화면 하단바가 위로 떠
+   * 보이는 문제 둘 다 이 결함 하나가 원인이었다.
+   *
+   * 100dvh가 빠뜨리는 상단 인셋만큼을 명시적으로 더한다. 브라우저 탭에서는
+   * safe-area-inset-top이 0이라 그대로 100dvh와 같아 부작용이 없다.
+   */
+  .h-app-shell {
+    height: 100dvh;
+    height: calc(100dvh + env(safe-area-inset-top));
+  }
+  .min-h-app-shell {
+    min-height: 100dvh;
+    min-height: calc(100dvh + env(safe-area-inset-top));
+  }
+
   /* iPhone notch / Dynamic Island / status bar 안전영역. 값 없는 기기에서는
      기존 pt-16/pt-14와 동일하게 보이도록 max()의 두 번째 인자를 기존 고정값으로
      둔다 — 안전영역이 있는 기기에서만 그만큼 더 내려간다. */
@@ -68,16 +92,18 @@
    * 대신 display-mode로 환경을 직접 구분한다. 두 경우 모두 고정값이라 부풀어
    * 오를 여지가 없다.
    * - 브라우저 탭: 하단 툴바가 이미 안전영역을 차지하므로 8px면 충분
-   * - standalone: 홈 인디케이터가 화면 하단 8~13pt 구간이라 20px면 7pt 여유를
-   *   두고 완전히 비켜가고, iOS 홈 스와이프 제스처 구간(하단 ~20pt) 밖에 탭
-   *   버튼이 놓여 탭이 제스처에 먹히지도 않는다.
+   * - standalone: h-app-shell 수정 전에는 셸 자체가 47px 짧아서 하단바가
+   *   그만큼 이미 위로 떠 있었고, 그 우연한 여백이 홈 인디케이터를 가려주고
+   *   있었다. 셸이 실제 화면 끝까지 닿도록 고치면 이 패딩이 유일한 여유가
+   *   되므로, 가정치(20px) 대신 이 기종에서 실측한 진짜 하단 인셋(34px)을
+   *   쓴다(viewport debug 오버레이로 확인, iPhone 12/13/14 계열 공통값).
    */
   .pb-nav-safe {
     padding-bottom: 8px;
   }
   @media (display-mode: standalone) {
     .pb-nav-safe {
-      padding-bottom: 20px;
+      padding-bottom: 34px;
     }
   }
   .scrollbar-hide {

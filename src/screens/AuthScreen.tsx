@@ -74,7 +74,7 @@ export function AuthScreen({ notice }: AuthScreenProps = {}) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-600 to-blue-500 px-5 py-16 flex items-center justify-center">
+    <div className="min-h-app-shell bg-gradient-to-b from-blue-600 to-blue-500 px-5 py-16 flex items-center justify-center">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6">
         <div className="text-center mb-7">
           <div className="mx-auto w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">

@@ -1325,7 +1325,7 @@ function DispatchScheduleModal({
   
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div className="fixed top-0 left-0 right-0 h-app-shell z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl animate-slide-up">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
