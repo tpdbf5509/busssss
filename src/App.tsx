@@ -128,6 +128,12 @@ function AppContent() {
     handleTabChange(nextTab);
   };
 
+  // StorageErrorBanner 자신의 표시 조건(store/appContext.ts 참고)과 반드시
+  // 맞춰야 한다 — 여기가 어긋나면 배너는 안 뜨는데 안전영역 빈 공간만
+  // 남거나, 반대로 배너는 뜨는데 공간이 없어 상태바에 가려지는 문제가 생긴다.
+  const showTopBanner =
+    !!quickViewBanner || (!!state.storageError && !state.storageError.dismissed);
+
   return (
     <div className="max-w-md mx-auto bg-slate-50 fixed inset-0 overflow-hidden flex flex-col">
       {dropoffAlarm && (
@@ -157,27 +163,36 @@ function AppContent() {
         </div>
       )}
 
-      {quickViewBanner && (
-        <div className="shrink-0 z-20 bg-blue-600 text-white px-4 py-2.5 flex items-center gap-2 text-xs">
-          <span className="flex-1">
-            지금 화면을 <strong className="font-semibold">Safari 공유 → 홈 화면에 추가</strong>로 저장하면,
-            다음부터 앱을 열지 않고 "{quickViewBanner}" 도착정보를 바로 볼 수 있어요.
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              setQuickViewBanner(null);
-              clearDeepLinkParam();
-            }}
-            className="p-1 -m-1 shrink-0 rounded-full hover:bg-white/10"
-            aria-label="닫기"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
+      {/* 두 배너가 함께 뜰 수 있어서 안전영역 패딩은 이 wrapper 하나에만
+          준다 — 배너 각자에 주면 동시에 뜰 때 사이가 그만큼 더 벌어진다.
+          showTopBanner로 감싸는 이유: 항상 렌더링하면 배너가 하나도 없을
+          때도 안전영역만큼 빈 공간이 화면 맨 위에 남는다(StorageErrorBanner의
+          "닫힘" 조건까지 여기서 그대로 따라간다). */}
+      {showTopBanner && (
+        <div className="shrink-0 pt-safe-0">
+          {quickViewBanner && (
+            <div className="z-20 bg-blue-600 text-white px-4 py-2.5 flex items-center gap-2 text-xs">
+              <span className="flex-1">
+                지금 화면을 <strong className="font-semibold">Safari 공유 → 홈 화면에 추가</strong>로 저장하면,
+                다음부터 앱을 열지 않고 "{quickViewBanner}" 도착정보를 바로 볼 수 있어요.
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setQuickViewBanner(null);
+                  clearDeepLinkParam();
+                }}
+                className="p-1 -m-1 shrink-0 rounded-full hover:bg-white/10"
+                aria-label="닫기"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          <StorageErrorBanner />
         </div>
       )}
-
-      <StorageErrorBanner />
 
       <main ref={mainRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-none">
         {tab === "home" && <HomeScreen key={homeRefreshKey} onNavigate={handleNavigate} />}

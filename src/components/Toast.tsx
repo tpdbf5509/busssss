@@ -15,7 +15,7 @@ export function ToastContainer() {
   }, []);
 
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] flex flex-col gap-2 w-full max-w-sm px-4">
+    <div className="fixed top-safe-4 left-1/2 -translate-x-1/2 z-[60] flex flex-col gap-2 w-full max-w-sm px-4">
       {toasts.map((toast) => {
         const Icon =
           toast.type === "success"
