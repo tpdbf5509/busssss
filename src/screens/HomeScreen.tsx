@@ -377,7 +377,7 @@ export function HomeScreen({
       <div className="h-6 shrink-0" />
 
       {regionUnderDevOpen && (
-        <div className="fixed top-0 left-0 right-0 h-app-shell z-50 flex items-end sm:items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
           <div
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setRegionUnderDevOpen(false)}

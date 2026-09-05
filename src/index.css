@@ -24,16 +24,11 @@
   }
   body {
     font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    /* 흰색이면 셸 높이가 화면보다 짧게 계산되는 경우(정확한 원인은 아래
-       h-app-shell 주석 참고) 그 틈이 흰 띠로 도드라진다. 앱 배경 톤과
-       같은 색으로 둬서 몇 px이 남아도 안 튀게 하는 안전망이다. */
+    /* iOS는 뷰포트 밖(상태바/홈 인디케이터 영역)을 이 색으로 칠한다.
+       흰색이면 앱 배경과 어긋나 띠처럼 도드라지므로 앱 배경 톤에 맞춘다. */
     background-color: #F7F8FA;
     touch-action: pan-x pan-y;
-    /* 로그인 화면처럼 fixed가 아니라 일반 흐름에 있는 화면은 이 높이 사슬
-       (body → #root)에 갇힌다. 여기가 100%(=짧게 나오는 100dvh 기준)로
-       남아 있으면 자식이 min-h-app-shell로 제 높이를 잡아도 #root의
-       overflow:hidden에 딱 그만큼 잘려서 하단에 띠가 그대로 남는다. */
-    height: var(--app-shell-height, 100%);
+    height: 100%;
     overflow: hidden;
     overscroll-behavior: none;
     position: fixed;
@@ -54,28 +49,6 @@
 }
 
 @layer utilities {
-  /* iOS standalone PWA WebKit 결함: 100dvh/innerHeight/clientHeight/
-   * visualViewport.height가 전부 실제 화면(window.screen.height)보다 짧게
-   * 나온다. 처음엔 그 부족분이 상단 safe-area-inset-top과 같다고 보고
-   * calc(100dvh + env(safe-area-inset-top))로 보정했는데, 실기기 재검증에서
-   * 같은 47px 부족(797 vs 844)이 나면서도 env(safe-area-inset-top)이 0으로
-   * 찍히는 경우가 나와 그 가정이 틀렸음을 확인했다 — env() 값 자체가 이
-   * 결함과 무관하게 기기/상황별로 들쭉날쭉하다.
-   *
-   * 대신 이 값에 안 흔들리는 window.screen.height(실제 화면의 CSS px 높이,
-   * main.tsx에서 standalone일 때만 측정)를 --app-shell-height CSS 변수로
-   * 직접 박아 쓴다. 변수가 아직 안 잡힌 첫 페인트나 브라우저 탭에서는
-   * 100dvh로 안전하게 대체된다.
-   */
-  .h-app-shell {
-    height: 100dvh;
-    height: var(--app-shell-height, 100dvh);
-  }
-  .min-h-app-shell {
-    min-height: 100dvh;
-    min-height: var(--app-shell-height, 100dvh);
-  }
-
   /* iPhone notch / Dynamic Island / status bar 안전영역. 값 없는 기기에서는
      기존 pt-16/pt-14와 동일하게 보이도록 max()의 두 번째 인자를 기존 고정값으로
      둔다 — 안전영역이 있는 기기에서만 그만큼 더 내려간다. */
@@ -97,11 +70,12 @@
    * 대신 display-mode로 환경을 직접 구분한다. 두 경우 모두 고정값이라 부풀어
    * 오를 여지가 없다.
    * - 브라우저 탭: 하단 툴바가 이미 안전영역을 차지하므로 8px면 충분
-   * - standalone: h-app-shell 수정 전에는 셸 자체가 47px 짧아서 하단바가
-   *   그만큼 이미 위로 떠 있었고, 그 우연한 여백이 홈 인디케이터를 가려주고
-   *   있었다. 셸이 실제 화면 끝까지 닿도록 고치면 이 패딩이 유일한 여유가
-   *   되므로, 가정치(20px) 대신 이 기종에서 실측한 진짜 하단 인셋(34px)을
-   *   쓴다(viewport debug 오버레이로 확인, iPhone 12/13/14 계열 공통값).
+   * - standalone: status bar style을 default로 바꾸기 전에는 뷰포트가 화면
+   *   아래쪽에 닿지 못해 하단바가 47px 떠 있었고, 그 우연한 여백이 홈
+   *   인디케이터를 가려주고 있었다. 이제 뷰포트 하단이 화면 끝에 맞으므로
+   *   이 패딩이 홈 인디케이터를 피하는 유일한 여유다. env()가 이 환경에서
+   *   0으로 읽히는 걸 실기기에서 확인했으므로 Apple HIG 기준값 34px을
+   *   그대로 쓴다.
    */
   .pb-nav-safe {
     padding-bottom: 8px;

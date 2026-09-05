@@ -35,7 +35,7 @@ export function RegionModal({
   const currentRegion = REGIONS.find((r) => r.sido === selectedSido);
 
   return (
-    <div className="fixed top-0 left-0 right-0 h-app-shell z-50 flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}

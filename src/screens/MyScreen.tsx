@@ -258,7 +258,7 @@ export function MyScreen() {
       )}
 
       {logoutConfirmOpen && (
-        <div className="fixed top-0 left-0 right-0 h-app-shell z-50 flex items-end sm:items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
           <div
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setLogoutConfirmOpen(false)}
@@ -285,7 +285,7 @@ export function MyScreen() {
       )}
 
       {helpOpen && (
-        <div className="fixed top-0 left-0 right-0 h-app-shell z-50 flex items-end sm:items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
           <div
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setHelpOpen(false)}
@@ -310,7 +310,7 @@ export function MyScreen() {
       )}
 
       {menuOpen && (
-        <div className="fixed top-0 left-0 right-0 h-app-shell z-50 flex justify-end">
+        <div className="fixed inset-0 z-50 flex justify-end">
           <div
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setMenuOpen(false)}
