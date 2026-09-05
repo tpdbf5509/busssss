@@ -36,9 +36,13 @@
       href="/icons/bus_stop_icon_192x192.png"
     />
 
+    <!-- TEST A: viewport-fit=cover 단독 영향 검증용으로 임시 제거. 그 외
+         (black-translucent, manifest standalone, body/#root 구조,
+         -webkit-fill-available, position:fixed, safe-area CSS)는 전부
+         그대로다. 결과 확정되면 원복하거나 유지한다. -->
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+      content="width=device-width, initial-scale=1.0"
     />
 
     <title>BUS STOP - 전주 버스</title>
