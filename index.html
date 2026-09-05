@@ -11,19 +11,10 @@
     />
 
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <!-- black-translucent + viewport-fit=cover 조합을 의도적으로 유지한다.
-         iOS 26 standalone PWA에서 이 조합이 뷰포트 높이를 실제 화면보다
-         47px 짧게 계산하는 WebKit 회귀가 있다(WebKit Bug 301108, Apple
-         Developer Forums thread 800798 — position:fixed 콘텐츠가 뷰포트
-         경계 너머로는 아예 페인트되지 않는다고 공식 보고됨). height/
-         min-height/overflow/position 조정, 강제 리플로우, 배경 색
-         샘플링까지 전부 실기기로 검증했지만 어느 것도 그 47px을 되찾지
-         못했다 — 앱 코드가 아니라 플랫폼 버그라는 뜻이다.
-         이 값을 유지하면 상단(상태바 아래까지 풀블리드)은 완벽하고,
-         하단은 47px 부족한 채로 남는다 — 두 트레이드오프(이 값 vs
-         default) 중 상단을 택한 것이다. iOS가 이 회귀를 고치기 전까지는
-         이 조합도, 반대쪽도 바꾸지 않는다. -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
     <meta name="apple-mobile-web-app-title" content="BUS STOP" />
 
     <!-- 앱 테마 색상 -->
@@ -39,9 +30,6 @@
       href="/icons/bus_stop_icon_192x192.png"
     />
 
-    <!-- viewport-fit=cover를 제거하면 47px 부족분이 하단→상단으로 옮겨갈
-         뿐 없어지지 않는다(위 status-bar-style 주석의 WebKit 회귀 참고).
-         상단 완벽 쪽을 택했으므로 cover를 유지한다. -->
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
