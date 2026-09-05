@@ -80,24 +80,6 @@ export function AuthScreen({ notice }: AuthScreenProps = {}) {
       ref={rootRef}
       className="min-h-screen bg-gradient-to-b from-blue-600 to-blue-500 px-5 py-16 flex items-center justify-center"
     >
-      {/* TEST C: 콘텐츠와 무관한 순수 배경 전용 레이어. 뷰포트 하단 경계
-          밖으로 47px 일부러 넘치게(bleed) 둬서, iOS가 그 색을 상태바/홈
-          인디케이터 영역에 반영하는지 확인한다. 상호작용 없음
-          (pointer-events:none), 메인 컨테이너 배경 뒤에 깔림(z-index:-1).
-          결과 확정되면 이 블록 통째로 제거한다. */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: -47,
-          background: "linear-gradient(to bottom, #2563eb, #3b82f6)",
-          zIndex: -1,
-          pointerEvents: "none",
-        }}
-      />
       <AuthDebugProbe rootRef={rootRef} />
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6">
         <div className="text-center mb-7">
