@@ -1,151 +1,227 @@
 import { useEffect, useState, type RefObject } from "react";
 
 /**
- * TEMPORARY 진단 전용. AuthScreen 하단에 남아 있는 밝은 띠의 실제 원인을
- * 확인하기 위해 DOM/CSS 실측값을 화면에 찍는다. 원인이 확정되는 대로 이
- * 파일과 호출부(AuthScreen.tsx)를 함께 제거한다 — 프로덕션 코드가 아니다.
+ * TEMPORARY 진단 전용. "797에서 페인트가 끊기는 게 정확히 어느 레이어/
+ * 어느 좌표계에서 발생하는지" 실측하기 위한 코드다. 실제 화면에 보이는
+ * fixed/absolute 계열 테스트 마커 3개를 포함한다. 원인이 확정되는 대로
+ * 이 파일과 AuthScreen.tsx의 호출부(마커 포함)를 통째로 제거한다 —
+ * 프로덕션에 남을 코드가 아니다.
  */
 
-function probeHeight(cssValue: string): number {
-  const el = document.createElement("div");
-  el.style.position = "fixed";
-  el.style.visibility = "hidden";
-  el.style.pointerEvents = "none";
-  el.style.left = "0";
-  el.style.top = "0";
-  el.style.height = cssValue;
-  document.body.appendChild(el);
-  const h = el.getBoundingClientRect().height;
-  document.body.removeChild(el);
-  return h;
+const MARKER_H = 10;
+
+type Rect = { top: number; bottom: number; height: number; left: number; right: number };
+
+function rectOf(el: Element | null): Rect | null {
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  return { top: r.top, bottom: r.bottom, height: r.height, left: r.left, right: r.right };
 }
 
-function probeSafeAreaBottom(): string {
-  const el = document.createElement("div");
-  el.style.position = "fixed";
-  el.style.visibility = "hidden";
-  el.style.paddingBottom = "env(safe-area-inset-bottom)";
-  document.body.appendChild(el);
-  const v = getComputedStyle(el).paddingBottom;
-  document.body.removeChild(el);
-  return v;
-}
-
-function measure(rootEl: HTMLElement | null) {
-  const bodyEl = document.body;
-  const appRootEl = document.getElementById("root");
-
-  const rootRect = rootEl?.getBoundingClientRect();
-  const bodyRect = bodyEl.getBoundingClientRect();
-  const appRootRect = appRootEl?.getBoundingClientRect();
-
-  const rootCS = rootEl ? getComputedStyle(rootEl) : null;
-  const bodyCS = getComputedStyle(bodyEl);
-  const appRootCS = appRootEl ? getComputedStyle(appRootEl) : null;
-
+function styleOf(el: Element | null) {
+  if (!el) return null;
+  const cs = getComputedStyle(el);
   return {
-    "1 innerHeight": String(window.innerHeight),
-    "2 visualViewport.height": String(window.visualViewport?.height ?? "n/a"),
-    "3 screen.height": String(window.screen.height),
-    "4 100vh probe": String(probeHeight("100vh")),
-    "5 100dvh probe": String(probeHeight("100dvh")),
-    "6 -webkit-fill-available probe": String(probeHeight("-webkit-fill-available")),
-    "7 safe-area-inset-bottom": probeSafeAreaBottom(),
-    "8 body computed height": bodyCS.height,
-    "9 body rect height/bottom": `${bodyRect.height} / ${bodyRect.bottom}`,
-    "10 body bg-color": bodyCS.backgroundColor,
-    "11 body overflow-y": bodyCS.overflowY,
-    "12 #root computed height": appRootCS?.height ?? "n/a",
-    "13 #root rect height/bottom": appRootRect ? `${appRootRect.height} / ${appRootRect.bottom}` : "n/a",
-    "14 #root bg-color": appRootCS?.backgroundColor ?? "n/a",
-    "15 #root overflow-y": appRootCS?.overflowY ?? "n/a",
-    "16 AuthScreen tag/class": rootEl ? `${rootEl.tagName}.${rootEl.className.slice(0, 40)}` : "NOT FOUND",
-    "17 AuthScreen computed height": rootCS?.height ?? "n/a",
-    "18 AuthScreen min-height": rootCS?.minHeight ?? "n/a",
-    "19 AuthScreen rect height/bottom": rootRect ? `${rootRect.height} / ${rootRect.bottom}` : "n/a",
-    "20 AuthScreen position": rootCS?.position ?? "n/a",
-    "21 AuthScreen bg-color": rootCS?.backgroundColor ?? "n/a",
-    "22 AuthScreen bg-image": rootCS?.backgroundImage ?? "n/a",
-    "23 AuthScreen overflow-y": rootCS?.overflowY ?? "n/a",
+    position: cs.position,
+    height: cs.height,
+    minHeight: cs.minHeight,
+    maxHeight: cs.maxHeight,
+    overflow: cs.overflow,
+    overflowY: cs.overflowY,
+    transform: cs.transform,
+    contain: cs.contain,
+    clipPath: cs.clipPath,
+    mask: cs.mask || "n/a",
+    filter: cs.filter,
+    willChange: cs.willChange,
+    isolation: cs.isolation,
+    background: cs.backgroundColor,
+    zIndex: cs.zIndex,
   };
 }
 
+function fmtRect(r: Rect | null) {
+  if (!r) return "N/A (mounted 안 됨)";
+  return `top:${r.top.toFixed(1)} bottom:${r.bottom.toFixed(1)} h:${r.height.toFixed(1)} l:${r.left.toFixed(1)} r:${r.right.toFixed(1)}`;
+}
+
+function fmtStyle(s: ReturnType<typeof styleOf>) {
+  if (!s) return "N/A";
+  return Object.entries(s)
+    .map(([k, v]) => `${k}=${v}`)
+    .join(" / ");
+}
+
 export function AuthDebugProbe({ rootRef }: { rootRef: RefObject<HTMLDivElement> }) {
-  const [info, setInfo] = useState<Record<string, string>>({});
+  const [lines, setLines] = useState<string[]>([]);
   const [hidden, setHidden] = useState(false);
+  const [markerTops, setMarkerTops] = useState<{ fixedTopComputed: number; atAuthBottom: number } | null>(null);
 
   useEffect(() => {
-    const update = () => setInfo(measure(rootRef.current));
-    update();
-    const t = setTimeout(update, 300);
-    window.addEventListener("resize", update);
+    const measure = () => {
+      const bodyEl = document.body;
+      const rootEl = document.getElementById("root");
+      const authEl = rootRef.current;
+      // App.tsx의 fixed 셸(AppContent)이나 !authReady 화면은 로그인 화면에서는
+      // 애초에 마운트되지 않는다(App()이 !isAuthenticated면 AuthScreen만
+      // 반환) — 그래서 이 값들은 항상 N/A다.
+      const appShellEl = document.querySelector(".fixed.inset-0");
+
+      const vv = window.visualViewport;
+      const authRect = rectOf(authEl);
+
+      const out: string[] = [];
+      out.push("== 1. window / visualViewport ==");
+      out.push(`innerHeight: ${window.innerHeight}`);
+      out.push(`outerHeight: ${window.outerHeight}`);
+      out.push(`documentElement.clientHeight: ${document.documentElement.clientHeight}`);
+      out.push(`body.clientHeight: ${bodyEl.clientHeight}`);
+      out.push(`visualViewport.height: ${vv?.height ?? "n/a"}`);
+      out.push(`visualViewport.offsetTop: ${vv?.offsetTop ?? "n/a"}`);
+      out.push(`visualViewport.pageTop: ${vv?.pageTop ?? "n/a"}`);
+      out.push(`visualViewport.scale: ${vv?.scale ?? "n/a"}`);
+      out.push(`screen.height: ${window.screen.height}`);
+
+      out.push("== 2. rects ==");
+      out.push(`body: ${fmtRect(rectOf(bodyEl))}`);
+      out.push(`#root: ${fmtRect(rectOf(rootEl))}`);
+      out.push(`App fixed shell: ${fmtRect(rectOf(appShellEl))}`);
+      out.push(`AuthScreen: ${fmtRect(authRect)}`);
+
+      out.push("== 3. computed style ==");
+      out.push(`body: ${fmtStyle(styleOf(bodyEl))}`);
+      out.push(`#root: ${fmtStyle(styleOf(rootEl))}`);
+      out.push(`AuthScreen: ${fmtStyle(styleOf(authEl))}`);
+
+      setLines(out);
+
+      if (authRect) {
+        setMarkerTops({
+          fixedTopComputed: window.screen.height - MARKER_H,
+          atAuthBottom: authRect.bottom - MARKER_H,
+        });
+      }
+    };
+    measure();
+    const t = setTimeout(measure, 300);
+    window.addEventListener("resize", measure);
     return () => {
       clearTimeout(t);
-      window.removeEventListener("resize", update);
+      window.removeEventListener("resize", measure);
     };
   }, [rootRef]);
 
-  if (hidden) {
-    return (
-      <button
-        onClick={() => setHidden(false)}
+  return (
+    <>
+      {/* 마커 1(빨강): position:fixed; bottom:0 — CSS edge-anchor. 실제 화면
+          맨 아래(844)에 보이면, bottom:0 anchoring 방식은 정상 동작한다는 뜻. */}
+      <div
         style={{
           position: "fixed",
-          top: 4,
-          right: 4,
-          zIndex: 99999,
-          fontSize: 10,
-          background: "rgba(0,0,0,0.6)",
-          color: "#fff",
-          padding: "2px 6px",
-          borderRadius: 6,
-          border: "none",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: MARKER_H,
+          background: "red",
+          zIndex: 99997,
         }}
-      >
-        debug
-      </button>
-    );
-  }
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 99999,
-        background: "rgba(0,0,0,0.9)",
-        color: "#0f0",
-        fontFamily: "monospace",
-        fontSize: 9.5,
-        lineHeight: 1.45,
-        padding: "6px 8px",
-        maxHeight: "55vh",
-        overflowY: "auto",
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <strong style={{ color: "#fff" }}>auth debug (임시)</strong>
-        <button
-          onClick={() => setHidden(true)}
+      />
+      {/* 마커 2(라임): position:fixed; top: (screen.height - 10)px — JS로 계산한
+          절대 좌표. 마커1(빨강)과 물리적으로 같은 위치에 겹쳐 보여야 정상이다.
+          안 겹치면 bottom:0 앵커링과 top 오프셋 계산 결과가 실제로 다르다는 뜻. */}
+      {markerTops && (
+        <div
           style={{
-            background: "transparent",
-            color: "#fff",
-            border: "1px solid #666",
-            borderRadius: 4,
+            position: "fixed",
+            left: 0,
+            right: 0,
+            top: markerTops.fixedTopComputed,
+            height: MARKER_H,
+            background: "lime",
+            zIndex: 99996,
+          }}
+        />
+      )}
+      {/* 마커 3(마젠타): position:fixed지만 top을 AuthScreen 자신의
+          getBoundingClientRect().bottom(844로 실측됨)에서 역산한 좌표에 둔다.
+          AuthScreen이 "주장하는" 자기 하단 좌표에 실제로 뭔가 그려지는지 확인. */}
+      {markerTops && (
+        <div
+          style={{
+            position: "fixed",
+            left: 0,
+            right: 0,
+            top: markerTops.atAuthBottom,
+            height: MARKER_H,
+            background: "magenta",
+            zIndex: 99995,
+          }}
+        />
+      )}
+
+      {hidden ? (
+        <button
+          onClick={() => setHidden(false)}
+          style={{
+            position: "fixed",
+            top: 4,
+            right: 4,
+            zIndex: 99999,
             fontSize: 10,
-            padding: "1px 6px",
+            background: "rgba(0,0,0,0.6)",
+            color: "#fff",
+            padding: "2px 6px",
+            borderRadius: 6,
+            border: "none",
           }}
         >
-          숨기기
+          debug
         </button>
-      </div>
-      {Object.entries(info).map(([label, value]) => (
-        <div key={label}>
-          {label}: <span style={{ color: "#fff" }}>{value}</span>
+      ) : (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 99999,
+            background: "rgba(0,0,0,0.92)",
+            color: "#0f0",
+            fontFamily: "monospace",
+            fontSize: 8.5,
+            lineHeight: 1.4,
+            padding: "6px 8px",
+            maxHeight: "62vh",
+            overflowY: "auto",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <strong style={{ color: "#fff" }}>
+              render-surface debug (임시) — 빨강=fixed bottom:0 / 라임=fixed
+              top:screen.height-10 / 마젠타=fixed top:AuthScreen.rect.bottom-10
+            </strong>
+            <button
+              onClick={() => setHidden(true)}
+              style={{
+                background: "transparent",
+                color: "#fff",
+                border: "1px solid #666",
+                borderRadius: 4,
+                fontSize: 10,
+                padding: "1px 6px",
+                flexShrink: 0,
+              }}
+            >
+              숨기기
+            </button>
+          </div>
+          {lines.map((l, i) => (
+            <div key={i} style={{ color: l.startsWith("==") ? "#fff" : "#0f0", fontWeight: l.startsWith("==") ? "bold" : "normal" }}>
+              {l}
+            </div>
+          ))}
         </div>
-      ))}
-    </div>
+      )}
+    </>
   );
 }
