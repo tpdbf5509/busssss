@@ -22,8 +22,21 @@ function readSafeAreaInset(side: "top" | "bottom"): string {
   return value;
 }
 
+// 어떤 빌드가 실기기에 실제로 떠 있는지 한눈에 확인하기 위한 표식.
+// 수정을 푸시할 때마다 손으로 올린다. 화면에 찍힌 값이 아래 상수와 다르면
+// 새 빌드가 아직 기기에 전달되지 않은 것이다.
+const DEBUG_BUILD = "v3-body-height";
+
 function readViewportInfo() {
+  const rootEl = document.getElementById("root");
   return {
+    build: DEBUG_BUILD,
+    shellVar:
+      getComputedStyle(document.documentElement)
+        .getPropertyValue("--app-shell-height")
+        .trim() || "(없음)",
+    bodyHeight: Math.round(document.body.getBoundingClientRect().height),
+    rootHeight: rootEl ? Math.round(rootEl.getBoundingClientRect().height) : null,
     innerHeight: window.innerHeight,
     innerWidth: window.innerWidth,
     clientHeight: document.documentElement.clientHeight,
@@ -90,6 +103,9 @@ export function ViewportDebugOverlay() {
   }
 
   const rows: [string, string | number | null][] = [
+    ["build", info.build],
+    ["--app-shell-height", info.shellVar],
+    ["body / #root 높이", `${info.bodyHeight} / ${info.rootHeight}`],
     ["innerHeight×innerWidth", `${info.innerHeight}×${info.innerWidth}`],
     ["clientHeight×clientWidth", `${info.clientHeight}×${info.clientWidth}`],
     [
@@ -108,6 +124,55 @@ export function ViewportDebugOverlay() {
   ];
 
   return (
+    <>
+      {/* 판정용 프로브. 초록선 = 100dvh(797) 끝, 빨간선 = --app-shell-height(844) 끝.
+          빨간선이 하단 회색 띠 안에 보이면 그 영역까지 CSS가 닿는다는 뜻이고,
+          초록선에 겹쳐 보이면 웹뷰 자체가 797에서 잘리는 것이라 높이로는
+          해결할 수 없다는 뜻이다. */}
+      <div
+        style={{
+          position: "fixed",
+          left: 0,
+          right: 0,
+          top: 0,
+          height: "100dvh",
+          pointerEvents: "none",
+          zIndex: 99998,
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 8,
+            background: "#00e000",
+          }}
+        />
+      </div>
+      <div
+        style={{
+          position: "fixed",
+          left: 0,
+          right: 0,
+          top: 0,
+          height: "var(--app-shell-height, 100dvh)",
+          pointerEvents: "none",
+          zIndex: 99998,
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 8,
+            background: "#ff0000",
+          }}
+        />
+      </div>
     <div
       style={{
         position: "fixed",
@@ -146,5 +211,6 @@ export function ViewportDebugOverlay() {
         </div>
       ))}
     </div>
+    </>
   );
 }
