@@ -57,6 +57,23 @@
     padding-top: max(calc(env(safe-area-inset-top) + 0.75rem), 3.5rem);
   }
 
+  /* 화면 최상단에 바로 붙는 배너 묶음/토스트용. 위 pt-safe-16/14와 달리
+     max()로 최소 높이를 강제하지 않는다 — 헤더가 아니라 얇은 안내 줄이라,
+     안전영역이 없는 환경(브라우저 탭)에서는 이 패딩이 그냥 0이면 된다.
+     standalone PWA에서 상태바 아이콘과 겹쳐 닫기 버튼을 못 누르던 문제
+     (퀵뷰 배너, 저장 오류 배너, 토스트 전부 동일)를 이걸로 고친다.
+     퀵뷰 배너/저장 오류 배너는 조건부로 순서가 바뀌며 함께 뜰 수 있어서,
+     각 배너 자신이 아니라 그 둘을 감싸는 바깥 wrapper 하나에만 준다 —
+     안 그러면 두 배너가 동시에 뜰 때 사이에 안전영역만큼 빈 틈이 하나
+     더 생긴다. 토스트는 항상 화면 최상단에 단독으로 뜨므로 자기 자신에
+     바로 적용한다. */
+  .pt-safe-0 {
+    padding-top: env(safe-area-inset-top);
+  }
+  .top-safe-4 {
+    top: calc(env(safe-area-inset-top) + 1rem);
+  }
+
   /* 하단 네비게이션 안전영역.
    *
    * env(safe-area-inset-bottom)을 쓰지 않는다. iOS 홈 화면 PWA(standalone)에서
