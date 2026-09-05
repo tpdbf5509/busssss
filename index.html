@@ -11,15 +11,18 @@
     />
 
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <!-- default는 상단 상태바 영역을 웹뷰 밖 네이티브 OS 크롬으로 예약해
-         버린다 — 그 영역은 우리 CSS가 전혀 닿을 수 없는 흰/밝은 고정
-         배경이라, 앱 배경이 상태바까지 이어지는 풀블리드 요구사항과
-         근본적으로 맞지 않는다(실기기에서 상단에 흰 띠로 확인됨).
-         black-translucent로 돌아와 웹뷰가 상태바 아래까지 풀블리드로
-         그려지게 한다. 이전에 이 값에서 겪은 하단 47px 죽은 영역은
-         body/#root의 height 계산 방식(index.css의 -webkit-fill-available
-         주석 참고)으로 해결을 시도한다 — position:fixed 구조 자체는
-         유지한 채 height의 값 소스만 바꾼다. -->
+    <!-- black-translucent + viewport-fit=cover 조합을 의도적으로 유지한다.
+         iOS 26 standalone PWA에서 이 조합이 뷰포트 높이를 실제 화면보다
+         47px 짧게 계산하는 WebKit 회귀가 있다(WebKit Bug 301108, Apple
+         Developer Forums thread 800798 — position:fixed 콘텐츠가 뷰포트
+         경계 너머로는 아예 페인트되지 않는다고 공식 보고됨). height/
+         min-height/overflow/position 조정, 강제 리플로우, 배경 색
+         샘플링까지 전부 실기기로 검증했지만 어느 것도 그 47px을 되찾지
+         못했다 — 앱 코드가 아니라 플랫폼 버그라는 뜻이다.
+         이 값을 유지하면 상단(상태바 아래까지 풀블리드)은 완벽하고,
+         하단은 47px 부족한 채로 남는다 — 두 트레이드오프(이 값 vs
+         default) 중 상단을 택한 것이다. iOS가 이 회귀를 고치기 전까지는
+         이 조합도, 반대쪽도 바꾸지 않는다. -->
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="BUS STOP" />
 
@@ -36,10 +39,9 @@
       href="/icons/bus_stop_icon_192x192.png"
     />
 
-    <!-- TEST A 결과: viewport-fit=cover 유무는 47px 부족분이 상단/하단 중
-         어디에 생기는지만 바꿨다(둘 다 동시에 없앨 순 없었다). cover를
-         원복하고 다음 테스트(AuthScreen 자체 높이를 47px 늘려도 실제
-         페인트가 늘어나는지)로 넘어간다. -->
+    <!-- viewport-fit=cover를 제거하면 47px 부족분이 하단→상단으로 옮겨갈
+         뿐 없어지지 않는다(위 status-bar-style 주석의 WebKit 회귀 참고).
+         상단 완벽 쪽을 택했으므로 cover를 유지한다. -->
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
