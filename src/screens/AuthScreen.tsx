@@ -79,6 +79,10 @@ export function AuthScreen({ notice }: AuthScreenProps = {}) {
     <div
       ref={rootRef}
       className="min-h-screen bg-gradient-to-b from-blue-600 to-blue-500 px-5 py-16 flex items-center justify-center"
+      // TEST: 이 요소 하나에만 47px를 더해, 실제 페인트 영역도 늘어나는지
+      // 확인한다. 인라인 style이 위 className의 min-h-screen(min-height:100vh)
+      // 보다 우선한다. 테스트 후 이 style prop을 통째로 제거해 원상복구한다.
+      style={{ minHeight: "calc(100vh + 47px)" }}
     >
       <AuthDebugProbe rootRef={rootRef} />
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6">

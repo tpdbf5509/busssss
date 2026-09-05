@@ -36,13 +36,13 @@
       href="/icons/bus_stop_icon_192x192.png"
     />
 
-    <!-- TEST A: viewport-fit=cover 단독 영향 검증용으로 임시 제거. 그 외
-         (black-translucent, manifest standalone, body/#root 구조,
-         -webkit-fill-available, position:fixed, safe-area CSS)는 전부
-         그대로다. 결과 확정되면 원복하거나 유지한다. -->
+    <!-- TEST A 결과: viewport-fit=cover 유무는 47px 부족분이 상단/하단 중
+         어디에 생기는지만 바꿨다(둘 다 동시에 없앨 순 없었다). cover를
+         원복하고 다음 테스트(AuthScreen 자체 높이를 47px 늘려도 실제
+         페인트가 늘어나는지)로 넘어간다. -->
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
 
     <title>BUS STOP - 전주 버스</title>
