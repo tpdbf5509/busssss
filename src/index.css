@@ -42,12 +42,15 @@
        확인)이 797에서 그대로 잘려서 남은 47px에 body의 배경색만 보이게
        된다(로그인 화면 하단에 남아있던 밝은 띠의 정체). 페이지 전체
        스크롤/바운스를 막는 역할은 이미 html의 overflow:hidden이 하고
-       있으므로, body/#root의 overflow는 세로만 열어 자기보다 큰 자식이
-       가려지지 않게 한다 — position:fixed 요소(App.tsx의 각 화면 셸)는
-       조상의 overflow와 무관하게 뷰포트 기준으로 그려지므로 영향이 없다
-       (실기기로 홈 화면 하단이 이 상태에서 정상인 것을 이미 확인했다). */
-    overflow-x: hidden;
-    overflow-y: visible;
+       있으므로, body/#root의 overflow는 열어서 자기보다 큰 자식이 가려지지
+       않게 한다 — position:fixed 요소(App.tsx의 각 화면 셸)는 조상의
+       overflow와 무관하게 뷰포트 기준으로 그려지므로 영향이 없다(실기기로
+       홈 화면 하단이 이 상태에서 정상인 것을 이미 확인했다).
+       overflow-x만 hidden, overflow-y만 visible처럼 두 축을 다르게 주면
+       CSS 스펙상 visible 쪽이 자동으로 auto로 바뀌는데, auto는 hidden과
+       똑같이 내용을 자르고 스크롤 가능하게만 만들 뿐이라(실기기로 확인 —
+       이 상태에서도 여전히 잘렸다) 두 축 다 visible로 맞춘다. */
+    overflow: visible;
     overscroll-behavior: none;
     position: fixed;
     width: 100%;
@@ -57,8 +60,7 @@
   #root {
     height: 100%;
     height: -webkit-fill-available;
-    overflow-x: hidden;
-    overflow-y: visible;
+    overflow: visible;
   }
 
   input,
