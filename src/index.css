@@ -29,7 +29,11 @@
        같은 색으로 둬서 몇 px이 남아도 안 튀게 하는 안전망이다. */
     background-color: #F7F8FA;
     touch-action: pan-x pan-y;
-    height: 100%;
+    /* 로그인 화면처럼 fixed가 아니라 일반 흐름에 있는 화면은 이 높이 사슬
+       (body → #root)에 갇힌다. 여기가 100%(=짧게 나오는 100dvh 기준)로
+       남아 있으면 자식이 min-h-app-shell로 제 높이를 잡아도 #root의
+       overflow:hidden에 딱 그만큼 잘려서 하단에 띠가 그대로 남는다. */
+    height: var(--app-shell-height, 100%);
     overflow: hidden;
     overscroll-behavior: none;
     position: fixed;
