@@ -28,7 +28,16 @@
        흰색이면 앱 배경과 어긋나 띠처럼 도드라지므로 앱 배경 톤에 맞춘다. */
     background-color: #F7F8FA;
     touch-action: pan-x pan-y;
+    /* height: 100%는 html을 거쳐 결국 iOS의 레이아웃 뷰포트 계산을
+       참조하는데, black-translucent standalone PWA에서 이 값이 실제
+       화면보다 짧게(이 기종 797, 실제 844) 나오는 걸 실기기 프로브로
+       확인했다 — body를 명시적으로 844px로 지정해도 페인트가 797에서
+       끊겼다. -webkit-fill-available은 100vh가 부정확하던 시절부터 있던
+       WebKit 전용 계산 경로로, 퍼센트/뷰포트 단위와 다르게 처리된다.
+       100%를 폴백으로 두고(이 값을 모르는 브라우저, 그리고 계산 자체가
+       실패하는 경우 원래 동작으로) 지원하는 곳에서만 덮어쓴다. */
     height: 100%;
+    height: -webkit-fill-available;
     overflow: hidden;
     overscroll-behavior: none;
     position: fixed;
@@ -38,6 +47,7 @@
   }
   #root {
     height: 100%;
+    height: -webkit-fill-available;
     overflow: hidden;
   }
 

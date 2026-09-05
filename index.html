@@ -11,13 +11,16 @@
     />
 
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <!-- black-translucent를 쓰면 안 된다. iOS 홈 화면 PWA에서 이 값은 콘텐츠를
-         화면 맨 위(y=0)부터 그리게 하면서도 뷰포트 높이는 상태바 높이를 뺀
-         값으로 보고한다. 그래서 화면 아래쪽에 상태바 높이만큼(이 기종 47px)
-         페이지가 닿을 수 없는 죽은 영역이 남는다 — 실기기 프로브로 확인했다
-         (body를 844px로 만들어도 797px 아래로는 아무것도 그려지지 않았다).
-         default로 두면 웹뷰가 상태바 아래에 놓여 앱 하단이 화면 끝에 맞는다. -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!-- default는 상단 상태바 영역을 웹뷰 밖 네이티브 OS 크롬으로 예약해
+         버린다 — 그 영역은 우리 CSS가 전혀 닿을 수 없는 흰/밝은 고정
+         배경이라, 앱 배경이 상태바까지 이어지는 풀블리드 요구사항과
+         근본적으로 맞지 않는다(실기기에서 상단에 흰 띠로 확인됨).
+         black-translucent로 돌아와 웹뷰가 상태바 아래까지 풀블리드로
+         그려지게 한다. 이전에 이 값에서 겪은 하단 47px 죽은 영역은
+         body/#root의 height 계산 방식(index.css의 -webkit-fill-available
+         주석 참고)으로 해결을 시도한다 — position:fixed 구조 자체는
+         유지한 채 height의 값 소스만 바꾼다. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="BUS STOP" />
 
     <!-- 앱 테마 색상 -->
