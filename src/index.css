@@ -28,17 +28,26 @@
        흰색이면 앱 배경과 어긋나 띠처럼 도드라지므로 앱 배경 톤에 맞춘다. */
     background-color: #F7F8FA;
     touch-action: pan-x pan-y;
-    /* height: 100%는 html을 거쳐 결국 iOS의 레이아웃 뷰포트 계산을
-       참조하는데, black-translucent standalone PWA에서 이 값이 실제
-       화면보다 짧게(이 기종 797, 실제 844) 나오는 걸 실기기 프로브로
-       확인했다 — body를 명시적으로 844px로 지정해도 페인트가 797에서
-       끊겼다. -webkit-fill-available은 100vh가 부정확하던 시절부터 있던
-       WebKit 전용 계산 경로로, 퍼센트/뷰포트 단위와 다르게 처리된다.
-       100%를 폴백으로 두고(이 값을 모르는 브라우저, 그리고 계산 자체가
-       실패하는 경우 원래 동작으로) 지원하는 곳에서만 덮어쓴다. */
+    /* height: 100%/-webkit-fill-available 둘 다 이 기종 black-translucent
+       standalone PWA에서 797(실제 화면 844보다 47px 짧음)로 계산된다 —
+       innerHeight/100vh/100dvh/-webkit-fill-available 프로브 전부 동일하게
+       797이 나오는 걸 실기기로 확인했다. position:fixed 요소의 뷰포트
+       기준 높이 계산 자체가 이 환경에서 짧게 나오는 것으로 보이고, 순수
+       CSS 단위로는 이 계산을 우회할 방법을 찾지 못했다. */
     height: 100%;
     height: -webkit-fill-available;
-    overflow: hidden;
+    /* 그래서 overflow는 hidden으로 두지 않는다. body가 짧게 계산된 채로
+       overflow:hidden이면, body보다 큰 자식(예: AuthScreen의 min-h-screen —
+       이 요소 자체는 static이라 843.98px로 정확히 계산됨, 실기기 프로브로
+       확인)이 797에서 그대로 잘려서 남은 47px에 body의 배경색만 보이게
+       된다(로그인 화면 하단에 남아있던 밝은 띠의 정체). 페이지 전체
+       스크롤/바운스를 막는 역할은 이미 html의 overflow:hidden이 하고
+       있으므로, body/#root의 overflow는 세로만 열어 자기보다 큰 자식이
+       가려지지 않게 한다 — position:fixed 요소(App.tsx의 각 화면 셸)는
+       조상의 overflow와 무관하게 뷰포트 기준으로 그려지므로 영향이 없다
+       (실기기로 홈 화면 하단이 이 상태에서 정상인 것을 이미 확인했다). */
+    overflow-x: hidden;
+    overflow-y: visible;
     overscroll-behavior: none;
     position: fixed;
     width: 100%;
@@ -48,7 +57,8 @@
   #root {
     height: 100%;
     height: -webkit-fill-available;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: visible;
   }
 
   input,
