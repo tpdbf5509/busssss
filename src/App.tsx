@@ -131,8 +131,10 @@ function AppContent() {
   // StorageErrorBanner 자신의 표시 조건(store/appContext.ts 참고)과 반드시
   // 맞춰야 한다 — 여기가 어긋나면 배너는 안 뜨는데 안전영역 빈 공간만
   // 남거나, 반대로 배너는 뜨는데 공간이 없어 상태바에 가려지는 문제가 생긴다.
-  const showTopBanner =
-    !!quickViewBanner || (!!state.storageError && !state.storageError.dismissed);
+  // quickViewBanner는 아래에서 별도로 fixed 오버레이로 띄우므로 여기 포함하지
+  // 않는다 — 문서 흐름에 넣으면(이전 버전) 그만큼 홈 화면 헤더 등 실제
+  // 콘텐츠를 밀어내리는데, 토스트처럼 콘텐츠 위에 떠야지 밀어내면 안 된다.
+  const showStorageErrorBanner = !!state.storageError && !state.storageError.dismissed;
 
   return (
     <div className="max-w-md mx-auto bg-slate-50 fixed inset-0 overflow-hidden flex flex-col">
@@ -163,35 +165,38 @@ function AppContent() {
         </div>
       )}
 
-      {/* 두 배너가 함께 뜰 수 있어서 안전영역 패딩은 이 wrapper 하나에만
-          준다 — 배너 각자에 주면 동시에 뜰 때 사이가 그만큼 더 벌어진다.
-          showTopBanner로 감싸는 이유: 항상 렌더링하면 배너가 하나도 없을
-          때도 안전영역만큼 빈 공간이 화면 맨 위에 남는다(StorageErrorBanner의
-          "닫힘" 조건까지 여기서 그대로 따라간다). */}
-      {showTopBanner && (
+      {/* StorageErrorBanner는 문서 흐름 안에 그대로 둔다 — 저장 손상 경고라
+          항상 자리를 차지해야 사용자가 놓치지 않는다. */}
+      {showStorageErrorBanner && (
         <div className="shrink-0 pt-safe-0">
-          {quickViewBanner && (
-            <div className="z-20 mx-4 mt-3 flex items-center gap-3 bg-white rounded-2xl shadow-lg border border-slate-100 px-4 py-3">
-              <Info className="w-5 h-5 text-blue-500 shrink-0" />
-              <span className="flex-1 text-sm text-slate-700">
-                지금 화면을 <strong className="font-semibold">Safari 공유 → 홈 화면에 추가</strong>로 저장하면,
-                다음부터 앱을 열지 않고 "{quickViewBanner}" 도착정보를 바로 볼 수 있어요.
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setQuickViewBanner(null);
-                  clearDeepLinkParam();
-                }}
-                className="text-slate-300 hover:text-slate-500 shrink-0"
-                aria-label="닫기"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-
           <StorageErrorBanner />
+        </div>
+      )}
+
+      {/* quickViewBanner는 토스트와 동일하게 fixed 오버레이로 띄운다 —
+          문서 흐름에 넣으면 그 높이만큼 아래 콘텐츠(홈 화면 헤더 등)를
+          밀어내리는데, 이 배너는 잠깐 안내만 하고 넘어가는 용도라 콘텐츠
+          위에 떠야지 레이아웃을 밀어내면 안 된다. */}
+      {quickViewBanner && (
+        <div className="fixed top-safe-4 left-4 right-4 z-30">
+          <div className="flex items-center gap-3 bg-white rounded-2xl shadow-lg border border-slate-100 px-4 py-3">
+            <Info className="w-5 h-5 text-blue-500 shrink-0" />
+            <span className="flex-1 text-sm text-slate-700">
+              지금 화면을 <strong className="font-semibold">Safari 공유 → 홈 화면에 추가</strong>로 저장하면,
+              다음부터 앱을 열지 않고 "{quickViewBanner}" 도착정보를 바로 볼 수 있어요.
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setQuickViewBanner(null);
+                clearDeepLinkParam();
+              }}
+              className="text-slate-300 hover:text-slate-500 shrink-0"
+              aria-label="닫기"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 
