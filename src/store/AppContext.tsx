@@ -300,6 +300,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // 고를 수 있고, 그러면 실제로 버스가 오고 있어도 도착정보가 "정보
   // 없음"으로 나옵니다. 이 노선이 실제로 경유하는 정류장 목록에서 다시
   // 조회해 저장된 값과 다르면 보정합니다.
+  //
+  // 단, 저장된 nodeId가 이 노선에 이미 있으면 건드리지 않습니다(세 번째
+  // 인자). 그러지 않으면 한 노선에 같은 이름 정류장이 둘 있을 때 사용자가
+  // 고른 쪽이 앱을 켤 때마다 순번이 빠른 쪽으로 덮어써졌습니다 —
+  // resolveNodeIdForRoute의 주석 참고.
   useEffect(() => {
     const stopFavorites = state.favorites.filter(
       (favorite) =>
@@ -318,7 +323,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         try {
           const nodeId = await resolveNodeIdForRoute(
             favorite.stopName!,
-            favorite.tagoRouteId!
+            favorite.tagoRouteId!,
+            favorite.tagoNodeId,
           );
           if (!cancelled && nodeId && nodeId !== favorite.tagoNodeId) {
             dispatch({
