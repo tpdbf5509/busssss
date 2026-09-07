@@ -96,7 +96,7 @@ function FavoriteArrivalInfo({
               className={`text-[26px] leading-none font-bold tracking-tight shrink-0 ${
                 reliability.delayed
                   ? "text-amber-600"
-                  : data.minutes <= 3
+                  : data.minutes != null && data.minutes <= 3
                     ? "text-brand"
                     : "text-ink"
               }`}

@@ -447,10 +447,15 @@ function StationRouteCard({
   onToggleFavorite: () => void;
 }) {
   const minutes = sr.arrtime != null ? Math.max(0, Math.round(sr.arrtime / 60)) : null;
+  // 시간을 믿을 수 없어 버린 경우에도(arrivalPlausibility 검증) 남은 정거장
+  // 수는 GPS 실측이라 그대로 알린다. "도착정보 없음"으로 뭉뚱그리면 버스가
+  // 코앞에 온 것도 모르게 된다.
+  const stopsOnly = minutes == null ? sr.arrprevstationcnt ?? null : null;
+  const hasLiveInfo = minutes != null || stopsOnly != null;
   // 이 목록은 화면을 열 때마다 새로 조회하는 단일 스냅샷이라 지연 추적은 하지 않고,
   // 값이 있으면 항상 "실시간"으로 표시합니다(A1).
   const reliability: ReliabilityState =
-    minutes != null ? { source: "realtime", delayed: false } : { source: "unknown", delayed: false };
+    hasLiveInfo ? { source: "realtime", delayed: false } : { source: "unknown", delayed: false };
   const isMain = sr.category === "본선";
 
   return (
@@ -487,7 +492,15 @@ function StationRouteCard({
 
         <div className="mt-0.5 flex items-baseline gap-1.5">
           <p className={hero ? "text-2xl font-bold text-blue-600" : "text-xs font-semibold text-slate-500"}>
-            {minutes == null ? "도착정보 없음" : minutes <= 0 ? "곧 도착" : `${minutes}분${hero ? " 후" : ""}`}
+            {minutes != null
+              ? minutes <= 0
+                ? "곧 도착"
+                : `${minutes}분${hero ? " 후" : ""}`
+              : stopsOnly != null
+                ? stopsOnly <= 0
+                  ? "곧 도착"
+                  : `${stopsOnly}정거장 전`
+                : "도착정보 없음"}
           </p>
           {minutes != null && sr.arrprevstationcnt != null && (
             <span className="text-xs text-slate-400">
@@ -497,7 +510,7 @@ function StationRouteCard({
           )}
         </div>
 
-        {minutes != null && (
+        {hasLiveInfo && (
           <div className="mt-1">
             <ReliabilityTag reliability={reliability} />
           </div>
@@ -745,9 +758,18 @@ const isAllRouteFavorited = (route: Route) =>
   // B1. 차분한 인터페이스: 지금 임박한 버스 1~2개만 크게 강조하고 나머지는 접어둡니다.
   // 즐겨찾기 여부가 아니라 "지금 이 순간 가장 급한 버스"를 최우선으로 정렬합니다.
   const sortedRoutes = useMemo(() => {
+    // 정렬에만 쓰는 값이고 화면에는 절대 표시하지 않는다.
+    //
+    // 도착 시간이 GPS 정거장 수와 앞뒤가 안 맞아 버려진 노선은(stationService의
+    // arrivalPlausibility 검증) 정거장 수만 남는다. 그런데 시간이 버려지는 건
+    // 대개 버스가 코앞에 와 있을 때라, 시간 없는 항목을 뒤로 밀면 정작 제일
+    // 급한 버스가 "지금 타야 할 버스"에서 빠진다. 정거장당 대략 90초로 환산해
+    // 같은 축에 놓고 비교한다.
+    const urgency = (r: StationRoute) =>
+      r.arrtime ?? (r.arrprevstationcnt != null ? r.arrprevstationcnt * 90 : Infinity);
     return [...routes].sort((a, b) => {
-      const aKey = a.arrtime ?? Infinity;
-      const bKey = b.arrtime ?? Infinity;
+      const aKey = urgency(a);
+      const bKey = urgency(b);
       if (aKey !== bKey) return aKey - bKey;
       return (a.arrprevstationcnt ?? Infinity) - (b.arrprevstationcnt ?? Infinity);
     });
@@ -757,7 +779,13 @@ const isAllRouteFavorited = (route: Route) =>
   // "실시간 도착" 탭은 지금 실제로 다가오고 있는 버스만 보여주는 탭이다.
   // 정류장을 지나는 노선 전체 목록은 "전체 경유노선" 탭의 몫이므로,
   // 여기서는 도착정보가 있는 노선만 남긴다.
-  const routesWithInfo = sortedRoutes.filter((r) => r.arrtime != null);
+  //
+  // 시간이 없어도 남은 정거장 수가 있으면 남긴다 — 시간을 믿을 수 없어 버린
+  // 노선(arrivalPlausibility 검증)도 버스가 다가오고 있다는 사실 자체는
+  // GPS로 확인된 것이라, 이 탭에서 빼면 코앞의 버스가 통째로 사라진다.
+  const routesWithInfo = sortedRoutes.filter(
+    (r) => r.arrtime != null || r.arrprevstationcnt != null,
+  );
   const heroRoutes = routesWithInfo.slice(0, HERO_COUNT);
   const restRoutes = routesWithInfo.slice(HERO_COUNT);
 

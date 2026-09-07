@@ -3,6 +3,7 @@ import { searchStationsCache } from "@/api/jeonju";
 import { fetchRoutesForStop } from "@/services/routeService";
 import { findNearestApproachingBus } from "@/services/busLocationService";
 import { getRouteCategory, type RouteCategory } from "@/lib/routeCategory";
+import { isArrivalTimePlausible } from "@/lib/arrivalPlausibility";
 import type { Station } from "@/types/route";
 
 function mapToStation(raw: Record<string, string>): Station {
@@ -111,7 +112,16 @@ export async function fetchRoutesForStation(nodeId: string): Promise<StationRout
 
     const existing = arrivalByRouteId.get(routeId);
     if (existing) {
-      arrivalByRouteId.set(routeId, { ...existing, arrprevstationcnt: gps.bus.stopsAway });
+      // 홈 즐겨찾기 카드와 같은 기준으로 시간을 검증한다(arrivalPlausibility).
+      // TAGO 시간과 GPS 정거장 수는 출처가 달라 같은 버스라는 보장이 없고,
+      // 앞뒤가 안 맞으면("1정거장 전"인데 "14분") 시간 쪽을 버린다.
+      const stopsAway = gps.bus.stopsAway;
+      const minutes = existing.arrtime != null ? Math.round(existing.arrtime / 60) : null;
+      arrivalByRouteId.set(routeId, {
+        ...existing,
+        arrtime: isArrivalTimePlausible(minutes, stopsAway) ? existing.arrtime : undefined,
+        arrprevstationcnt: stopsAway,
+      });
     }
   }
 
