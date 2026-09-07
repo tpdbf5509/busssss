@@ -4,6 +4,7 @@ import { fetchRoutesForStop } from "@/services/routeService";
 import { findNearestApproachingBus } from "@/services/busLocationService";
 import { getRouteCategory, type RouteCategory } from "@/lib/routeCategory";
 import { isArrivalTimePlausible } from "@/lib/arrivalPlausibility";
+import { estimateMinutesAway } from "@/lib/busPace";
 import type { Station } from "@/types/route";
 
 function mapToStation(raw: Record<string, string>): Station {
@@ -112,14 +113,20 @@ export async function fetchRoutesForStation(nodeId: string): Promise<StationRout
 
     const existing = arrivalByRouteId.get(routeId);
     if (existing) {
-      // 홈 즐겨찾기 카드와 같은 기준으로 시간을 검증한다(arrivalPlausibility).
-      // TAGO 시간과 GPS 정거장 수는 출처가 달라 같은 버스라는 보장이 없고,
-      // 앞뒤가 안 맞으면("1정거장 전"인데 "14분") 시간 쪽을 버린다.
+      // 홈 즐겨찾기 카드와 같은 순서로 시간을 정한다(arrivalService 참고).
+      // 한쪽만 다르게 하면 같은 버스가 화면마다 다른 시간을 보여준다.
       const stopsAway = gps.bus.stopsAway;
-      const minutes = existing.arrtime != null ? Math.round(existing.arrtime / 60) : null;
+
+      // 1순위 — 실측 속도로 계산한 시간(busPace).
+      const measured = estimateMinutesAway(routeId, stopsAway);
+      // 2순위 — TAGO 예측. 단 GPS 정거장 수와 앞뒤가 안 맞으면
+      // ("1정거장 전"인데 "14분") 같은 버스의 값이 아니므로 버린다.
+      const tagoMinutes = existing.arrtime != null ? Math.round(existing.arrtime / 60) : null;
+      const fallback = isArrivalTimePlausible(tagoMinutes, stopsAway) ? existing.arrtime : undefined;
+
       arrivalByRouteId.set(routeId, {
         ...existing,
-        arrtime: isArrivalTimePlausible(minutes, stopsAway) ? existing.arrtime : undefined,
+        arrtime: measured != null ? measured * 60 : fallback,
         arrprevstationcnt: stopsAway,
       });
     }

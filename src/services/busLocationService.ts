@@ -3,6 +3,7 @@ import { getRouteNoList } from "@/api/tago";
 import type { Route, BusLocation, RouteDirection } from "@/types/route";
 import { resolveJeonjuBrtStdid, fetchStopsForRoute } from "@/services/routeService";
 import { resolveBusStopIndex } from "@/lib/stopPosition";
+import { recordBusPosition } from "@/lib/busPace";
 
 function firstValue(item: Record<string, string>, keys: string[]): string {
   const entries = Object.entries(item);
@@ -248,9 +249,15 @@ export async function findNearestApproachingBus(
         location.nodeOrder,
         location.nodeName,
       );
-      // index === -1: 위치를 환산하지 못함. index > targetIndex: 이미 지나감.
-      // 둘 다 "이 버스는 접근 중인 후보가 아니다"로 취급한다.
-      if (index === -1 || index > targetIndex) continue;
+      if (index === -1) continue;
+
+      // 실측 속도 학습(busPace)은 목표 정류장을 지난 버스도 관측 대상이다.
+      // 그 버스가 정류장을 몇 초 만에 지나는지는 이 노선의 지금 흐름을
+      // 말해주므로, 아래 "접근 중인 후보" 판정보다 먼저 기록한다.
+      recordBusPosition(route.id, location.vehicleNo, index);
+
+      // index > targetIndex: 이미 지나감 — 접근 중인 후보가 아니다.
+      if (index > targetIndex) continue;
 
       const stopsAway = targetIndex - index;
       if (!best || stopsAway < best.stopsAway) {
