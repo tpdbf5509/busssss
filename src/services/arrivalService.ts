@@ -3,10 +3,16 @@ import { findNearestApproachingBus } from "@/services/busLocationService";
 import { fetchStopsForRoute } from "@/services/routeService";
 import { stripCityPrefix } from "@/services/stationService";
 import { normalizeStopName } from "@/lib/stopPosition";
+import { isArrivalTimePlausible } from "@/lib/arrivalPlausibility";
 import type { Route } from "@/types/route";
 
 export interface ArrivalInfo {
-  minutes: number;
+  /**
+   * null이면 도착 시간을 믿을 수 없어 표시하지 않는 상태다(정거장 수만 표시).
+   * TAGO 예측이 GPS로 확인한 정거장 수와 앞뒤가 안 맞을 때 여기로 온다 —
+   * arrivalPlausibility 참고.
+   */
+  minutes: number | null;
   /** API가 제공하지 않으면 null — UI에서 정거장 문구를 숨김 */
   stopsAway: number | null;
 }
@@ -284,7 +290,17 @@ export async function fetchArrivalInfo(
       if (!gps.hasLiveData) return tagoInfo; // 검증할 GPS 데이터가 없으면 TAGO를 믿는다
       if (!gps.bus) return null; // GPS로 확인되는 모든 버스가 이미 지나감 — TAGO 예측을 믿을 근거가 없다
 
-      return { minutes: tagoInfo.minutes, stopsAway: gps.bus.stopsAway };
+      // 시간(TAGO)과 정거장 수(GPS)는 출처가 다르므로 같은 버스의 값이라는
+      // 보장이 없다. TAGO 목록에 코앞의 버스가 빠져 있으면 그 다음 버스의
+      // 예측 시간에 앞 버스의 정거장 수가 붙어 "14분 후 · 1정거장" 같은
+      // 조합이 나온다(실측 도착은 2분). 앞뒤가 안 맞으면 실측 기반인
+      // 정거장 수만 남기고 시간은 버린다 — arrivalPlausibility 참고.
+      const stopsAway = gps.bus.stopsAway;
+      const minutes = isArrivalTimePlausible(tagoInfo.minutes, stopsAway)
+        ? tagoInfo.minutes
+        : null;
+
+      return { minutes, stopsAway };
     } catch (error) {
       console.warn("[BUS STOP] Arrival request failed; keeping previous value", {
         nodeId,

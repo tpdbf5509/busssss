@@ -6,7 +6,14 @@ export function formatArrivalText(
   minutes: number | null | undefined,
   stopsAway?: number | null,
 ): string {
-  if (minutes == null || Number.isNaN(minutes)) return "정보 없음";
+  if (minutes == null || Number.isNaN(minutes)) {
+    // 시간을 못 믿어 버린 경우에도(arrivalPlausibility 참고) 정거장 수는
+    // GPS 실측이라 그대로 알린다. "정보 없음"으로 뭉뚱그리면 사용자는 버스가
+    // 코앞에 온 것도 모르게 된다.
+    if (stopsAway == null || Number.isNaN(stopsAway)) return "정보 없음";
+    const onlyStops = Math.max(0, Math.round(stopsAway));
+    return onlyStops <= 0 ? "곧 도착" : `${onlyStops}정거장`;
+  }
 
   const safeMinutes = Math.max(0, Math.round(minutes));
   const timeLabel = safeMinutes <= 0 ? "곧 도착" : `${safeMinutes}분 후`;
