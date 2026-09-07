@@ -109,6 +109,13 @@ describe("resolveBusStopIndex", () => {
     });
   });
 
+  it("이름이 유일하면 이름으로 환산한다", () => {
+    expect(resolveBusStopIndex(route10, "", 0, "정류장5")).toEqual({
+      index: 4,
+      resolvedBy: "name",
+    });
+  });
+
   it("1번에서 시작하지 않는 노선도 처리한다", () => {
     expect(resolveBusStopIndex(nonOneBased, "", 3)).toEqual({
       index: 0,
@@ -117,6 +124,55 @@ describe("resolveBusStopIndex", () => {
     expect(resolveBusStopIndex(nonOneBased, "", 14)).toEqual({
       index: 3,
       resolvedBy: "order",
+    });
+  });
+});
+
+/**
+ * 한 노선 안에 같은 이름의 정류장이 둘 있는 실제 사례.
+ * 10번(route_id 305001785)의 "추동"은 순번 12(305100174)와 13(305100173)에
+ * 각각 있는 서로 다른 정류장이다. 운영 DB 기준 454개 노선 중 142개(31%)가
+ * 이런 중복 이름을 갖는다.
+ */
+const duplicateNames: BusStop[] = [
+  { id: "305032722", name: "추동교회 입구", order: 10 },
+  { id: "305100174", name: "추동", order: 12 },
+  { id: "305100173", name: "추동", order: 13 },
+  { id: "305032723", name: "비송골", order: 14 },
+];
+
+describe("resolveBusStopIndex — 같은 이름 정류장 (회귀)", () => {
+  it("이름이 겹치면 nodeOrder로 어느 쪽인지 가려낸다", () => {
+    // GW가 nodeId 없이 이름만 준 버스가 순번 13에 있는 경우.
+    // 예전에는 목록에서 먼저 나오는 순번 12를 무조건 골랐다.
+    expect(resolveBusStopIndex(duplicateNames, "", 13, "추동")).toEqual({
+      index: 2,
+      resolvedBy: "name+order",
+    });
+    expect(resolveBusStopIndex(duplicateNames, "", 12, "추동")).toEqual({
+      index: 1,
+      resolvedBy: "name+order",
+    });
+  });
+
+  it("이름이 겹치고 nodeOrder도 없으면 찍지 않고 실패로 둔다", () => {
+    expect(resolveBusStopIndex(duplicateNames, "", 0, "추동")).toEqual({
+      index: -1,
+      resolvedBy: "none",
+    });
+  });
+
+  it("nodeId가 있으면 이름이 겹쳐도 정확히 그 정류장을 가리킨다", () => {
+    expect(resolveBusStopIndex(duplicateNames, "305100173", 0, "추동")).toEqual({
+      index: 2,
+      resolvedBy: "nodeId",
+    });
+  });
+
+  it("이름이 겹쳐도 공백 차이는 같은 이름으로 본다", () => {
+    expect(resolveBusStopIndex(duplicateNames, "", 10, "추동교회입구")).toEqual({
+      index: 0,
+      resolvedBy: "name",
     });
   });
 });

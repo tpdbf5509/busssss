@@ -16,7 +16,7 @@ import { resolveRouteId } from "@/services/arrivalService";
 import { searchStations, fetchRoutesForStation, stripCityPrefix, type StationRoute } from "@/services/stationService";
 import { parseInterval, parseTimeToMinutes } from "@/lib/interval";
 import { getRouteCategory, isMainRoute } from "@/lib/routeCategory";
-import { normalizeStopName } from "@/lib/stopPosition";
+import { resolveBusStopIndex } from "@/lib/stopPosition";
 
 /**
  * 이 즐겨찾기가 "바로 이 정류장"인지 판정한다.
@@ -1031,26 +1031,31 @@ function RouteDetail({ route, onBack }: { route: Route; onBack: () => void }) {
     lastUpdated,
     retry: retryBuses,
   } = useBusLocations(route);
-  // 실시간 버스를 정류장에 붙일 때 정류장 ID를 우선으로 쓴다.
+  // 실시간 버스를 정류장에 붙일 때는 하차 알림·도착정보와 같은 환산 로직
+  // (resolveBusStopIndex)을 쓴다. 화면마다 다른 방식으로 버스 위치를 구하면
+  // 같은 버스가 화면마다 다른 정류장에 있는 것으로 보인다.
   //
-  // 이름으로만 묶으면 같은 이름의 서로 다른 정류장이 한 칸으로 합쳐진다.
-  // 운영 DB 확인 결과 454개 노선 중 142개(31%)가 한 노선 안에서 같은 이름을
-  // 서로 다른 node_id로 갖고 있어(524건), 버스가 실제로 있지도 않은 정류장에
-  // 표시될 수 있었다. 전주시 GW가 정류장 ID를 안 내려주는 경우가 있어
-  // (busLocationService의 nodeId 주석 참고) 이름 매칭은 폴백으로 남긴다.
-  const busesByStop = useMemo(() => {
-    const map = new Map<string, typeof buses>();
-    if (!buses) return map;
+  // 예전에는 여기서 `id:<nodeId>` / `nm:<이름>` 키로 직접 묶었는데, 정류장
+  // ID를 안 내려주는 버스는(busLocationService의 nodeId 주석 참고) 이름 키
+  // 하나로만 들어가는 반면 조회는 정류장마다 따로 해서, 같은 이름의 정류장이
+  // 둘 있는 노선(운영 DB 기준 454개 중 142개, 31%)에서는 버스 한 대가 양쪽
+  // 정류장에 동시에 "여기 있음"으로 그려졌다. 예로 10번의 "추동"은 순번
+  // 12·13에 각각 있는 다른 정류장이다.
+  //
+  // 위치를 목록 내 index로 확정해서 묶으면 한 버스는 정확히 한 정류장에만
+  // 붙고, 어느 쪽인지 가릴 근거가 없으면(index -1) 아무 데도 그리지 않는다.
+  const busesByStopIndex = useMemo(() => {
+    const map = new Map<number, NonNullable<typeof buses>>();
+    if (!buses || !stops) return map;
     for (const bus of buses) {
-      const key = bus.nodeId
-        ? `id:${bus.nodeId}`
-        : `nm:${normalizeStopName(bus.nodeName)}`;
-      if (key === "nm:") continue;
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(bus);
+      const { index } = resolveBusStopIndex(stops, bus.nodeId, bus.nodeOrder, bus.nodeName);
+      if (index === -1) continue;
+      const list = map.get(index);
+      if (list) list.push(bus);
+      else map.set(index, [bus]);
     }
     return map;
-  }, [buses]);
+  }, [buses, stops]);
     const [addingStopId, setAddingStopId] = useState<string | null>(null);
 
 const isArrivalFavorited = (stop: BusStop) =>
@@ -1225,11 +1230,8 @@ const handleStopClick = async (stop: BusStop) => {
           <div className="relative">
             <div className="absolute left-[19px] top-2 bottom-2 w-0.5 bg-slate-200" />
             <div className="space-y-1">
-            {stops.map((stop) => {
-                const stopBuses =
-                  busesByStop.get(`id:${stop.id}`) ??
-                  busesByStop.get(`nm:${normalizeStopName(stop.name)}`) ??
-                  [];
+            {stops.map((stop, stopIndex) => {
+                const stopBuses = busesByStopIndex.get(stopIndex) ?? [];
                 const hasBus = stopBuses.length > 0;
 
                 return (
@@ -1312,6 +1314,51 @@ function generateTimetable(firstBus: string, lastBus: string, interval: string):
     current += avg;
   }
   return times;
+}
+
+/**
+ * 시간표 각 칸의 "이미 지난 시각 / 다음 출발" 여부를 계산합니다.
+ *
+ * 시각을 그냥 분으로 바꿔 지금과 비교하면 자정을 넘겨 운행하는 노선에서
+ * 어긋난다. 막차가 "00:20"이면 그 값은 20분이라 새벽이 아닌 이상 늘 "아직
+ * 안 옴"으로 뜨고, 반대로 0시 10분에 열어보면 그날 낮의 모든 시각이 아직
+ * 안 온 것으로 보인다. 목록은 첫차부터 순서대로이므로, 시각이 앞 시각보다
+ * 크게 작아지는 지점을 자정으로 보고 24시간을 더해 하나의 연속된 시간축으로
+ * 편 뒤 비교한다.
+ *
+ * 단순히 "작아지면 자정"으로 보지 않고 12시간 이상 뒤로 뛴 경우만 자정으로
+ * 인정한다 — 원본 시간표가 정렬돼 있지 않을 때 그 뒤 전부가 다음 날로
+ * 밀리는 걸 막는다.
+ */
+function markSchedule(times: string[], nextWindowMin: number, now = new Date()) {
+  const DAY = 24 * 60;
+  let offset = 0;
+  let prev = -1;
+
+  const minutes = times.map((time) => {
+    const m = parseTimeToMinutes(time);
+    if (Number.isNaN(m)) return NaN;
+    if (prev !== -1 && prev - m > 12 * 60) offset += DAY;
+    prev = m;
+    return m + offset;
+  });
+
+  // 지금 시각도 같은 축에 올린다. 자정을 넘긴 운행이 있고 지금이 첫차보다
+  // 이르면, 지금은 어제 시작한 운행의 연장선(+24시간) 위에 있는 것이다.
+  const first = minutes.find((m) => !Number.isNaN(m));
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const nowOnAxis =
+    offset > 0 && first !== undefined && nowMin < first ? nowMin + DAY : nowMin;
+
+  return times.map((time, i) => {
+    const dep = minutes[i];
+    if (Number.isNaN(dep)) return { time, isPast: false, isNext: false };
+    return {
+      time,
+      isPast: dep < nowOnAxis,
+      isNext: dep >= nowOnAxis && dep <= nowOnAxis + nextWindowMin,
+    };
+  });
 }
 
 function DispatchScheduleModal({
@@ -1420,13 +1467,8 @@ function DispatchScheduleModal({
                 </span>
               </h3>
               <div className="grid grid-cols-4 gap-2">
-                {realSchedule.times.map((time, i) => {
-                  const now = new Date();
-                  const nowMin = now.getHours() * 60 + now.getMinutes();
-                  const parts = time.split(":");
-                  const depMin = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-                  const isPast = depMin < nowMin;
-                  const isNext = depMin >= nowMin && depMin <= nowMin + (intervalInfo?.min ?? 15);
+                {markSchedule(realSchedule.times, intervalInfo?.min ?? 15).map(
+                  ({ time, isPast, isNext }, i) => {
                   const cls = isNext
                     ? "bg-blue-600 text-white font-bold"
                     : isPast
@@ -1462,13 +1504,8 @@ function DispatchScheduleModal({
               </h3>
               {timetable.length > 0 ? (
                 <div className="grid grid-cols-4 gap-2">
-                  {timetable.map((time, i) => {
-                    const now = new Date();
-                    const nowMin = now.getHours() * 60 + now.getMinutes();
-                    const parts = time.split(":");
-                    const depMin = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-                    const isPast = depMin < nowMin;
-                    const isNext = depMin >= nowMin && depMin <= nowMin + (intervalInfo?.min ?? 15);
+                  {markSchedule(timetable, intervalInfo?.min ?? 15).map(
+                    ({ time, isPast, isNext }, i) => {
                     const cls = isNext
                       ? "bg-blue-600 text-white font-bold"
                       : isPast
