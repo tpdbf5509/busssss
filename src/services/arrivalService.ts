@@ -92,12 +92,31 @@ function enqueueArrivalRequest(run: () => Promise<ArrivalInfo | null>) {
  * 늦게 받을 이유가 없다. DB 조회로 바꿔서 네트워크 왕복을 없앤다
  * (fetchStopsForRoute 자체에 5분 캐시가 있어 반복 호출도 저렴하다).
  */
-export async function resolveNodeIdForRoute(stopName: string, routeId: string): Promise<string | null> {
+export async function resolveNodeIdForRoute(
+  stopName: string,
+  routeId: string,
+  knownNodeId?: string,
+): Promise<string | null> {
   const key = normalizeStopName(stopName);
   const appRouteId = stripCityPrefix(routeId);
-  if (!key || !appRouteId) return null;
+  if (!appRouteId) return null;
+  if (!key && !knownNodeId) return null;
 
   const stops = await fetchStopsForRoute(appRouteId).catch(() => []);
+
+  // 이미 저장된 nodeId가 이 노선에 실제로 있으면 그대로 둔다.
+  //
+  // 이름으로 다시 찾으면 안 되는 이유: 아래 find는 목록에서 이름이 처음
+  // 일치하는 정류장을 고르는데, 이 목록은 순번 순으로 정렬돼 있어 같은
+  // 이름이 여러 개인 노선에서는 "항상 순번이 빠른 쪽"이 걸린다. 예로 10번
+  // 추동은 순번 12(305100174)와 13(305100173)에 따로 있어서, 사용자가 고른
+  // 순번 13이 앱을 켤 때마다 순번 12로 조용히 바뀌었고 홈 화면에는 엉뚱한
+  // 정류장의 도착정보가 떴다. 사용자가 알아챌 방법이 없는 버그였다.
+  //
+  // 저장된 nodeId가 이 노선에 없을 때만(= 예전 도시 전체 이름 검색으로
+  // 잘못 저장된 값) 이름으로 다시 찾는 원래 보정을 그대로 수행한다.
+  if (knownNodeId && stops.some((s) => s.id === knownNodeId)) return knownNodeId;
+
   const matched = stops.find((s) => normalizeStopName(s.name) === key);
   return matched?.id ?? null;
 }

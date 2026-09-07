@@ -18,6 +18,29 @@ import { parseInterval, parseTimeToMinutes } from "@/lib/interval";
 import { getRouteCategory, isMainRoute } from "@/lib/routeCategory";
 import { normalizeStopName } from "@/lib/stopPosition";
 
+/**
+ * 이 즐겨찾기가 "바로 이 정류장"인지 판정한다.
+ *
+ * 정류장명으로 비교하면 안 된다. 한 노선 안에 같은 이름의 서로 다른
+ * 정류장(다른 node_id)을 갖는 노선이 운영 DB 기준 454개 중 142개(31%,
+ * 524개 이름 그룹 / 1,050개 정류장)나 된다. 예로 10번은 "추동"이 순번
+ * 12(305100174)와 13(305100173)에 따로 있는데, 이름만 비교하면 둘이 같은
+ * 정류장이 돼 한쪽을 즐겨찾기하면 양쪽 별이 같이 켜지고, 다른 쪽을 누르면
+ * 추가가 아니라 기존 즐겨찾기가 삭제돼 둘을 동시에 담을 방법이 없었다.
+ * 정류장 상세 화면도 같은 문제였다 — 도시 전체 정류장 2,587개 중
+ * 2,288개(88%)가 다른 정류장과 이름을 공유한다.
+ *
+ * nodeId는 (노선, 정류장) 조합에서 중복이 0건이라 안전한 키다. 저장되는
+ * 즐겨찾기는 이미 nodeId까지 갖고 있었고 비교만 이름으로 하고 있었다.
+ *
+ * tagoNodeId가 없는 건 이 필드가 생기기 전에 저장된 옛 즐겨찾기뿐이라,
+ * 그 경우에만 예전처럼 이름으로 비교한다.
+ */
+function isSameStop(favorite: Favorite, nodeId: string, stopName: string): boolean {
+  return favorite.tagoNodeId
+    ? favorite.tagoNodeId === nodeId
+    : favorite.stopName === stopName;
+}
 
 export function BusScreen({
   initialRouteId,
@@ -596,7 +619,7 @@ function StationDetail({
       (f) =>
         f.type === "stop_route" &&
         f.tagoRouteId === sr.routeId &&
-        f.stopName === station.name
+        isSameStop(f, station.id, station.name)
     );
 
 // 전체 경유노선 즐겨찾기 여부
@@ -605,18 +628,19 @@ const isAllRouteFavorited = (route: Route) =>
     (f) =>
       f.type === "stop_route" &&
       f.appRouteId === route.id &&
-      f.stopName === station.name
+      isSameStop(f, station.id, station.name)
   );
 
   // 실시간 노선 즐겨찾기
   const handleRouteClick = async (sr: StationRoute) => {
     // 중복 판정도 번호가 아니라 방향별 고유 ID로 한다. 번호로 비교하면
     // 반대 방향을 추가하려 할 때 기존 즐겨찾기를 "이미 있다"고 보고 지워버린다.
+    // 정류장도 같은 이유로 이름이 아니라 nodeId로 본다(isSameStop 참고).
     const existing = state.favorites.find(
       (f) =>
         f.type === "stop_route" &&
         f.tagoRouteId === sr.routeId &&
-        f.stopName === station.name
+        isSameStop(f, station.id, station.name)
     );
 
     if (existing) {
@@ -671,7 +695,7 @@ const isAllRouteFavorited = (route: Route) =>
       (f) =>
         f.type === "stop_route" &&
         f.appRouteId === route.id &&
-        f.stopName === station.name
+        isSameStop(f, station.id, station.name)
     );
 
     if (existing) {
@@ -1029,18 +1053,22 @@ function RouteDetail({ route, onBack }: { route: Route; onBack: () => void }) {
   }, [buses]);
     const [addingStopId, setAddingStopId] = useState<string | null>(null);
 
-const isArrivalFavorited = (stopName: string) =>
+const isArrivalFavorited = (stop: BusStop) =>
   state.favorites.some(
     (f) => f.type === "stop_route" &&
     f.appRouteId === route.id &&
-    f.stopName === stopName
+    isSameStop(f, stop.id, stop.name)
   );
 
 const handleStopClick = async (stop: BusStop) => {
-  // 바로 위 isArrivalFavorited와 같은 기준(appRouteId)으로 찾아야 한다.
-  // routeNumber로 찾으면 같은 번호의 반대 방향 즐겨찾기를 지워버린다.
+  // 바로 위 isArrivalFavorited와 같은 기준(appRouteId + nodeId)으로 찾아야 한다.
+  // routeNumber로 찾으면 같은 번호의 반대 방향 즐겨찾기를 지워버리고,
+  // 정류장을 이름으로 찾으면 같은 이름의 다른 정류장을 지워버린다.
   const existing = state.favorites.find(
-    (f) => f.type === "stop_route" && f.appRouteId === route.id && f.stopName === stop.name
+    (f) =>
+      f.type === "stop_route" &&
+      f.appRouteId === route.id &&
+      isSameStop(f, stop.id, stop.name)
   );
   if (existing) {
     dispatch({ type: "REMOVE_FAVORITE", id: existing.id });
@@ -1243,7 +1271,7 @@ const handleStopClick = async (stop: BusStop) => {
                       ) : (
                         <Star
                           className={`w-4 h-4 shrink-0 transition-colors ${
-                            isArrivalFavorited(stop.name)
+                            isArrivalFavorited(stop)
                               ? "text-amber-400 fill-amber-400"
                               : "text-slate-300"
                           }`}
