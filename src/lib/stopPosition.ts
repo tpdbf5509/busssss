@@ -37,7 +37,7 @@ export interface BusPositionResolution {
   /** 정류장 목록에서의 위치. -1이면 환산 실패. */
   index: number;
   /** 무엇을 근거로 환산했는지 (신뢰도 판단·로깅용). */
-  resolvedBy: "nodeId" | "name" | "order" | "none";
+  resolvedBy: "nodeId" | "name" | "name+order" | "order" | "none";
 }
 
 /**
@@ -52,13 +52,21 @@ export interface BusPositionResolution {
  *   노선상세는 정확한 정류장에 배지를 그리는데 "N정거장 전" 계산은 엉뚱한
  *   위치로 새는 불일치가 있었다. 이름 매칭을 여기도 추가해 두 계산을
  *   같은 근거로 맞춘다.
+ *
+ *   단, 이름은 한 노선 안에서 고유하지 않다 — 운영 DB 기준 454개 노선 중
+ *   142개(31%)가 같은 이름의 서로 다른 정류장을 갖는다(예: 10번의 "추동"이
+ *   순번 12·13에 각각). 예전에는 그중 목록에서 먼저 나오는(=순번이 빠른)
+ *   정류장을 무조건 골랐고, 그래서 버스가 실제로는 순번 13에 있어도 순번
+ *   12에 있는 것으로 계산돼 "N정거장 전"이 통째로 어긋났다. 후보가 여럿이면
+ *   GW의 nodeOrder에 가장 가까운 정류장을 고르고(`name+order`), nodeOrder마저
+ *   없으면 근거가 없는 것이므로 찍지 않고 환산 실패로 둔다.
  * 3순위 — GW의 `nodeOrder`를 sequence_no로 보고, 그 값을 넘지 않는 마지막
  *   정류장으로 환산한다. 순번에 구멍이 있어도 "버스가 이미 지난 마지막
  *   정류장"으로 해석되므로 알림이 너무 늦게 울리는 쪽으로는 치우치지 않는다.
  *
- * 3순위로 내려간 경우 `resolvedBy: "order"`가 되며, 이는 두 데이터 소스의
- * 순번 체계가 같다는 검증되지 않은 가정에 의존한 결과다. 호출부에서 로그를
- * 남겨 실제 운영 데이터로 이 가정을 확인할 수 있게 한다.
+ * `resolvedBy`가 "order"이거나 "name+order"이면 두 데이터 소스의 순번 체계가
+ * 같다는 검증되지 않은 가정에 의존한 결과다. 호출부에서 로그를 남겨 실제
+ * 운영 데이터로 이 가정을 확인할 수 있게 한다.
  */
 export function resolveBusStopIndex(
   stops: BusStop[],
@@ -71,15 +79,36 @@ export function resolveBusStopIndex(
     if (byId !== -1) return { index: byId, resolvedBy: "nodeId" };
   }
 
+  const hasOrder = Number.isFinite(nodeOrder) && nodeOrder > 0;
+
   if (nodeName) {
     const key = normalizeStopName(nodeName);
     if (key) {
-      const byName = stops.findIndex((stop) => normalizeStopName(stop.name) === key);
-      if (byName !== -1) return { index: byName, resolvedBy: "name" };
+      const matches: number[] = [];
+      for (let i = 0; i < stops.length; i += 1) {
+        if (normalizeStopName(stops[i].name) === key) matches.push(i);
+      }
+
+      if (matches.length === 1) return { index: matches[0], resolvedBy: "name" };
+
+      if (matches.length > 1 && hasOrder) {
+        // 같은 이름 후보 중 GW 순번에 가장 가까운 정류장. 동점이면 앞선 쪽.
+        let best = matches[0];
+        for (const i of matches) {
+          const closer =
+            Math.abs(stops[i].order - nodeOrder) < Math.abs(stops[best].order - nodeOrder);
+          if (closer) best = i;
+        }
+        return { index: best, resolvedBy: "name+order" };
+      }
+
+      // 후보가 여럿인데 nodeOrder도 없으면 어느 쪽인지 알 방법이 없다.
+      // 아래 순번 폴백도 nodeOrder가 없어 실패하므로 그대로 흘려보내
+      // 환산 실패(-1)로 끝난다 — 틀린 위치를 찍는 것보다 낫다.
     }
   }
 
-  if (Number.isFinite(nodeOrder) && nodeOrder > 0) {
+  if (hasOrder) {
     // stops는 order 오름차순이라, order가 nodeOrder를 넘는 순간 멈춰도 된다.
     let candidate = -1;
     for (let i = 0; i < stops.length; i += 1) {

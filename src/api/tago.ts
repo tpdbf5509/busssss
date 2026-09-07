@@ -105,10 +105,15 @@ export async function getSttnAcctoArvlPrearngeInfoList(
   // 특히 전주 104번처럼 방향별 routeId가 서로 다른 노선에서 안정성이 높습니다.
   void routeId;
 
+  // numOfRows는 10이 아니라 50이다. 이 응답 한 번으로 그 정류장의 모든 노선
+  // 도착정보를 만들기 때문에(arrivalService/stationService가 routeId로 골라
+  // 쓴다), 10으로 자르면 노선이 많이 몰리는 정류장(전주역·고속버스터미널 등)
+  // 에서 뒤로 밀린 노선이 "도착정보 없음"으로 보인다. 실제로는 버스가 오고
+  // 있는데도 화면에서 사라지는 셈이라, 잘림이 생기지 않을 만큼 넉넉히 받는다.
   return callTagoApi("/ArvlInfoInqireService/getSttnAcctoArvlPrearngeInfoList", {
     cityCode,
     nodeId,
-    numOfRows: "10",
+    numOfRows: "50",
     pageNo: "1",
   });
 }

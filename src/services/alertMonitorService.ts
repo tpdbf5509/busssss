@@ -247,57 +247,70 @@ export async function checkDropoffAlerts(
         );
         if (busIndex === -1) continue;
 
-        if (resolvedBy === "order") {
+        if (resolvedBy === "order" || resolvedBy === "name+order") {
           // GW가 정류장 ID를 안 줘서 순번 체계가 같다는 가정에 의존한 경우다.
+          // ("name+order"는 이름이 같은 정류장이 여럿이라 순번으로 가려낸 경우)
           // 실제 운영 데이터로 이 가정을 확인할 수 있게 흔적을 남긴다.
           console.debug(
             `[alertMonitorService] 버스 ${bus.vehicleNo} 위치를 nodeOrder(${bus.nodeOrder})로 환산했습니다 ` +
-              `(정류장 ID 없음 → ${stops[busIndex].name}).`,
+              `(${resolvedBy}, 정류장 ID 없음 → ${stops[busIndex].name}).`,
           );
         }
 
-        // 상한(< targetIndex)을 두면 폴링 사이에 버스가 구간을 통째로
-        // 지나쳐버렸을 때 알림이 영원히 안 울린다. 하한만 확인하고, 같은
-        // 날 같은 차량에 대한 중복 발송은 아래 fired 키로 막는다.
-        if (busIndex >= triggerIndex) {
-          const key = `${today}_${alert.id}_${bus.vehicleNo}`;
-          if (fired.has(key)) continue;
+        const key = `${today}_${alert.id}_${bus.vehicleNo}`;
 
-          fired.add(key);
-
-          // 폴링 사이에 버스가 목표 정류장까지 통째로 지나쳤으면 stopsRemaining이
-          // 0 이하가 된다. 그대로 표시하면 "약 -2정거장"처럼 나오므로 문구를 분기한다.
-          const stopsRemaining = targetIndex - busIndex;
-          const title = "하차 알람";
-          const body =
-            stopsRemaining > 0
-              ? `${alert.routeName} · ${bus.nodeName} 부근\n${alert.targetStation} 하차까지 약 ${stopsRemaining}정거장`
-              : `${alert.routeName} · ${bus.nodeName} 부근\n${alert.targetStation} 정류장에 이미 도착했거나 지나쳤을 수 있어요`;
-
-          if (alert.sound) startDropoffAlarm(title, body);
-          if (alert.vibrate) vibrate();
-          await showBrowserNotification(title, body);
-
-          const record: AlertRecord = {
-            id: `ar_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-            title,
-            // 팝업(body)과 같은 값을 쓴다. 설정값(stopsBefore)을 그대로 저장하면
-            // 나중에 기록을 봤을 때 실제 울린 시점과 숫자가 어긋난다.
-            body:
-              stopsRemaining > 0
-                ? `${alert.routeName} 버스가 ${alert.targetStation} 정류장에 ${stopsRemaining}정거장 전입니다. (${bus.nodeName})`
-                : `${alert.routeName} 버스가 ${alert.targetStation} 정류장에 이미 도착했거나 지나쳤을 수 있어요. (${bus.nodeName})`,
-            time: new Date().toLocaleString("ko-KR", {
-              month: "numeric",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-            read: false,
-            type: "dropoff",
-          };
-          newRecords.push(record);
+        // 이 차량이 아직 트리거 구간 앞에 있으면 발송 기록을 푼다.
+        //
+        // 버스는 하루에 같은 노선을 여러 번 운행한다. 날짜+알림+차량번호만으로
+        // 막으면, 오전에 한 번 울린 뒤 같은 차량이 오후에 같은 구간을 다시
+        // 지나가도 두 번째는 조용히 무시됐다 — 매일 켜두는 출퇴근 알림이
+        // 전제인데 하루 두 번째 탑승에서 알림이 안 오는 셈이었다.
+        // "구간 앞으로 돌아왔다 = 다음 운행이 시작됐다"로 보고 다시 무장한다.
+        if (busIndex < triggerIndex) {
+          fired.delete(key);
+          continue;
         }
+
+        // 여기부터는 버스가 트리거 구간 안에 들어온 경우다. 상한
+        // (< targetIndex)은 두지 않는다 — 두면 폴링 사이에 버스가 구간을
+        // 통째로 지나쳐버렸을 때 알림이 영원히 안 울린다. 한 번의 접근에
+        // 대한 중복 발송은 위 fired 키가 막는다.
+        if (fired.has(key)) continue;
+
+        fired.add(key);
+
+        // 폴링 사이에 버스가 목표 정류장까지 통째로 지나쳤으면 stopsRemaining이
+        // 0 이하가 된다. 그대로 표시하면 "약 -2정거장"처럼 나오므로 문구를 분기한다.
+        const stopsRemaining = targetIndex - busIndex;
+        const title = "하차 알람";
+        const body =
+          stopsRemaining > 0
+            ? `${alert.routeName} · ${bus.nodeName} 부근\n${alert.targetStation} 하차까지 약 ${stopsRemaining}정거장`
+            : `${alert.routeName} · ${bus.nodeName} 부근\n${alert.targetStation} 정류장에 이미 도착했거나 지나쳤을 수 있어요`;
+
+        if (alert.sound) startDropoffAlarm(title, body);
+        if (alert.vibrate) vibrate();
+        await showBrowserNotification(title, body);
+
+        const record: AlertRecord = {
+          id: `ar_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          title,
+          // 팝업(body)과 같은 값을 쓴다. 설정값(stopsBefore)을 그대로 저장하면
+          // 나중에 기록을 봤을 때 실제 울린 시점과 숫자가 어긋난다.
+          body:
+            stopsRemaining > 0
+              ? `${alert.routeName} 버스가 ${alert.targetStation} 정류장에 ${stopsRemaining}정거장 전입니다. (${bus.nodeName})`
+              : `${alert.routeName} 버스가 ${alert.targetStation} 정류장에 이미 도착했거나 지나쳤을 수 있어요. (${bus.nodeName})`,
+          time: new Date().toLocaleString("ko-KR", {
+            month: "numeric",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          read: false,
+          type: "dropoff",
+        };
+        newRecords.push(record);
       }
     }
   }

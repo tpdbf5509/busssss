@@ -228,7 +228,14 @@ export async function fetchStopsForRoute(
 ): Promise<BusStop[]> {
   let routeId: string;
   if (typeof routeOrId === "string") {
-    const fromCache = routesCache?.find((r) => r.id === routeOrId);
+    // 방향 보정(BRT_STDID_OVERRIDES)을 적용하려면 노선 정보가 필요하다.
+    // 예전에는 메모리 캐시만 봤는데, 앱 시작 직후 즐겨찾기 자동 보정처럼
+    // fetchAllRoutes()가 끝나기 전에 이 함수를 부르는 경로에서는 캐시가 비어
+    // 있어 보정이 통째로 빠졌다(104번이 반대 방향 정류장 목록을 받는 문제).
+    // 캐시가 없으면 노선 목록을 기다렸다 쓰되, 조회가 실패하면 보정 없이
+    // 진행해 기존 동작을 유지한다.
+    const routes = routesCache ?? (await fetchAllRoutes().catch(() => null));
+    const fromCache = routes?.find((r) => r.id === routeOrId);
     routeId = fromCache ? resolveJeonjuBrtStdid(fromCache) : routeOrId;
   } else {
     routeId = resolveJeonjuBrtStdid(routeOrId);
