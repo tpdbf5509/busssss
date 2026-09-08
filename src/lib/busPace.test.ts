@@ -23,8 +23,10 @@ describe("busPace — 실측 속도 학습", () => {
     recordBusPosition("R1", "전주70자1234", 5, 0);
     recordBusPosition("R1", "전주70자1234", 6, 90_000); // 90초에 1정거장
     expect(getSecondsPerStop("R1", 90_000)).toBe(90);
-    // 3정거장 남았으면 90 * 3 = 270초 = 4.5분 → 5분(반올림)
-    expect(estimateMinutesAway("R1", 3, 90_000)).toBe(5);
+    // 3정거장 남았으면 90 * 3 = 270초 = 4.5분 → 4분.
+    // 올려 말하면 그 시간을 믿은 사용자가 버스를 놓치므로 내림이다
+    // (formatArrival의 arrivalMinutesFromSeconds 참고).
+    expect(estimateMinutesAway("R1", 3, 90_000)).toBe(4);
   });
 
   it("여러 정거장을 한 번에 지났으면 정거장 수로 나눈다", () => {

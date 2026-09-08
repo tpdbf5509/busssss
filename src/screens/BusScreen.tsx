@@ -9,6 +9,7 @@ import type { Route, BusStop } from "@/types/route";
 import type { Favorite } from "@/types";
 import { LoadingSkeleton, ErrorState, EmptyState, ReliabilityTag } from "@/components/ui";
 import type { ReliabilityState } from "@/lib/reliability";
+import { arrivalMinutesFromSeconds } from "@/lib/formatArrival";
 import { showToast } from "@/lib/toastStore";
 import type { Station } from "@/types/route";
 import { MapPin } from "lucide-react";
@@ -446,7 +447,7 @@ function StationRouteCard({
   onSelect: () => void;
   onToggleFavorite: () => void;
 }) {
-  const minutes = sr.arrtime != null ? Math.max(0, Math.round(sr.arrtime / 60)) : null;
+  const minutes = sr.arrtime != null ? arrivalMinutesFromSeconds(sr.arrtime) : null;
   // 시간을 믿을 수 없어 버린 경우에도(arrivalPlausibility 검증) 남은 정거장
   // 수는 GPS 실측이라 그대로 알린다. "도착정보 없음"으로 뭉뚱그리면 버스가
   // 코앞에 온 것도 모르게 된다.

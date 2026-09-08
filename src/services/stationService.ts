@@ -5,6 +5,7 @@ import { findNearestApproachingBus } from "@/services/busLocationService";
 import { getRouteCategory, type RouteCategory } from "@/lib/routeCategory";
 import { isArrivalTimePlausible } from "@/lib/arrivalPlausibility";
 import { estimateMinutesAway } from "@/lib/busPace";
+import { arrivalMinutesFromSeconds } from "@/lib/formatArrival";
 import type { Station } from "@/types/route";
 
 function mapToStation(raw: Record<string, string>): Station {
@@ -139,7 +140,8 @@ export async function fetchRoutesForStation(nodeId: string): Promise<StationRout
 
       // 1순위 — TAGO 예측(차량별로 따로 나온다). 단 GPS 정거장 수와 앞뒤가
       // 안 맞으면("1정거장 전"인데 "14분") 같은 버스의 값이 아니므로 버린다.
-      const tagoMinutes = existing.arrtime != null ? Math.round(existing.arrtime / 60) : null;
+      const tagoMinutes =
+        existing.arrtime != null ? arrivalMinutesFromSeconds(existing.arrtime) : null;
       const usableTago =
         tagoMinutes != null && isArrivalTimePlausible(tagoMinutes, stopsAway)
           ? existing.arrtime

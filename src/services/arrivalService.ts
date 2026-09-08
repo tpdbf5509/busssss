@@ -5,6 +5,7 @@ import { stripCityPrefix, toTagoNodeId } from "@/services/stationService";
 import { normalizeStopName } from "@/lib/stopPosition";
 import { isArrivalTimePlausible } from "@/lib/arrivalPlausibility";
 import { estimateMinutesAway } from "@/lib/busPace";
+import { arrivalMinutesFromSeconds } from "@/lib/formatArrival";
 import type { Route } from "@/types/route";
 
 export interface ArrivalInfo {
@@ -227,7 +228,7 @@ function pickNearestArrival(
   const nearest = parsed[0];
 
   return {
-    minutes: Math.max(0, Math.round(nearest.arrtimeSec / 60)),
+    minutes: arrivalMinutesFromSeconds(nearest.arrtimeSec),
     stopsAway: nearest.stopsAway,
   };
 }

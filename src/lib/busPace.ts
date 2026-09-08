@@ -17,6 +17,8 @@
  * 앱을 닫으면 사라진다. 그때는 호출부가 기존 TAGO 예측으로 폴백한다.
  */
 
+import { arrivalMinutesFromSeconds } from "@/lib/formatArrival";
+
 /** 정거장당 소요 시간으로 인정할 범위(초). 벗어나면 관측 자체를 버린다. */
 const MIN_SECONDS_PER_STOP = 20;
 /**
@@ -117,7 +119,7 @@ export function estimateMinutesAway(
   const secondsPerStop = getSecondsPerStop(routeId, now);
   if (secondsPerStop == null) return null;
   if (!Number.isFinite(stopsAway) || stopsAway < 0) return null;
-  return Math.max(0, Math.round((secondsPerStop * stopsAway) / 60));
+  return arrivalMinutesFromSeconds(secondsPerStop * stopsAway);
 }
 
 /** 테스트용 초기화. */
