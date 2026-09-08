@@ -41,6 +41,25 @@ export function stripCityPrefix(id: string): string {
 }
 
 /**
+ * 우리 DB의 정류장 ID를 TAGO가 아는 형태로 바꾼다.
+ *
+ * TAGO는 정류장을 "JUB" + 우리 node_id로 부른다(노선ID가 `JUB${route.id}`인
+ * 것과 같은 규칙). 그런데 도착정보 조회에 우리 DB 값(예: "305100650")을 그대로
+ * 넘기고 있었고, TAGO는 모르는 정류장에 대해 오류 대신 빈 목록을 돌려주기
+ * 때문에 "도착 예정 버스가 없다"와 구분이 안 됐다. 실측으로 확인한 차이:
+ *
+ *   nodeId=305100650      → totalCount 0
+ *   nodeId=JUB305100650   → totalCount 5 (165번 333초 후, 7정거장 전)
+ *
+ * 그래서 도착 시간이 안 뜨거나 "정보 없음"으로 보이는 문제가 있었다.
+ * 이미 접두사가 붙은 값이 들어와도 두 번 붙지 않도록 항상 벗겨낸 뒤 붙인다.
+ */
+export function toTagoNodeId(nodeId: string): string {
+  const bare = stripCityPrefix(nodeId);
+  return bare ? `JUB${bare}` : "";
+}
+
+/**
  * 이 정류장을 경유하는 노선 목록을 반환합니다.
  *
  * 예전에는 TAGO 실시간 도착정보 응답에서 노선 목록을 역으로 추출했습니다.
@@ -57,7 +76,8 @@ export async function fetchRoutesForStation(nodeId: string): Promise<StationRout
 
   const [staticRoutes, arrivalItems] = await Promise.all([
     fetchRoutesForStop(jeonjuNodeId),
-    getSttnAcctoArvlPrearngeInfoList(nodeId).catch(() => []),
+    // TAGO는 "JUB" 접두사가 붙은 정류장 ID만 안다(toTagoNodeId 참고).
+    getSttnAcctoArvlPrearngeInfoList(toTagoNodeId(nodeId)).catch(() => []),
   ]);
 
   // TAGO의 routeid("JUB<brtStdid>")는 접두사만 다를 뿐 우리 앱의

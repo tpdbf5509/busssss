@@ -34,6 +34,30 @@ beforeEach(() => {
   findNearestApproachingBus.mockReset();
 });
 
+describe("TAGO 정류장 ID 형식 (회귀)", () => {
+  it('TAGO에는 "JUB" 접두사를 붙여서 조회한다', async () => {
+    // 우리 DB 값(305100650)을 그대로 넘기면 TAGO가 오류 대신 빈 목록을
+    // 돌려줘 "도착 예정 버스 없음"과 구분이 안 됐다. 실측 확인:
+    //   305100650    → totalCount 0
+    //   JUB305100650 → totalCount 5 (165번 333초 후, 7정거장 전)
+    getSttnAcctoArvlPrearngeInfoList.mockResolvedValue([]);
+    findNearestApproachingBus.mockResolvedValue({ hasLiveData: false, bus: null });
+
+    await fetchArrivalInfo(NODE, ROUTE_ID, "75", undefined, route75);
+
+    expect(getSttnAcctoArvlPrearngeInfoList).toHaveBeenCalledWith("JUB305100650");
+  });
+
+  it("이미 접두사가 붙어 있으면 두 번 붙이지 않는다", async () => {
+    getSttnAcctoArvlPrearngeInfoList.mockResolvedValue([]);
+    findNearestApproachingBus.mockResolvedValue({ hasLiveData: false, bus: null });
+
+    await fetchArrivalInfo(`JUB${NODE}`, ROUTE_ID, "75", undefined, route75);
+
+    expect(getSttnAcctoArvlPrearngeInfoList).toHaveBeenCalledWith("JUB305100650");
+  });
+});
+
 describe("fetchArrivalInfo — TAGO에 없는 버스 (회귀)", () => {
   it("TAGO 예측이 없어도 GPS로 다가오는 버스가 보이면 정거장 수를 알려준다", async () => {
     // TAGO 도착예정 목록에는 어느 정도 가까워진 버스만 올라온다. 버스가 순번
