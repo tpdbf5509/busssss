@@ -73,6 +73,30 @@ export function MyScreen() {
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>(
     () => ("Notification" in window ? Notification.permission : "denied")
   );
+  /**
+   * 로그인 관문을 걷어낸 뒤로(App.tsx 참고) 대부분의 사용자는 계정이 없다.
+   * 그런 사용자에게 로그아웃 메뉴를 보여주면 누를 수는 있는데 아무 일도
+   * 일어나지 않아 혼란스럽다. 예전에 로그인해 둔 사용자만 보이게 한다.
+   * getSession()은 저장된 세션을 읽기만 해서 네트워크를 타지 않는다.
+   */
+  const [hasSession, setHasSession] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!cancelled) setHasSession(Boolean(data.session));
+      })
+      .catch((err) => {
+        // 세션을 못 읽으면 메뉴를 숨긴 채로 둔다. 로그아웃은 계정이 있는
+        // 사용자를 위한 부가 기능이라 실패해도 앱 사용에는 지장이 없다.
+        console.debug("[MyScreen] 세션 확인 실패:", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     applySettings(settings);
@@ -123,6 +147,7 @@ export function MyScreen() {
       showToast("로그아웃에 실패했어요");
       return;
     }
+    setHasSession(false);
     showToast("로그아웃되었어요");
   };
 
@@ -387,13 +412,15 @@ export function MyScreen() {
               </>
             )}
 
-            <SettingRow
-              icon={LogOut}
-              label="로그아웃"
-              danger
-              onClick={() => setLogoutConfirmOpen(true)}
-              last
-            />
+            {hasSession && (
+              <SettingRow
+                icon={LogOut}
+                label="로그아웃"
+                danger
+                onClick={() => setLogoutConfirmOpen(true)}
+                last
+              />
+            )}
           </div>
         </div>
       )}
