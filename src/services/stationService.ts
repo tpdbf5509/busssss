@@ -137,16 +137,19 @@ export async function fetchRoutesForStation(nodeId: string): Promise<StationRout
       // 한쪽만 다르게 하면 같은 버스가 화면마다 다른 시간을 보여준다.
       const stopsAway = gps.bus.stopsAway;
 
-      // 1순위 — 실측 속도로 계산한 시간(busPace).
-      const measured = estimateMinutesAway(routeId, stopsAway);
-      // 2순위 — TAGO 예측. 단 GPS 정거장 수와 앞뒤가 안 맞으면
-      // ("1정거장 전"인데 "14분") 같은 버스의 값이 아니므로 버린다.
+      // 1순위 — TAGO 예측(차량별로 따로 나온다). 단 GPS 정거장 수와 앞뒤가
+      // 안 맞으면("1정거장 전"인데 "14분") 같은 버스의 값이 아니므로 버린다.
       const tagoMinutes = existing.arrtime != null ? Math.round(existing.arrtime / 60) : null;
-      const fallback = isArrivalTimePlausible(tagoMinutes, stopsAway) ? existing.arrtime : undefined;
+      const usableTago =
+        tagoMinutes != null && isArrivalTimePlausible(tagoMinutes, stopsAway)
+          ? existing.arrtime
+          : undefined;
+      // 2순위 — TAGO에 시간이 없거나 못 믿을 때만 실측 속도(busPace).
+      const measured = usableTago == null ? estimateMinutesAway(routeId, stopsAway) : null;
 
       arrivalByRouteId.set(routeId, {
         ...existing,
-        arrtime: measured != null ? measured * 60 : fallback,
+        arrtime: usableTago ?? (measured != null ? measured * 60 : undefined),
         arrprevstationcnt: stopsAway,
       });
     }

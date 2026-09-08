@@ -58,6 +58,49 @@ describe("TAGO 정류장 ID 형식 (회귀)", () => {
   });
 });
 
+describe("시간 출처 우선순위", () => {
+  it("TAGO 예측이 쓸 만하면 실측 평균(busPace)보다 우선한다", async () => {
+    // busPace는 노선당 평균 하나뿐이라 정거장이 많아질수록 오차가 곱해진다.
+    // TAGO는 차량별로 예측하므로 그쪽을 먼저 쓴다.
+    const { recordBusPosition } = await import("@/lib/busPace");
+    const t0 = Date.now();
+    recordBusPosition(route75.id, "차", 1, t0);
+    recordBusPosition(route75.id, "차", 2, t0 + 120_000); // 120초/정거장 학습
+
+    getSttnAcctoArvlPrearngeInfoList.mockResolvedValue([
+      { routeid: ROUTE_ID, arrtime: "240", arrprevstationcnt: "3" }, // 4분
+    ]);
+    findNearestApproachingBus.mockResolvedValue({
+      hasLiveData: true,
+      bus: { stopsAway: 3, vehicleNo: "전주1309" },
+    });
+
+    const info = await fetchArrivalInfo(NODE, ROUTE_ID, "75", undefined, route75);
+
+    // busPace로는 120초 × 3정거장 = 6분이지만, TAGO의 4분을 쓴다.
+    expect(info?.minutes).toBe(4);
+    expect(info?.stopsAway).toBe(3);
+  });
+
+  it("TAGO에 시간이 없으면 실측 평균으로 채운다", async () => {
+    const { recordBusPosition } = await import("@/lib/busPace");
+    const t0 = Date.now();
+    recordBusPosition(route75.id, "차", 1, t0);
+    recordBusPosition(route75.id, "차", 2, t0 + 120_000);
+
+    getSttnAcctoArvlPrearngeInfoList.mockResolvedValue([]); // TAGO 무응답
+    findNearestApproachingBus.mockResolvedValue({
+      hasLiveData: true,
+      bus: { stopsAway: 3, vehicleNo: "전주1309" },
+    });
+
+    const info = await fetchArrivalInfo(NODE, ROUTE_ID, "75", undefined, route75);
+
+    expect(info?.minutes).toBe(6); // 120초 × 3정거장
+    expect(info?.stopsAway).toBe(3);
+  });
+});
+
 describe("fetchArrivalInfo — TAGO에 없는 버스 (회귀)", () => {
   it("TAGO 예측이 없어도 GPS로 다가오는 버스가 보이면 정거장 수를 알려준다", async () => {
     // TAGO 도착예정 목록에는 어느 정도 가까워진 버스만 올라온다. 버스가 순번

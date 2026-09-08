@@ -304,26 +304,37 @@ export async function fetchArrivalInfo(
 
       const stopsAway = gps.bus.stopsAway;
 
-      // 1순위 — 이 노선에서 실제로 관측된 속도로 계산한 시간(busPace).
-      // TAGO 예측과 달리 지금 이 노선이 실제로 얼마나 빨리 움직이는지를
-      // 반영하므로, 근거가 있으면 이쪽을 쓴다.
-      const measured = estimateMinutesAway(route.id, stopsAway);
-      if (measured != null) return { minutes: measured, stopsAway };
-
-      // 2순위 — 아직 속도를 못 쟀으면(같은 차량을 두 번 봐야 한다) TAGO 예측.
+      // 1순위 — TAGO의 도착 예정 시간.
+      //
+      // TAGO는 버스 한 대 한 대에 대해 따로 예측을 내놓는다. 같은 정류장에서
+      // 실측한 예: 104번 193초/3정거장(64초/정거장), 2001번 683초/10정거장
+      // (68초/정거장), 3-2번 921초/14정거장(66초/정거장) — 차량과 구간에 따라
+      // 값이 달라진다. 아래 busPace는 노선당 평균 하나뿐이라 이 차이를 담지
+      // 못하고, 정거장 수가 많아질수록 오차가 그대로 곱해진다(제보 사례:
+      // 우리 5정거장 10분 = 120초/정거장인데 실제·타 앱은 80~90초/정거장).
+      //
+      // 예전에는 busPace를 1순위로 뒀는데, 그건 TAGO 정류장 ID에 "JUB"
+      // 접두사를 안 붙여 도착정보가 늘 비어 있던 때의 판단이었다
+      // (stationService.toTagoNodeId 참고). 접두사를 고친 뒤로는 TAGO가
+      // 차량별 예측을 정상적으로 내려주므로 그쪽이 더 정확하다.
+      //
       // 단 시간(TAGO)과 정거장 수(GPS)는 출처가 달라 같은 버스의 값이라는
       // 보장이 없다. TAGO 목록에 코앞의 버스가 빠져 있으면 그 다음 버스의
       // 예측 시간에 앞 버스의 정거장 수가 붙어 "14분 후 · 1정거장" 같은
-      // 조합이 나온다(실측 도착은 2분). 앞뒤가 안 맞으면 실측 기반인
-      // 정거장 수만 남기고 시간은 버린다 — arrivalPlausibility 참고.
-      //
-      // TAGO에 아직 안 잡힌 버스면 시간 없이 정거장 수만 남는다("24정거장").
-      const minutes =
-        tagoInfo != null && isArrivalTimePlausible(tagoInfo.minutes, stopsAway)
-          ? tagoInfo.minutes
-          : null;
+      // 조합이 나온다(실측 도착은 2분). 앞뒤가 맞을 때만 쓴다
+      // — arrivalPlausibility 참고.
+      if (tagoInfo?.minutes != null && isArrivalTimePlausible(tagoInfo.minutes, stopsAway)) {
+        return { minutes: tagoInfo.minutes, stopsAway };
+      }
 
-      return { minutes, stopsAway };
+      // 2순위 — TAGO에 이 버스의 시간이 없거나 정거장 수와 앞뒤가 안 맞으면,
+      // 이 노선에서 실제로 관측된 속도로 계산한다(busPace). GPS에는 보이는데
+      // TAGO가 아직 안 잡은 버스가 여기 해당한다.
+      const measured = estimateMinutesAway(route.id, stopsAway);
+      if (measured != null) return { minutes: measured, stopsAway };
+
+      // 3순위 — 근거가 없으면 시간 없이 정거장 수만 남긴다("5정거장").
+      return { minutes: null, stopsAway };
     } catch (error) {
       console.warn("[BUS STOP] Arrival request failed; keeping previous value", {
         nodeId,
