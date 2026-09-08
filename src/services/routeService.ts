@@ -201,13 +201,24 @@ export async function fetchRoutesForStop(nodeId: string): Promise<Route[]> {
 }
 
 /**
- * 전주시 GW가 내려주는 brtStdid가 실제 방향과 어긋나는 일부 노선 보정.
+ * 전주시 GW가 내려주는 brtStdid가 실제 방향과 어긋나는 노선의 예외 표.
  * 실시간 위치 조회뿐 아니라 정류장(실제 노선) 조회에도 동일하게 적용합니다.
  * 키: "노선번호|기점|종점"
+ *
+ * 지금은 비어 있다. 전에는 "104|송천동종점|평화동종점" → "305001095" 항목이
+ * 있었는데, 우리 DB의 그 노선 route.id가 이미 305001095라 같은 값을 돌려주는
+ * 무의미한 항목이었다(DB가 그 사이 정정된 것으로 보인다). 남겨두면 "GW와
+ * 노선 ID 체계가 어긋난다"는 오해를 부르므로 비운다 — 실제로 그렇게 오해해
+ * 엉뚱한 원인을 한참 뒤진 적이 있다.
+ *
+ * 어긋나지 않는다는 건 실측으로 확인했다. 우리 노선 454개의 route.id를 전부
+ * GW에 넣어 조회한 결과, 하나도 빠짐없이 그 노선의 정류장 목록을 정상적으로
+ * 돌려줬다(모르는 ID 0건). 즉 우리 route.id는 GW가 그대로 아는 값이다.
+ *
+ * 표 자체는 남겨둔다. 나중에 진짜 어긋나는 노선이 발견되면 여기 한 줄만
+ * 추가하면 되고, 호출부(resolveJeonjuBrtStdid)는 그대로 두면 된다.
  */
-const BRT_STDID_OVERRIDES: Record<string, string> = {
-  "104|송천동종점|평화동종점": "305001095",
-};
+const BRT_STDID_OVERRIDES: Record<string, string> = {};
 
 function normalizeName(value: string): string {
   return (value ?? "").replace(/\s+/g, "").trim();
