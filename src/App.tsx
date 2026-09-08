@@ -9,10 +9,8 @@ import { BusScreen } from "@/screens/BusScreen";
 import { RouteScreen } from "@/screens/RouteScreen";
 import { AlertScreen } from "@/screens/AlertScreen";
 import { MyScreen } from "@/screens/MyScreen";
-import { AuthScreen } from "@/screens/AuthScreen";
 import { useDropoffAlertMonitor } from "@/hooks/useDropoffAlertMonitor";
 import { stopDropoffAlarm } from "@/services/alertMonitorService";
-import { supabase } from "@/lib/supabaseClient";
 import { Info, X } from "lucide-react";
 
 type DropoffAlarm = { title: string; body: string };
@@ -219,91 +217,29 @@ function AppContent() {
   );
 }
 
+/**
+ * 로그인 없이 바로 앱을 연다.
+ *
+ * 예전에는 여기서 세션을 확인해 로그인 화면으로 막았는데, 그 관문이 실제로
+ * 지키는 게 없었다.
+ * - 즐겨찾기·알림·설정은 전부 localStorage에만 있다. 계정에 묶여 서버로
+ *   올라가는 사용자 데이터가 하나도 없어서, 다른 기기에서 로그인해도
+ *   얻는 게 없었다.
+ * - 버스 데이터를 가져오는 모든 호출(tago-proxy, jeonju-proxy, DB 조회)은
+ *   anon key로 나간다. 사용자 세션 토큰은 어디에도 쓰이지 않는다.
+ * - 그 anon key는 VITE_ 접두사라 빌드된 번들에 그대로 들어간다. 즉 로그인이
+ *   API 남용을 막아주지도 못한다.
+ *
+ * 반면 비용은 컸다. 버스 시간 하나 보려고 회원가입을 해야 했고, 앱을 열
+ * 때마다 세션 확인을 기다렸으며, 네트워크가 나쁘면 5초 뒤 로그인 화면으로
+ * 튕겼다 — 정류장에서 도착정보가 급한 바로 그 순간에.
+ *
+ * 계정 자체를 없애지는 않았다. AuthScreen과 supabase.auth 코드는 그대로
+ * 남아 있어서, 나중에 즐겨찾기 기기 간 동기화처럼 계정이 실제로 필요한
+ * 기능이 생기면 이 관문만 다시 세우면 된다. 이미 로그인해 둔 사용자는
+ * 마이 화면에서 로그아웃할 수 있다(MyScreen 참고).
+ */
 function App() {
-  const [authReady, setAuthReady] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  /**
-   * 로그인 상태 확인이 네트워크 때문에 실패했을 때만 채워진다.
-   * 이유를 알리지 않으면 사용자는 계정이 풀린 줄 안다(QA #12).
-   */
-  const [authNotice, setAuthNotice] = useState("");
-
-  useEffect(() => {
-    let mounted = true;
-
-    /**
-     * 저장된 토큰이 만료돼 있으면 getClaims()는 갱신을 위해 네트워크를 탄다.
-     * 그런데 오프라인에서는 이 Promise가 reject되지 않는다 — supabase-js가
-     * 갱신 요청을 백오프로 계속 재시도하고, 자동 갱신 타이머가 그 재시도를
-     * 다시 살려낸다. 실측(오프라인 재현) 결과 60초가 넘도록 22회를 재시도하며
-     * 끝내 settle하지 않았고, 그동안 앱은 "로그인 상태를 확인하는 중..."
-     * 화면에 갇혀 있었다. try/catch만으로는 이 경우를 못 잡는다.
-     *
-     * 그래서 시간 제한을 함께 둔다. 제한을 넘기면 일단 로그인 화면으로
-     * 내보내되 원인이 네트워크임을 안내하고, 뒤늦게 갱신이 성공하면 아래
-     * settle()이 다시 호출돼 그대로 로그인 상태로 넘어간다(재로그인 불필요).
-     */
-    const AUTH_CHECK_TIMEOUT_MS = 5000;
-    const NETWORK_NOTICE =
-      "네트워크 문제로 로그인 상태를 확인하지 못했어요. 연결을 확인한 뒤 다시 시도하면 로그인 상태가 그대로 유지될 수 있어요.";
-
-    const settle = (authenticated: boolean, notice: string) => {
-      if (!mounted) return;
-      setIsAuthenticated(authenticated);
-      setAuthNotice(notice);
-      setAuthReady(true);
-    };
-
-    const timeoutId = window.setTimeout(() => {
-      console.warn(`[App] 로그인 상태 확인이 ${AUTH_CHECK_TIMEOUT_MS}ms 안에 끝나지 않았습니다.`);
-      settle(false, NETWORK_NOTICE);
-    }, AUTH_CHECK_TIMEOUT_MS);
-
-    const loadAuth = async () => {
-      try {
-        const { data } = await supabase.auth.getClaims();
-        window.clearTimeout(timeoutId);
-        settle(Boolean(data?.claims?.sub), "");
-      } catch (err) {
-        console.warn("[App] 로그인 상태 확인 실패:", err);
-        window.clearTimeout(timeoutId);
-        settle(false, NETWORK_NOTICE);
-      }
-    };
-
-    loadAuth();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_OUT") {
-        setIsAuthenticated(false);
-        return;
-      }
-      setIsAuthenticated(Boolean(session));
-      // 세션이 살아났으면 남아 있던 네트워크 안내는 더 이상 사실이 아니다.
-      if (session) setAuthNotice("");
-    });
-
-    return () => {
-      mounted = false;
-      window.clearTimeout(timeoutId);
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  if (!authReady) {
-    return (
-      <div className="fixed inset-0 bg-slate-50 flex items-center justify-center text-sm text-slate-400">
-        로그인 상태를 확인하는 중...
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <AuthScreen notice={authNotice} />;
-  }
-
   return (
     <AppProvider>
       <AppContent />
