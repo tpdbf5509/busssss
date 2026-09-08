@@ -1,7 +1,7 @@
 import { getSttnAcctoArvlPrearngeInfoList } from "@/api/tago";
 import { findNearestApproachingBus } from "@/services/busLocationService";
 import { fetchStopsForRoute } from "@/services/routeService";
-import { stripCityPrefix } from "@/services/stationService";
+import { stripCityPrefix, toTagoNodeId } from "@/services/stationService";
 import { normalizeStopName } from "@/lib/stopPosition";
 import { isArrivalTimePlausible } from "@/lib/arrivalPlausibility";
 import { estimateMinutesAway } from "@/lib/busPace";
@@ -161,7 +161,11 @@ async function fetchStationArrivalItems(nodeId: string, force = false) {
 
   console.debug("[CACHE] station MISS", nodeId);
   const startedAt = Date.now();
-  const promise = getSttnAcctoArvlPrearngeInfoList(nodeId)
+  // TAGO는 "JUB" 접두사가 붙은 정류장 ID만 안다. 우리 DB 값을 그대로 넘기면
+  // 오류가 아니라 "도착 예정 버스 없음"과 똑같은 빈 목록이 돌아온다
+  // (toTagoNodeId 주석의 실측 비교 참고). 캐시 키는 호출부가 넘긴 값
+  // 그대로 두고, 실제 요청에서만 변환한다.
+  const promise = getSttnAcctoArvlPrearngeInfoList(toTagoNodeId(nodeId))
     .then((items) => {
       console.debug("[API] TAGO station response", {
         nodeId,
