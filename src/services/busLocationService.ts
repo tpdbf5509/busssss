@@ -4,6 +4,7 @@ import type { Route, BusLocation, RouteDirection } from "@/types/route";
 import { resolveJeonjuBrtStdid, fetchStopsForRoute } from "@/services/routeService";
 import { resolveBusStopIndex } from "@/lib/stopPosition";
 import { recordBusPosition } from "@/lib/busPace";
+import type { LiveDataMiss } from "@/lib/arrivalDiagnostics";
 
 function firstValue(item: Record<string, string>, keys: string[]): string {
   const entries = Object.entries(item);
@@ -208,6 +209,16 @@ export interface NearestBusResult {
   /** 목표 정류장에 아직 도착하지 않은 버스 중 가장 가까운 것. 실시간 데이터는
    *  있는데 이 값이 null이면, 보고된 모든 버스가 이미 그 정류장을 지났다는 뜻. */
   bus: { stopsAway: number; vehicleNo: string } | null;
+  /**
+   * hasLiveData가 false인 이유. **진단 기록용이며 동작 분기에는 쓰지 않는다.**
+   *
+   * "피드는 정상인데 차량 0대"(empty)와 "조회 실패"(error)는 지금 코드에서
+   * 똑같이 취급되지만 의미가 전혀 다르다 — 앞쪽은 "이 노선에 버스가 없다"는
+   * 적극적 근거이고, 뒤쪽은 아무것도 모른다는 뜻이다. 이 둘을 구분해 기록해
+   * 두면 나중에 "TAGO 유령 예측을 걸러낼 것인가"를 데이터로 판단할 수 있다
+   * (arrivalDiagnostics 참고).
+   */
+  liveDataMiss?: LiveDataMiss;
 }
 
 /**
@@ -229,8 +240,14 @@ export async function findNearestApproachingBus(
   route: Route,
   targetNodeId: string,
 ): Promise<NearestBusResult> {
-  const NO_DATA: NearestBusResult = { hasLiveData: false, bus: null };
-  if (!targetNodeId) return NO_DATA;
+  // liveDataMiss는 진단 기록용이다(arrivalDiagnostics 참고). hasLiveData/bus
+  // 값은 예전과 완전히 같으므로 화면 동작은 달라지지 않는다.
+  const noData = (miss: LiveDataMiss): NearestBusResult => ({
+    hasLiveData: false,
+    bus: null,
+    liveDataMiss: miss,
+  });
+  if (!targetNodeId) return noData("targetNotOnRoute");
 
   try {
     const [stops, locations] = await Promise.all([
@@ -239,7 +256,9 @@ export async function findNearestApproachingBus(
     ]);
 
     const targetIndex = stops.findIndex((stop) => stop.id === targetNodeId);
-    if (targetIndex === -1 || locations.length === 0) return NO_DATA;
+    if (targetIndex === -1) return noData("targetNotOnRoute");
+    // 피드는 정상 응답했는데 이 노선에 차량이 0대. "조회 실패"와 구분해 남긴다.
+    if (locations.length === 0) return noData("empty");
 
     let best: { stopsAway: number; vehicleNo: string } | null = null;
     for (const location of locations) {
@@ -268,6 +287,6 @@ export async function findNearestApproachingBus(
     return { hasLiveData: true, bus: best };
   } catch (err) {
     console.debug("[busLocationService] GPS 기반 정거장 검증 실패:", err);
-    return NO_DATA;
+    return noData("error");
   }
 }
