@@ -5,6 +5,7 @@ import { stripCityPrefix, toTagoNodeId } from "@/services/stationService";
 import { normalizeStopName } from "@/lib/stopPosition";
 import { isArrivalTimePlausible } from "@/lib/arrivalPlausibility";
 import { estimateMinutesAway } from "@/lib/busPace";
+import { recordArrivalDisagreement } from "@/lib/arrivalDiagnostics";
 import { arrivalMinutesFromSeconds } from "@/lib/formatArrival";
 import type { Route } from "@/types/route";
 
@@ -300,7 +301,25 @@ export async function fetchArrivalInfo(
       // 버스가 오고 있다는 사실 자체는 GPS만으로도 확정할 수 있다. TAGO는
       // 시간을 붙이는 용도이지, 버스의 존재를 판정하는 근거가 아니다.
       const gps = await findNearestApproachingBus(route, nodeId);
-      if (!gps.hasLiveData) return tagoInfo; // 검증할 GPS 데이터가 없으면 TAGO를 믿는다
+      if (!gps.hasLiveData) {
+        // 검증할 GPS 데이터가 없으면 TAGO를 믿는다 — 동작은 예전 그대로다.
+        //
+        // 다만 "TAGO는 곧 온다는데 GPS에는 차량이 0대"인 순간은 둘 중 하나가
+        // 틀렸다는 뜻이라 기록만 남긴다. 어느 쪽이 틀렸는지 아직 모르기 때문에
+        // (arrivalDiagnostics의 설명 참고) 표시는 바꾸지 않는다.
+        if (tagoInfo?.minutes != null && gps.liveDataMiss) {
+          recordArrivalDisagreement({
+            at: new Date().toISOString(),
+            routeId: route.id,
+            routeNumber: routeNumber ?? route.number,
+            nodeId,
+            tagoMinutes: tagoInfo.minutes,
+            tagoStops: tagoInfo.stopsAway,
+            miss: gps.liveDataMiss,
+          });
+        }
+        return tagoInfo;
+      }
       if (!gps.bus) return null; // GPS로 확인되는 모든 버스가 이미 지나감
 
       const stopsAway = gps.bus.stopsAway;
