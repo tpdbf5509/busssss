@@ -14,7 +14,6 @@ vi.mock("@/services/busLocationService", () => ({
 }));
 
 const { fetchArrivalInfo, clearArrivalCache } = await import("@/services/arrivalService");
-const { resetBusPace } = await import("@/lib/busPace");
 
 /** 제보된 상황: 75번 전북대종점 → 평화동종점 */
 const route75 = {
@@ -29,7 +28,6 @@ const ROUTE_ID = "JUB305001493";
 
 beforeEach(() => {
   clearArrivalCache();
-  resetBusPace();
   getSttnAcctoArvlPrearngeInfoList.mockReset();
   findNearestApproachingBus.mockReset();
 });
@@ -58,15 +56,8 @@ describe("TAGO 정류장 ID 형식 (회귀)", () => {
   });
 });
 
-describe("시간 출처 우선순위", () => {
-  it("TAGO 예측이 쓸 만하면 실측 평균(busPace)보다 우선한다", async () => {
-    // busPace는 노선당 평균 하나뿐이라 정거장이 많아질수록 오차가 곱해진다.
-    // TAGO는 차량별로 예측하므로 그쪽을 먼저 쓴다.
-    const { recordBusPosition } = await import("@/lib/busPace");
-    const t0 = Date.now();
-    recordBusPosition(route75.id, "차", 1, t0);
-    recordBusPosition(route75.id, "차", 2, t0 + 120_000); // 120초/정거장 학습
-
+describe("시간 출처 — TAGO만 쓴다 (회귀)", () => {
+  it("TAGO 예측이 쓸 만하면 그대로 보여준다", async () => {
     getSttnAcctoArvlPrearngeInfoList.mockResolvedValue([
       { routeid: ROUTE_ID, arrtime: "240", arrprevstationcnt: "3" }, // 4분
     ]);
@@ -77,18 +68,15 @@ describe("시간 출처 우선순위", () => {
 
     const info = await fetchArrivalInfo(NODE, ROUTE_ID, "75", undefined, route75);
 
-    // busPace로는 120초 × 3정거장 = 6분이지만, TAGO의 4분을 쓴다.
     expect(info?.minutes).toBe(4);
     expect(info?.stopsAway).toBe(3);
   });
 
-  it("TAGO에 시간이 없으면 실측 평균으로 채운다", async () => {
-    const { recordBusPosition } = await import("@/lib/busPace");
-    const t0 = Date.now();
-    recordBusPosition(route75.id, "차", 1, t0);
-    recordBusPosition(route75.id, "차", 2, t0 + 120_000);
-
-    getSttnAcctoArvlPrearngeInfoList.mockResolvedValue([]); // TAGO 무응답
+  it("TAGO에 시간이 없으면 시간을 지어내지 않고 정거장 수만 남긴다", async () => {
+    // 예전에는 여기서 노선 평균 속도(busPace)로 시간을 만들었는데, 실측 결과
+    // 2~3배 부풀려져 있었다(104번: 우리 6분 vs TAGO·네이버 2분). 실제보다 길게
+    // 알려주면 사용자가 버스를 놓치므로, 근거가 없으면 시간을 비운다.
+    getSttnAcctoArvlPrearngeInfoList.mockResolvedValue([]);
     findNearestApproachingBus.mockResolvedValue({
       hasLiveData: true,
       bus: { stopsAway: 3, vehicleNo: "전주1309" },
@@ -96,7 +84,7 @@ describe("시간 출처 우선순위", () => {
 
     const info = await fetchArrivalInfo(NODE, ROUTE_ID, "75", undefined, route75);
 
-    expect(info?.minutes).toBe(6); // 120초 × 3정거장
+    expect(info?.minutes).toBeNull();
     expect(info?.stopsAway).toBe(3);
   });
 });

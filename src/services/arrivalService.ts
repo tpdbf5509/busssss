@@ -4,7 +4,6 @@ import { fetchStopsForRoute } from "@/services/routeService";
 import { stripCityPrefix, toTagoNodeId } from "@/services/stationService";
 import { normalizeStopName } from "@/lib/stopPosition";
 import { isArrivalTimePlausible } from "@/lib/arrivalPlausibility";
-import { estimateMinutesAway } from "@/lib/busPace";
 import { recordArrivalDisagreement } from "@/lib/arrivalDiagnostics";
 import { arrivalMinutesFromSeconds } from "@/lib/formatArrival";
 import type { Route } from "@/types/route";
@@ -329,14 +328,14 @@ export async function fetchArrivalInfo(
       // TAGO는 버스 한 대 한 대에 대해 따로 예측을 내놓는다. 같은 정류장에서
       // 실측한 예: 104번 193초/3정거장(64초/정거장), 2001번 683초/10정거장
       // (68초/정거장), 3-2번 921초/14정거장(66초/정거장) — 차량과 구간에 따라
-      // 값이 달라진다. 아래 busPace는 노선당 평균 하나뿐이라 이 차이를 담지
-      // 못하고, 정거장 수가 많아질수록 오차가 그대로 곱해진다(제보 사례:
-      // 우리 5정거장 10분 = 120초/정거장인데 실제·타 앱은 80~90초/정거장).
+      // 값이 달라진다. 우리가 노선 평균 속도를 직접 계산해 쓰던 때도 있었지만
+      // (busPace), 평균 하나로는 이 차이를 담지 못해 2~3배씩 어긋났다.
+      // 아래 2순위 주석 참고.
       //
-      // 예전에는 busPace를 1순위로 뒀는데, 그건 TAGO 정류장 ID에 "JUB"
-      // 접두사를 안 붙여 도착정보가 늘 비어 있던 때의 판단이었다
+      // 한동안 TAGO를 못 믿을 값으로 취급했는데, 그건 정류장 ID에 "JUB"
+      // 접두사를 안 붙여 도착정보가 늘 비어 있던 탓이었다
       // (stationService.toTagoNodeId 참고). 접두사를 고친 뒤로는 TAGO가
-      // 차량별 예측을 정상적으로 내려주므로 그쪽이 더 정확하다.
+      // 차량별 예측을 정상적으로 내려주고, 실측상 타 앱과도 일치한다.
       //
       // 단 시간(TAGO)과 정거장 수(GPS)는 출처가 달라 같은 버스의 값이라는
       // 보장이 없다. TAGO 목록에 코앞의 버스가 빠져 있으면 그 다음 버스의
@@ -348,12 +347,22 @@ export async function fetchArrivalInfo(
       }
 
       // 2순위 — TAGO에 이 버스의 시간이 없거나 정거장 수와 앞뒤가 안 맞으면,
-      // 이 노선에서 실제로 관측된 속도로 계산한다(busPace). GPS에는 보이는데
-      // TAGO가 아직 안 잡은 버스가 여기 해당한다.
-      const measured = estimateMinutesAway(route.id, stopsAway);
-      if (measured != null) return { minutes: measured, stopsAway };
-
-      // 3순위 — 근거가 없으면 시간 없이 정거장 수만 남긴다("5정거장").
+      // 시간 없이 정거장 수만 남긴다("2정거장").
+      //
+      // 예전에는 여기서 우리가 관측한 노선 평균 속도로 시간을 만들어 냈다
+      // (busPace). 실측해보니 그 값이 2~3배 부풀려져 있었다 — 104번에서 우리는
+      // "6분 후 · 2정거장"인데 같은 순간 TAGO도 네이버지도도 "2분"이었다.
+      // 두 카드가 똑같이 정거장당 180~200초를 쓰고 있었고, 실제는 60~100초였다.
+      //
+      // 원인은 관측 공백이다. 앱을 백그라운드에 두면 폴링이 멈추는데
+      // (useArrivalInfo의 visibleRef), 다시 열었을 때 그 공백 전체가 이동
+      // 시간으로 계산됐다. 74분 만에 15정거장을 간 것으로 보이면 정거장당
+      // 296초라 상한(300초)도 통과해 평균에 그대로 섞였다.
+      //
+      // 방향도 나쁜 쪽이었다. 실제보다 길게 알려주면 사용자는 그 시간을 믿고
+      // 늦게 나가 버스를 놓친다. 지어낸 시간보다 "정거장 수만" 보여주는 편이
+      // 안전하고, 그 정거장 수는 GPS 실측이라 신뢰할 수 있다(실제로 위 사례
+      // 에서도 정거장 수는 네이버지도와 정확히 일치했다).
       return { minutes: null, stopsAway };
     } catch (error) {
       console.warn("[BUS STOP] Arrival request failed; keeping previous value", {
