@@ -12,7 +12,6 @@ import {
   Type,
   Eye,
   Volume2,
-  Check,
   X,
   Menu,
   Smartphone,
@@ -135,10 +134,18 @@ export function MyScreen() {
   };
 
   const saveEdit = () => {
-    if (editingId) {
-      dispatch({ type: "RENAME_FAVORITE", id: editingId, label: editLabel });
-      showToast("이름을 변경했어요");
+    if (!editingId) return;
+
+    /* 빈 이름으로 저장하면 목록에 "· 정류장"처럼 앞이 비어 보이고 되돌릴
+       방법도 없다. 비었으면 저장하지 않고 편집 상태를 유지해 이어서 입력하게 둔다. */
+    const label = editLabel.trim();
+    if (!label) {
+      showToast("이름을 입력해 주세요");
+      return;
     }
+
+    dispatch({ type: "RENAME_FAVORITE", id: editingId, label });
+    showToast("이름을 변경했어요");
     setEditingId(null);
   };
 
@@ -229,26 +236,44 @@ export function MyScreen() {
                       <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
                     </div>
                     {editingId === fav.id ? (
-                      <div className="flex-1 flex items-center gap-2">
+                      /* form으로 감싸면 휴대폰 키보드의 확인키가 그대로 저장이
+                         된다. 예전에는 작은 체크 아이콘을 정확히 눌러야만 저장됐고,
+                         키보드 확인키를 누르거나 바깥을 탭하거나 다른 탭에 갔다
+                         오면 입력한 이름이 아무 말 없이 사라졌다. */
+                      <form
+                        /* min-w-0이 없으면 flex 항목은 내용보다 작아지지 못한다.
+                           입력칸 기본 너비 때문에 폼이 카드 밖으로 삐져나가
+                           저장 버튼이 화면 밖에서 잘렸다(실측: 폼 403px, 카드 358px). */
+                        className="flex-1 min-w-0 flex items-center gap-2"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          saveEdit();
+                        }}
+                      >
                         <input
                           value={editLabel}
                           onChange={(e) => setEditLabel(e.target.value)}
                           autoFocus
-                          className="flex-1 px-2.5 py-1.5 bg-canvas rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-brand"
+                          aria-label="즐겨찾기 이름"
+                          placeholder="이름"
+                          enterKeyHint="done"
+                          className="min-w-0 flex-1 px-2.5 py-1.5 bg-canvas rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-brand"
                         />
+                        {/* 아이콘만 있으면 어느 쪽이 저장인지 알 수 없다. 글자를 쓴다. */}
                         <button
-                          onClick={saveEdit}
-                          className="p-1.5 text-emerald-600 active:bg-emerald-50 rounded-lg"
+                          type="submit"
+                          className="select-none touch-manipulation shrink-0 px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-semibold active:bg-brand/80"
                         >
-                          <Check className="w-4 h-4" />
+                          저장
                         </button>
                         <button
+                          type="button"
                           onClick={() => setEditingId(null)}
-                          className="p-1.5 text-faint active:bg-canvas rounded-lg"
+                          className="select-none touch-manipulation shrink-0 px-2 py-1.5 rounded-lg text-xs font-medium text-muted active:bg-canvas"
                         >
-                          <X className="w-4 h-4" />
+                          취소
                         </button>
-                      </div>
+                      </form>
                     ) : (
                       <>
                         <div className="flex-1 min-w-0">
