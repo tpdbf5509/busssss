@@ -238,7 +238,12 @@ export function HomeScreen({
             빈 공간이 생겼다. 마이 탭 헤더와 높이를 맞추려던 값인데, 두 화면을
             나란히 보는 일이 없어 그 이득보다 손해가 크다. */}
         <div className="flex flex-col justify-center">
-          <div className="flex items-center justify-between mb-1.5">
+          {/* "전주시 버스 노선 정보"를 뺐다. 오른쪽 칩이 이미 현재 도시를
+              알려주고 있어 정보가 겹쳤고, 화면 폭을 가로지르는 긴 줄이라
+              측정하면 도착 시간(무게 2465)보다 두 배 무거웠다(4900).
+              헤더는 앱 이름 + 현재 도시만 남긴다.
+              아래 여백(mb-1.5)은 부제와의 간격이었으므로 함께 뺀다. */}
+          <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold tracking-tight">BUS STOP</h1>
             <button
               onClick={() => setRegionUnderDevOpen(true)}
@@ -252,7 +257,6 @@ export function HomeScreen({
               <ChevronDown className="w-3.5 h-3.5" />
             </button>
           </div>
-          <p className="text-white/70 text-sm">전주시 버스 노선 정보</p>
         </div>
       </header>
 
@@ -267,7 +271,11 @@ export function HomeScreen({
       <section className="px-4 -mt-6 shrink-0">
         <button
           onClick={() => onNavigate("bus")}
-          className={`w-full bg-surface rounded-2xl border border-line px-4 py-3 flex items-center gap-3 ${PRESSABLE}`}
+          /* 테두리를 뺀다. 검색과 즐겨찾기 카드가 둘 다 "흰 배경 + 1px 테두리
+             + 둥근 모서리"라 크기로만 구분되고 재질이 같았다. 테두리가 없으면
+             검색은 가벼운 진입 영역, 즐겨찾기는 테두리를 두른 콘텐츠 카드로
+             갈린다. 배경색·높이·글자·아이콘은 그대로다. */
+          className={`w-full bg-surface rounded-2xl px-4 py-3 flex items-center gap-3 ${PRESSABLE}`}
         >
           <Search className="w-[18px] h-[18px] text-brand shrink-0" />
           <span className="text-sm font-semibold text-ink flex-1 min-w-0 text-left truncate">
