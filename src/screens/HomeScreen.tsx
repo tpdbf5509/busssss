@@ -430,12 +430,13 @@ export function HomeScreen({
         </section>
       )}
 
-      {/* 하단 여백은 고정 px이 아니라 홈 인디케이터 높이를 더해 계산한다.
-          BottomNav 높이(56px)는 프로젝트 값에 맞게 조정할 것. */}
-      <div
-        className="shrink-0"
-        style={{ height: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
-      />
+      {/* 목록 끝과 하단 탭 사이 숨 쉴 틈.
+          홈 인디케이터 높이를 여기서 더하지 않는다. 하단 탭은 fixed가 아니라
+          이 스크롤 영역 "아래"에 자기 자리를 차지하고(App.tsx의 flex 열),
+          안전영역은 탭 자신이 pb-nav-safe로 처리한다. 여기서 또 더하면 노치
+          기기에서만 빈 공간이 두 번 생긴다. 실측: 12개 목록을 끝까지 내려도
+          마지막 행과 탭 사이가 57.7px 남는다. */}
+      <div className="h-6 shrink-0" />
 
       {regionUnderDevOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
