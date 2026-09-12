@@ -281,9 +281,14 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
         {searchTab === "route" && (
           <>
             {status === "loading" && (
-              <div className="space-y-2">
+              /* 결과 목록과 같은 모양(한 판 + 구분선, 같은 행 높이)으로 깔아야
+                 값이 들어올 때 목록이 튀지 않는다. */
+              <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-line">
                 {[1, 2, 3, 4].map((i) => (
-                  <LoadingSkeleton key={i} className="h-[66px] w-full" />
+                  <div key={i} className="px-4 py-3 flex items-center gap-3">
+                    <LoadingSkeleton className="w-[56px] h-[42px] shrink-0" />
+                    <LoadingSkeleton className="h-4 flex-1" />
+                  </div>
                 ))}
               </div>
             )}
@@ -296,7 +301,12 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
               />
             )}
             {status === "success" && filtered && filtered.length > 0 && (
-              <div className="space-y-2">
+              /* 검색 결과는 수백 개를 스크롤하며 비교하는 목록이다. 항목마다
+                 테두리 카드를 띄우고 8px씩 벌리면 한 화면에 들어오는 개수가
+                 줄고 문서처럼 보인다. 정류장 상세와 같은 문법(한 판 + 구분선)
+                 으로 맞춘다 — 홈의 독립 카드는 개수가 적고 각각이 목적지라서
+                 다른 문법을 쓴다. */
+              <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-line">
                 {filtered.map((route) => (
                   <div
                     key={`${route.id}-${route.number}`}
@@ -304,7 +314,7 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                     tabIndex={0}
                     onClick={() => setSelectedRoute(route)}
                     onKeyDown={(e) => e.key === "Enter" && setSelectedRoute(route)}
-                    className="w-full bg-surface rounded-2xl px-3.5 py-3 border border-line text-left active:border-brand/40 transition-colors cursor-pointer flex items-center gap-3"
+                    className="w-full px-4 py-3 text-left active:bg-canvas transition-colors cursor-pointer flex items-center gap-3"
                   >
                     {/* 검색 결과는 여러 노선을 스크롤하며 비교하는 화면이라
                         한 항목이 차지하는 높이가 중요하다. 배지를 왼쪽으로
@@ -366,9 +376,12 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
         {searchTab === "station" && (
           <>
             {(stationStatus === "idle" || stationStatus === "loading") && (
-              <div className="space-y-2">
+              <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-line">
                 {[1, 2, 3, 4].map((i) => (
-                  <LoadingSkeleton key={i} className="h-14 w-full" />
+                  <div key={i} className="px-4 py-3 flex items-center gap-3">
+                    <LoadingSkeleton className="w-11 h-11 shrink-0" />
+                    <LoadingSkeleton className="h-4 flex-1" />
+                  </div>
                 ))}
               </div>
             )}
@@ -385,7 +398,7 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
               />
             )}
             {stationStatus === "success" && stations.length > 0 && (
-              <div className="space-y-2">
+              <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-line">
                 {stations.map((station) => (
                   <div
                     key={station.id}
@@ -393,7 +406,7 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                     tabIndex={0}
                     onClick={() => setSelectedStation(station)}
                     onKeyDown={(e) => e.key === "Enter" && setSelectedStation(station)}
-                    className="w-full bg-surface rounded-2xl px-3.5 py-3 border border-line flex items-center gap-3 cursor-pointer active:border-brand/40 transition-colors"
+                    className="w-full px-4 py-3 flex items-center gap-3 cursor-pointer active:bg-canvas transition-colors"
                   >
                     <div className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
                       <MapPin className="w-5 h-5 text-emerald-600" />
