@@ -170,9 +170,9 @@ export function MyScreen() {
   };
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-slate-50">
+    <div className="h-full flex flex-col overflow-hidden bg-canvas">
       <div className="flex-1 overflow-hidden overscroll-contain">
-      <header className="relative bg-gradient-to-b from-blue-600 to-blue-500 px-5 pt-safe-16 pb-9 text-white">
+      <header className="relative bg-brand px-5 pt-safe-16 pb-9 text-white">
           <button
             onClick={() => setMenuOpen(true)}
             className="absolute right-4 p-2 text-white"
@@ -191,7 +191,7 @@ export function MyScreen() {
               {/* 지역은 전주시 고정이다. 모든 API가 JEONJU_CITY_CODE로 나가기
                   때문에 다른 지역을 골라도 전주 데이터만 나온다. 고를 수 있는
                   것처럼 보이지 않도록 표시 전용으로 둔다(홈 화면도 동일). */}
-              <p className="flex items-center gap-1 text-sm text-blue-100 mt-0.5">
+              <p className="flex items-center gap-1 text-sm text-white/70 mt-0.5">
                 <MapPin className="w-3.5 h-3.5" />
                 {state.region.sido} {state.region.sigungu}
               </p>
@@ -203,23 +203,29 @@ export function MyScreen() {
         <div className="flex-1 overscroll-contain">
         {/* 즐겨찾기 카드 — 파란 헤더 위로 겹침 */}
         <section className="px-4 -mt-3 relative z-10">
-          <div className="bg-surface rounded-2xl border border-line p-4">
-            <div className="flex items-center gap-1.5 text-sm font-bold text-slate-700 mb-3">
-              <Star className="w-4 h-4 text-amber-400" />
-              즐겨찾기 관리
+          {/* 카드 안에서 행마다 둥근 상자를 그리고 사이를 띄우면 항목이 따로
+              떠 있는 것처럼 보인다. 한 판 안에서 구분선으로만 나눈다
+              (홈 화면의 즐겨찾기와 같은 문법). */}
+          <div className="bg-surface rounded-2xl border border-line overflow-hidden">
+            <div className="px-4 pt-4 pb-3">
+              {/* 제목은 항목 이름보다 작고 연하게. 같은 무게면 위계가 사라진다. */}
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-muted tracking-wide">
+                <Star className="w-4 h-4 text-amber-400" />
+                즐겨찾기 관리
+              </div>
+              <p className="text-xs text-faint mt-1.5">항목을 눌러 이름을 바꿀 수 있어요</p>
             </div>
-            <p className="text-xs text-slate-400 mb-3">항목을 눌러 이름을 바꿀 수 있어요</p>
 
             {state.favorites.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-6">즐겨찾기가 없어요</p>
+              <p className="text-sm text-faint text-center pb-6">즐겨찾기가 없어요</p>
             ) : (
-              <div className="space-y-2 max-h-60 overflow-y-auto overscroll-contain">
+              <div className="max-h-60 overflow-y-auto overscroll-contain divide-y divide-line border-t border-line">
               {state.favorites.map((fav) => (
                   <div
                     key={fav.id}
-                    className="flex items-center gap-3 p-2.5 rounded-xl active:bg-slate-50 transition-colors"
+                    className="flex items-center gap-3 px-4 py-3 select-none touch-manipulation"
                   >
-                    <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center shrink-0">
+                    <div className="w-9 h-9 rounded-lg bg-canvas flex items-center justify-center shrink-0">
                       <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
                     </div>
                     {editingId === fav.id ? (
@@ -228,7 +234,7 @@ export function MyScreen() {
                           value={editLabel}
                           onChange={(e) => setEditLabel(e.target.value)}
                           autoFocus
-                          className="flex-1 px-2.5 py-1.5 bg-slate-100 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="flex-1 px-2.5 py-1.5 bg-canvas rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-brand"
                         />
                         <button
                           onClick={saveEdit}
@@ -238,7 +244,7 @@ export function MyScreen() {
                         </button>
                         <button
                           onClick={() => setEditingId(null)}
-                          className="p-1.5 text-slate-400 active:bg-slate-100 rounded-lg"
+                          className="p-1.5 text-faint active:bg-canvas rounded-lg"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -246,13 +252,13 @@ export function MyScreen() {
                     ) : (
                       <>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-800 truncate">
+                          <p className="text-sm font-medium text-ink truncate">
                             {fav.name}
                           </p>
                           {/* 같은 번호의 반대 방향을 둘 다 즐겨찾기하면 여기가
                               "10 · 노선"으로 똑같이 찍혀 구분이 안 됐다.
                               방향을 알 수 있으면 종류 대신 방향을 보여준다. */}
-                          <p className="text-[11px] text-slate-400 truncate">
+                          <p className="text-[11px] text-faint truncate">
                             {fav.label} ·{" "}
                             {favoriteDirection(fav, routes) ??
                               (fav.type === "station"
@@ -264,14 +270,14 @@ export function MyScreen() {
                         </div>
                         <button
                           onClick={() => setShortcutFavorite(fav)}
-                          className="p-1.5 text-slate-400 active:text-blue-600 active:bg-blue-50 rounded-lg transition-colors"
+                          className="p-1.5 text-faint active:text-brand active:bg-brand/10 rounded-lg transition-colors"
                           aria-label="홈 화면 바로가기 추가"
                         >
                           <Smartphone className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => startEdit(fav.id, fav.label)}
-                          className="p-1.5 text-slate-400 active:text-blue-600 active:bg-blue-50 rounded-lg transition-colors"
+                          className="p-1.5 text-faint active:text-brand active:bg-brand/10 rounded-lg transition-colors"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
@@ -280,7 +286,7 @@ export function MyScreen() {
                             dispatch({ type: "REMOVE_FAVORITE", id: fav.id });
                             showToast("삭제했어요");
                           }}
-                          className="p-1.5 text-slate-400 active:text-red-500 active:bg-red-50 rounded-lg transition-colors"
+                          className="p-1.5 text-faint active:text-red-500 active:bg-red-50 rounded-lg transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -294,7 +300,7 @@ export function MyScreen() {
         </section>
 
 
-        <p className="text-center text-xs text-slate-300 pt-4 pb-6">BUS STOP v1.0.0</p>
+        <p className="text-center text-xs text-faint pt-4 pb-6">BUS STOP v1.0.0</p>
       </div>
 
       {shortcutFavorite && (
@@ -311,12 +317,12 @@ export function MyScreen() {
             onClick={() => setLogoutConfirmOpen(false)}
           />
           <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 shadow-2xl animate-slide-up">
-            <h2 className="text-lg font-bold text-slate-900 mb-2">로그아웃 할까요?</h2>
-            <p className="text-sm text-slate-500 leading-relaxed mb-5">로컬 설정은 유지됩니다.</p>
+            <h2 className="text-lg font-bold text-ink mb-2">로그아웃 할까요?</h2>
+            <p className="text-sm text-muted leading-relaxed mb-5">로컬 설정은 유지됩니다.</p>
             <div className="flex gap-2">
               <button
                 onClick={() => setLogoutConfirmOpen(false)}
-                className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-2xl font-medium text-sm"
+                className="flex-1 py-3 bg-canvas text-muted rounded-2xl font-medium text-sm"
               >
                 취소
               </button>
@@ -338,8 +344,8 @@ export function MyScreen() {
             onClick={() => setHelpOpen(false)}
           />
           <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 shadow-2xl">
-            <h2 className="text-lg font-bold text-slate-900 mb-3">도움말</h2>
-            <ul className="space-y-2 text-sm text-slate-600 leading-relaxed">
+            <h2 className="text-lg font-bold text-ink mb-3">도움말</h2>
+            <ul className="space-y-2 text-sm text-muted leading-relaxed">
               <li>· 홈에서 즐겨찾기를 관리하고 도착 정보를 확인해요.</li>
               <li>· 버스 탭에서 노선을 검색하고 실시간 위치를 볼 수 있어요.</li>
               <li>· 알림 탭에서 하차 알림을 설정하면 정거장 전에 알려줘요.</li>
@@ -348,7 +354,7 @@ export function MyScreen() {
             </ul>
             <button
               onClick={() => setHelpOpen(false)}
-              className="mt-5 w-full py-3 bg-blue-600 text-white rounded-2xl font-semibold text-sm"
+              className="mt-5 w-full py-3 bg-brand text-white rounded-2xl font-semibold text-sm"
             >
               확인
             </button>
@@ -364,10 +370,10 @@ export function MyScreen() {
           />
             <div className="relative bg-white w-72 h-full shadow-2xl overflow-y-auto">
             <div className="pt-[15vh]" />
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="font-bold text-slate-900">설정</h2>
+            <div className="p-4 border-b border-line flex items-center justify-between">
+              <h2 className="font-bold text-ink">설정</h2>
               <button onClick={() => setMenuOpen(false)}>
-                <X className="w-5 h-5 text-slate-400" />
+                <X className="w-5 h-5 text-faint" />
               </button>
             </div>
 
@@ -473,14 +479,14 @@ function SettingRow({
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-3.5 active:bg-slate-50 transition-colors ${
-        !last ? "border-b border-slate-50" : ""
+      className={`w-full flex items-center gap-3 px-4 py-3.5 active:bg-canvas transition-colors ${
+        !last ? "border-b border-line" : ""
       }`}
     >
-      <Icon className={`w-4.5 h-4.5 ${danger ? "text-red-500" : "text-slate-500"}`} />
+      <Icon className={`w-4.5 h-4.5 ${danger ? "text-red-500" : "text-muted"}`} />
       <span
         className={`flex-1 text-left text-sm font-medium ${
-          danger ? "text-red-500" : "text-slate-700"
+          danger ? "text-red-500" : "text-muted"
         }`}
       >
         {label}
@@ -495,7 +501,7 @@ function SettingRow({
         </span>
       )}
       <ChevronRight
-        className={`w-4 h-4 text-slate-300 transition-transform ${
+        className={`w-4 h-4 text-faint transition-transform ${
           expanded ? "rotate-90" : ""
         }`}
       />
@@ -521,16 +527,16 @@ function SettingToggle({
   note?: string;
 }) {
   return (
-    <div className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-slate-50">
-      <Icon className={`w-4.5 h-4.5 ${disabled ? "text-slate-300" : "text-slate-500"}`} />
+    <div className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-line">
+      <Icon className={`w-4.5 h-4.5 ${disabled ? "text-faint" : "text-muted"}`} />
       <span
         className={`flex-1 text-left text-sm font-medium ${
-          disabled ? "text-slate-400" : "text-slate-700"
+          disabled ? "text-faint" : "text-muted"
         }`}
       >
         {label}
       </span>
-      {note && <span className="text-xs font-medium text-slate-400">{note}</span>}
+      {note && <span className="text-xs font-medium text-faint">{note}</span>}
       <div className={disabled ? "opacity-40 pointer-events-none" : undefined}>
         <Toggle checked={checked} onChange={onChange} />
       </div>
