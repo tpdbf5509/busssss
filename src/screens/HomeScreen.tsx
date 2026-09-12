@@ -71,21 +71,16 @@ function FavoriteArrivalInfo({
     canFetch ? route : undefined,
   );
 
-  let subtitle: string;
-  if (isRoute) {
-    // 노선 목록이 아직 안 왔으면 방향을 모르니 종류만 알린다.
-    subtitle = directionLabel ?? "노선";
-  } else if (!isStopRoute) {
-    subtitle = "정류장";
-  } else if (directionLabel) {
-    // 같은 번호 반대 방향을 구분하기 위해 기점→종점을 표시
-    subtitle = directionLabel;
-  } else {
-    /* 도착 시간은 오른쪽 열에 따로 표시되고, 노선 번호는 왼쪽 배지에
-       이미 들어 있다. 방향 정보가 없을 때 여기에 번호를 다시 쓰면
-       같은 값이 한 카드에 두 번 나오므로 비워 둔다. */
-    subtitle = "";
-  }
+  /* 아랫줄 문구.
+     정류장 즐겨찾기는 사용자가 붙인 이름이 이미 왼쪽 배지에 들어간다("집",
+     "회사"). 반면 노선·정류장 도착정보는 배지 자리에 노선 번호가 들어가서,
+     이름을 바꿔도 홈 어디에도 나오지 않았다 — 마이 화면에서만 보여서 "이름
+     변경이 저장되지 않는다"고 보였다. 마이 화면과 같은 순서로 여기 앞에 붙인다. */
+  const subtitle = !isRoute && !isStopRoute
+    ? "정류장"
+    : [fav.label, directionLabel ?? (isRoute ? "노선" : null)]
+        .filter(Boolean)
+        .join(" · ");
 
   /* formatArrivalText는 "12분 후 · 3정거장"처럼 두 정보를 한 문자열로 합친다.
      시간은 오른쪽 열에 크게, 정거장 수는 그 아래 작게 나눠 넣는다. */
@@ -93,8 +88,6 @@ function FavoriteArrivalInfo({
   const [timeLabel, stopsLabel] = full.includes(" · ")
     ? full.split(" · ")
     : [full, ""];
-
-  const bottomLabel = isStopRoute && isRefreshing ? "갱신 중" : subtitle;
 
   /* 도착 시간 색.
      지연이면 주황, 3분 이하면 브랜드 블루, 그 외엔 기본 먹색.
@@ -117,8 +110,13 @@ function FavoriteArrivalInfo({
 
         <div className="mt-1 flex items-center gap-1.5 min-w-0">
           {isStopRoute && data && <ReliabilityTag reliability={reliability} />}
-          {bottomLabel && (
-            <p className="text-xs text-faint truncate">{bottomLabel}</p>
+          {subtitle && (
+            <p className="text-xs text-faint truncate">{subtitle}</p>
+          )}
+          {/* 갱신 중에도 이름은 계속 보여야 한다. 예전에는 이 문구가 아랫줄을
+              통째로 대신해서, 갱신이 길어지면 이름이 사라졌다. */}
+          {isStopRoute && isRefreshing && (
+            <span className="text-xs text-faint shrink-0">· 갱신 중</span>
           )}
         </div>
       </div>
