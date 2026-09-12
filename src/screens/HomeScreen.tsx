@@ -151,7 +151,11 @@ function FavoriteArrivalInfo({
         {!isStopRoute && (
           <>
             <span className="text-sm font-medium text-faint">준비중</span>
-            <span className="mt-1 flex items-center justify-end gap-0.5 text-[11px] text-brand">
+            {/* 파란색을 쓰지 않는다. 파랑은 이 앱에서 "누르는 것"을 뜻하는데,
+                이건 별도 버튼이 아니라 카드를 누르면 무슨 일이 생기는지
+                설명하는 글이다. 파랗게 두면 "여기를 따로 눌러야 하나"로
+                읽힌다. 행동 유도가 아니라 행동 가능성의 설명이다. */}
+            <span className="mt-1 flex items-center justify-end gap-0.5 text-[11px] text-muted">
               {isRoute ? "정류장 보기" : "노선 보기"}
               <ChevronDown className="w-3 h-3 -rotate-90" />
             </span>
