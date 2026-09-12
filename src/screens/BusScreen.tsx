@@ -490,78 +490,83 @@ function StationRouteCard({
       : "text-ink";
 
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      disabled={isAdding}
-      /* 한 판 안의 행이라 테두리와 둥근 모서리를 갖지 않는다 — 판이 대신
-         가진다. 누를 때 축소하지 않는 이유는 홈 화면의 같은 자리 주석 참고:
-         이웃 행과 경계가 어긋나 보인다. */
-      className={`w-full text-left flex items-center gap-3 select-none touch-manipulation transition-colors duration-75 active:bg-slate-100 ${
-        hero ? "px-4 py-4" : "px-4 py-3"
-      }`}
-    >
-      <div
-        className={`relative rounded-lg flex items-center justify-center shrink-0 ${
-          isMain ? "bg-blue-500" : "bg-emerald-500"
-        } ${hero ? "w-14 h-14" : "w-11 h-11"}`}
+    /* 즐겨찾기 별을 행 버튼 "안"에 두면 button 안에 button이 들어가 잘못된
+       HTML이 된다. 브라우저가 중첩 버튼을 어떻게 펼칠지는 정해져 있지 않아서
+       별을 눌러도 바깥 행이 먼저 먹어 노선 상세로 넘어가 버릴 수 있다.
+       홈 화면과 같은 방법으로 형제로 분리하고, 별은 행 위에 겹쳐 놓는다.
+       행 오른쪽 패딩(pr-12)이 별이 앉을 자리를 미리 비워 둔다. */
+    <div className="relative">
+      <button
+        type="button"
+        onClick={onSelect}
+        disabled={isAdding}
+        /* 한 판 안의 행이라 테두리와 둥근 모서리를 갖지 않는다 — 판이 대신
+           가진다. 누를 때 축소하지 않는 이유는 홈 화면의 같은 자리 주석 참고:
+           이웃 행과 경계가 어긋나 보인다. */
+        className={`w-full text-left flex items-center gap-3 select-none touch-manipulation transition-colors duration-75 active:bg-slate-100 pl-4 pr-12 ${
+          hero ? "py-4" : "py-3"
+        }`}
       >
-        <span
-          className={`font-bold text-white tracking-tight truncate max-w-full px-1 ${
-            hero ? "text-base" : "text-xs"
-          }`}
+        <div
+          className={`relative rounded-lg flex items-center justify-center shrink-0 ${
+            isMain ? "bg-blue-500" : "bg-emerald-500"
+          } ${hero ? "w-14 h-14" : "w-11 h-11"}`}
         >
-          {sr.routeNo}
-        </span>
-        {isFavorited && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center ring-2 ring-surface">
-            <Star className="w-2.5 h-2.5 text-white fill-white" />
+          <span
+            className={`font-bold text-white tracking-tight truncate max-w-full px-1 ${
+              hero ? "text-base" : "text-xs"
+            }`}
+          >
+            {sr.routeNo}
           </span>
-        )}
-      </div>
+          {isFavorited && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center ring-2 ring-surface">
+              <Star className="w-2.5 h-2.5 text-white fill-white" />
+            </span>
+          )}
+        </div>
 
-      <div className="flex-1 min-w-0">
-        <p
-          className={`font-semibold text-ink truncate ${hero ? "text-[15px]" : "text-sm"}`}
-        >
-          {sr.routeNo}번
-          {sr.routeTp ? (
-            <span className="text-xs font-normal text-faint ml-1.5">{sr.routeTp}</span>
-          ) : null}
-        </p>
+        <div className="flex-1 min-w-0">
+          <p
+            className={`font-semibold text-ink truncate ${hero ? "text-[15px]" : "text-sm"}`}
+          >
+            {sr.routeNo}번
+            {sr.routeTp ? (
+              <span className="text-xs font-normal text-faint ml-1.5">{sr.routeTp}</span>
+            ) : null}
+          </p>
 
-        {hasLiveInfo && (
-          <div className="mt-1">
-            <ReliabilityTag reliability={reliability} />
-          </div>
-        )}
-      </div>
+          {hasLiveInfo && (
+            <div className="mt-1">
+              <ReliabilityTag reliability={reliability} />
+            </div>
+          )}
+        </div>
 
-      {/* 도착 정보 전용 열. 폭이 고정이라 노선 이름 길이와 무관하게
-          시간이 항상 같은 자리에 온다. */}
-      <div className={ETA_COL}>
-        <p
-          className={`font-bold tracking-tight tabular-nums leading-none ${etaTone} ${
-            hero ? "text-[26px]" : "text-[17px]"
-          }`}
-        >
-          {timeLabel}
-        </p>
-        {stopsLabel && (
-          <p className="mt-1 text-[11px] text-muted tabular-nums">{stopsLabel}</p>
-        )}
-      </div>
+        {/* 도착 정보 전용 열. 폭이 고정이라 노선 이름 길이와 무관하게
+            시간이 항상 같은 자리에 온다. */}
+        <div className={ETA_COL}>
+          <p
+            className={`font-bold tracking-tight tabular-nums leading-none ${etaTone} ${
+              hero ? "text-[26px]" : "text-[17px]"
+            }`}
+          >
+            {timeLabel}
+          </p>
+          {stopsLabel && (
+            <p className="mt-1 text-[11px] text-muted tabular-nums">{stopsLabel}</p>
+          )}
+        </div>
+
+      </button>
 
       {isAdding ? (
-        <span className="w-4 h-4 border-2 border-line border-t-brand rounded-full animate-spin shrink-0" />
+        <span className="absolute top-1/2 -translate-y-1/2 right-4 w-4 h-4 border-2 border-line border-t-brand rounded-full animate-spin" />
       ) : (
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleFavorite();
-          }}
-          className="p-1 -m-1 shrink-0 rounded-full active:bg-canvas touch-manipulation"
+          onClick={onToggleFavorite}
+          className="absolute top-1/2 -translate-y-1/2 right-2 p-2 rounded-full active:bg-canvas touch-manipulation"
           aria-label={isFavorited ? "즐겨찾기 해제" : "즐겨찾기 추가"}
         >
           <Star
@@ -571,7 +576,7 @@ function StationRouteCard({
           />
         </button>
       )}
-    </button>
+    </div>
   );
 }
 
