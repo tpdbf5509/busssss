@@ -431,7 +431,12 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
   );
 }
 
-/** B1. 정류장 도착 노선 카드 — hero(임박한 1~2개)는 크게, 나머지는 압축된 형태로 재사용합니다. */
+/* 도착 정보가 들어가는 오른쪽 열의 폭. 홈 화면의 ETA_COL과 같은 값이다 —
+   두 화면에서 폭이 다르면 같은 정보가 화면마다 다른 자리에 온다.
+   "정보 없음"(5글자)이 줄바꿈되지 않는 최소 폭. */
+const ETA_COL = "w-[76px] shrink-0 text-right";
+
+/** B1. 정류장 도착 노선 한 줄 — hero(임박한 1~2개)는 크게, 나머지는 압축해서 재사용합니다. */
 function StationRouteCard({
   sr,
   hero = false,
@@ -459,57 +464,71 @@ function StationRouteCard({
     hasLiveInfo ? { source: "realtime", delayed: false } : { source: "unknown", delayed: false };
   const isMain = sr.category === "본선";
 
+  /* 오른쪽 열에 들어갈 두 줄. 위는 시간, 아래는 남은 정거장 수.
+     예전에는 둘을 한 줄에 가로로 붙였는데, 왼쪽 이름 길이에 따라 시간 위치가
+     줄마다 달라져 눈으로 훑기 어려웠다. */
+  const timeLabel =
+    minutes != null
+      ? minutes <= 0
+        ? "곧 도착"
+        : `${minutes}분`
+      : stopsOnly != null
+        ? stopsOnly <= 0
+          ? "곧 도착"
+          : `${stopsOnly}정거장`
+        : "정보 없음";
+  const stopsLabel =
+    minutes != null && sr.arrprevstationcnt != null
+      ? `${sr.arrprevstationcnt}정거장`
+      : "";
+
+  // 근거가 없으면 흐리게 물러나고, 3분 이하면 브랜드 색으로 끌어올린다.
+  const etaTone = !hasLiveInfo
+    ? "text-faint"
+    : minutes != null && minutes <= 3
+      ? "text-brand"
+      : "text-ink";
+
   return (
     <button
       type="button"
       onClick={onSelect}
       disabled={isAdding}
-      className={`w-full bg-surface rounded-2xl border border-line text-left active:border-brand/40 transition-colors flex items-center gap-3 ${
-        hero ? "p-5" : "p-3"
+      /* 한 판 안의 행이라 테두리와 둥근 모서리를 갖지 않는다 — 판이 대신
+         가진다. 누를 때 축소하지 않는 이유는 홈 화면의 같은 자리 주석 참고:
+         이웃 행과 경계가 어긋나 보인다. */
+      className={`w-full text-left flex items-center gap-3 select-none touch-manipulation transition-colors duration-75 active:bg-slate-100 ${
+        hero ? "px-4 py-4" : "px-4 py-3"
       }`}
     >
       <div
-        className={`relative rounded-xl flex items-center justify-center shrink-0 ${
+        className={`relative rounded-lg flex items-center justify-center shrink-0 ${
           isMain ? "bg-blue-500" : "bg-emerald-500"
-        } ${hero ? "w-14 h-14" : "w-10 h-10"}`}
+        } ${hero ? "w-14 h-14" : "w-11 h-11"}`}
       >
-        <span className={`font-bold text-white ${hero ? "text-base" : "text-xs"}`}>
+        <span
+          className={`font-bold text-white tracking-tight truncate max-w-full px-1 ${
+            hero ? "text-base" : "text-xs"
+          }`}
+        >
           {sr.routeNo}
         </span>
         {isFavorited && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center ring-2 ring-white">
+          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center ring-2 ring-surface">
             <Star className="w-2.5 h-2.5 text-white fill-white" />
           </span>
         )}
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className={`font-semibold text-slate-800 ${hero ? "text-base" : "text-sm"}`}>
+        <p
+          className={`font-semibold text-ink truncate ${hero ? "text-[15px]" : "text-sm"}`}
+        >
           {sr.routeNo}번
           {sr.routeTp ? (
-            <span className="text-xs font-normal text-slate-400 ml-1.5">{sr.routeTp}</span>
+            <span className="text-xs font-normal text-faint ml-1.5">{sr.routeTp}</span>
           ) : null}
         </p>
-
-        <div className="mt-0.5 flex items-baseline gap-1.5">
-          <p className={hero ? "text-2xl font-bold text-blue-600" : "text-xs font-semibold text-slate-500"}>
-            {minutes != null
-              ? minutes <= 0
-                ? "곧 도착"
-                : `${minutes}분${hero ? " 후" : ""}`
-              : stopsOnly != null
-                ? stopsOnly <= 0
-                  ? "곧 도착"
-                  : `${stopsOnly}정거장 전`
-                : "도착정보 없음"}
-          </p>
-          {minutes != null && sr.arrprevstationcnt != null && (
-            <span className="text-xs text-slate-400">
-              {hero ? "" : "· "}
-              {sr.arrprevstationcnt}정거장 전
-            </span>
-          )}
-        </div>
 
         {hasLiveInfo && (
           <div className="mt-1">
@@ -518,8 +537,23 @@ function StationRouteCard({
         )}
       </div>
 
+      {/* 도착 정보 전용 열. 폭이 고정이라 노선 이름 길이와 무관하게
+          시간이 항상 같은 자리에 온다. */}
+      <div className={ETA_COL}>
+        <p
+          className={`font-bold tracking-tight tabular-nums leading-none ${etaTone} ${
+            hero ? "text-[26px]" : "text-[17px]"
+          }`}
+        >
+          {timeLabel}
+        </p>
+        {stopsLabel && (
+          <p className="mt-1 text-[11px] text-muted tabular-nums">{stopsLabel}</p>
+        )}
+      </div>
+
       {isAdding ? (
-        <span className="w-4 h-4 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin shrink-0" />
+        <span className="w-4 h-4 border-2 border-line border-t-brand rounded-full animate-spin shrink-0" />
       ) : (
         <button
           type="button"
@@ -527,12 +561,12 @@ function StationRouteCard({
             e.stopPropagation();
             onToggleFavorite();
           }}
-          className="p-1 -m-1 shrink-0 rounded-full active:bg-slate-50"
+          className="p-1 -m-1 shrink-0 rounded-full active:bg-canvas touch-manipulation"
           aria-label={isFavorited ? "즐겨찾기 해제" : "즐겨찾기 추가"}
         >
           <Star
             className={`w-4 h-4 transition-colors ${
-              isFavorited ? "text-amber-400 fill-amber-400" : "text-slate-300"
+              isFavorited ? "text-amber-400 fill-amber-400" : "text-faint"
             }`}
           />
         </button>
@@ -855,12 +889,15 @@ const isAllRouteFavorited = (route: Route) =>
             </p>
 
             {status === "loading" && (
-              <div className="space-y-2">
+              /* 완성된 목록과 같은 모양(한 판 + 구분선, 같은 행 높이)으로 깔아야
+                 값이 들어올 때 목록이 튀지 않는다. */
+              <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-line">
                 {[1, 2, 3, 4].map((i) => (
-                  <LoadingSkeleton
-                    key={i}
-                    className="h-16 w-full"
-                  />
+                  <div key={i} className="px-4 py-3 flex items-center gap-3">
+                    <LoadingSkeleton className="w-11 h-11 shrink-0" />
+                    <LoadingSkeleton className="h-4 flex-1" />
+                    <LoadingSkeleton className="h-5 w-[76px] shrink-0" />
+                  </div>
                 ))}
               </div>
             )}
@@ -886,7 +923,10 @@ const isAllRouteFavorited = (route: Route) =>
                     <p className="text-[11px] font-semibold text-blue-600 mb-1">
                       지금 타야 할 버스
                     </p>
-                    <div className="space-y-2.5 mb-5">
+                    {/* 카드마다 테두리를 그리는 대신 하나의 흰 판 안에서 구분선으로
+                        나눈다. 테두리 박스가 여러 개 쌓이면 문서처럼 보인다
+                        (홈 화면의 즐겨찾기와 같은 문법). */}
+                    <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-line mb-5">
                       {heroRoutes.map((sr) => (
                         <StationRouteCard
                           key={sr.routeId}
@@ -922,7 +962,7 @@ const isAllRouteFavorited = (route: Route) =>
                 )}
 
                 {(showMoreRoutes || heroRoutes.length === 0) && (
-                  <div className="space-y-1.5">
+                  <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-line">
                     {restRoutes.map((sr) => (
                       <StationRouteCard
                         key={sr.routeId}
@@ -957,12 +997,15 @@ const isAllRouteFavorited = (route: Route) =>
             </p>
 
             {allStatus === "loading" && (
-              <div className="space-y-2">
+              /* 완성된 목록과 같은 모양(한 판 + 구분선, 같은 행 높이)으로 깔아야
+                 값이 들어올 때 목록이 튀지 않는다. */
+              <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-line">
                 {[1, 2, 3, 4].map((i) => (
-                  <LoadingSkeleton
-                    key={i}
-                    className="h-16 w-full"
-                  />
+                  <div key={i} className="px-4 py-3 flex items-center gap-3">
+                    <LoadingSkeleton className="w-11 h-11 shrink-0" />
+                    <LoadingSkeleton className="h-4 flex-1" />
+                    <LoadingSkeleton className="h-5 w-[76px] shrink-0" />
+                  </div>
                 ))}
               </div>
             )}
@@ -984,7 +1027,7 @@ const isAllRouteFavorited = (route: Route) =>
 
             {allStatus === "success" &&
               allViaRoutes.length > 0 && (
-                <div className="space-y-2">
+                <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-line">
                   {allViaRoutes.map((route) => {
                     const isMain = isMainRoute(route.name);
                     return (
@@ -994,7 +1037,7 @@ const isAllRouteFavorited = (route: Route) =>
                       tabIndex={0}
                       onClick={() => onSelectRoute(route)}
                       onKeyDown={(e) => e.key === "Enter" && onSelectRoute(route)}
-                      className="w-full bg-surface rounded-2xl px-3.5 py-3 border border-line text-left active:border-brand/40 transition-colors flex items-center gap-3 cursor-pointer"
+                      className="w-full px-4 py-3 text-left flex items-center gap-3 cursor-pointer select-none touch-manipulation transition-colors duration-75 active:bg-slate-100"
                     >
                       <div
                         className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
@@ -1007,17 +1050,17 @@ const isAllRouteFavorited = (route: Route) =>
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-slate-800">
+                        <p className="text-sm font-semibold text-ink">
                           {route.number}번
                         </p>
 
-                        <p className="text-xs text-slate-400 mt-0.5 truncate">
+                        <p className="text-xs text-faint mt-0.5 truncate">
                           {route.start} → {route.end}
                         </p>
                       </div>
 
                       {addingRouteNo === route.number ? (
-                        <span className="w-4 h-4 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin shrink-0" />
+                        <span className="w-4 h-4 border-2 border-line border-t-brand rounded-full animate-spin shrink-0" />
                       ) : (
                         <button
                           type="button"
@@ -1025,7 +1068,7 @@ const isAllRouteFavorited = (route: Route) =>
                             e.stopPropagation();
                             handleAllRouteClick(route);
                           }}
-                          className="p-1 -m-1 shrink-0 rounded-full active:bg-slate-50"
+                          className="p-1 -m-1 shrink-0 rounded-full active:bg-canvas touch-manipulation"
                           aria-label="즐겨찾기"
                         >
                           <Star
