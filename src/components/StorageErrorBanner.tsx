@@ -37,7 +37,7 @@ export function StorageErrorBanner() {
           </p>
           <button
             onClick={() => dispatch({ type: "DISMISS_STORAGE_ERROR" })}
-            className="mt-2 text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-lg px-3 py-1.5 transition-colors"
+            className="mt-2 text-xs font-semibold text-amber-900 bg-amber-100 active:bg-amber-200 rounded-lg px-3 py-1.5 transition-colors"
           >
             확인했어요
           </button>

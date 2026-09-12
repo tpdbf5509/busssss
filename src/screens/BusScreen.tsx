@@ -304,7 +304,7 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                     tabIndex={0}
                     onClick={() => setSelectedRoute(route)}
                     onKeyDown={(e) => e.key === "Enter" && setSelectedRoute(route)}
-                    className="w-full bg-surface rounded-2xl px-3.5 py-3 border border-line text-left hover:border-brand/40 transition-colors cursor-pointer flex items-center gap-3"
+                    className="w-full bg-surface rounded-2xl px-3.5 py-3 border border-line text-left active:border-brand/40 transition-colors cursor-pointer flex items-center gap-3"
                   >
                     {/* 검색 결과는 여러 노선을 스크롤하며 비교하는 화면이라
                         한 항목이 차지하는 높이가 중요하다. 배지를 왼쪽으로
@@ -346,13 +346,13 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
 
                     <button
                       onClick={(e) => toggleFavorite(route, e)}
-                      className="p-1 -m-1 rounded-full hover:bg-amber-50 shrink-0"
+                      className="p-1 -m-1 rounded-full active:bg-amber-50 shrink-0"
                     >
                       <Star
                         className={`w-4 h-4 transition-colors ${
                           isFavorited(route.id)
                             ? "text-amber-400 fill-amber-400"
-                            : "text-faint hover:text-amber-400"
+                            : "text-faint active:text-amber-400"
                         }`}
                       />
                     </button>
@@ -393,7 +393,7 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                     tabIndex={0}
                     onClick={() => setSelectedStation(station)}
                     onKeyDown={(e) => e.key === "Enter" && setSelectedStation(station)}
-                    className="w-full bg-surface rounded-2xl px-3.5 py-3 border border-line flex items-center gap-3 cursor-pointer hover:border-brand/40 transition-colors"
+                    className="w-full bg-surface rounded-2xl px-3.5 py-3 border border-line flex items-center gap-3 cursor-pointer active:border-brand/40 transition-colors"
                   >
                     <div className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
                       <MapPin className="w-5 h-5 text-emerald-600" />
@@ -410,13 +410,13 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                     </div>
                     <button
                       onClick={(e) => toggleStationFavorite(station, e)}
-                      className="p-1.5 rounded-full hover:bg-amber-50"
+                      className="p-1.5 rounded-full active:bg-amber-50"
                     >
                       <Star
                         className={`w-4 h-4 transition-colors ${
                           isStationFavorited(station.id)
                             ? "text-amber-400 fill-amber-400"
-                            : "text-slate-300 hover:text-amber-400"
+                            : "text-slate-300 active:text-amber-400"
                         }`}
                       />
                     </button>
@@ -464,7 +464,7 @@ function StationRouteCard({
       type="button"
       onClick={onSelect}
       disabled={isAdding}
-      className={`w-full bg-surface rounded-2xl border border-line text-left hover:border-brand/40 transition-colors flex items-center gap-3 ${
+      className={`w-full bg-surface rounded-2xl border border-line text-left active:border-brand/40 transition-colors flex items-center gap-3 ${
         hero ? "p-5" : "p-3"
       }`}
     >
@@ -527,7 +527,7 @@ function StationRouteCard({
             e.stopPropagation();
             onToggleFavorite();
           }}
-          className="p-1 -m-1 shrink-0 rounded-full hover:bg-slate-50"
+          className="p-1 -m-1 shrink-0 rounded-full active:bg-slate-50"
           aria-label={isFavorited ? "즐겨찾기 해제" : "즐겨찾기 추가"}
         >
           <Star
@@ -796,7 +796,7 @@ const isAllRouteFavorited = (route: Route) =>
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            className="p-1.5 -ml-1.5 rounded-full hover:bg-slate-100"
+            className="p-1.5 -ml-1.5 rounded-full active:bg-slate-100"
           >
             <ArrowLeft className="w-5 h-5 text-slate-700" />
           </button>
@@ -912,7 +912,7 @@ const isAllRouteFavorited = (route: Route) =>
                   <button
                     type="button"
                     onClick={() => setShowMoreRoutes((v) => !v)}
-                    className="w-full flex items-center justify-center gap-1 py-2.5 text-xs font-medium text-slate-400 hover:text-slate-600"
+                    className="w-full flex items-center justify-center gap-1 py-2.5 text-xs font-medium text-slate-400 active:text-slate-600"
                   >
                     {showMoreRoutes ? "접기" : `다른 노선 보기 (${restRoutes.length})`}
                     <ChevronDown
@@ -994,7 +994,7 @@ const isAllRouteFavorited = (route: Route) =>
                       tabIndex={0}
                       onClick={() => onSelectRoute(route)}
                       onKeyDown={(e) => e.key === "Enter" && onSelectRoute(route)}
-                      className="w-full bg-surface rounded-2xl px-3.5 py-3 border border-line text-left hover:border-brand/40 transition-colors flex items-center gap-3 cursor-pointer"
+                      className="w-full bg-surface rounded-2xl px-3.5 py-3 border border-line text-left active:border-brand/40 transition-colors flex items-center gap-3 cursor-pointer"
                     >
                       <div
                         className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
@@ -1025,7 +1025,7 @@ const isAllRouteFavorited = (route: Route) =>
                             e.stopPropagation();
                             handleAllRouteClick(route);
                           }}
-                          className="p-1 -m-1 shrink-0 rounded-full hover:bg-slate-50"
+                          className="p-1 -m-1 shrink-0 rounded-full active:bg-slate-50"
                           aria-label="즐겨찾기"
                         >
                           <Star
@@ -1151,7 +1151,7 @@ const handleStopClick = async (stop: BusStop) => {
     <div className="bg-slate-50">
       <header className="bg-white px-4 pt-safe-14 pb-5 border-b border-slate-100 sticky top-0 z-30">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="p-1.5 -ml-1.5 rounded-full hover:bg-slate-100">
+          <button onClick={onBack} className="p-1.5 -ml-1.5 rounded-full active:bg-slate-100">
             <ArrowLeft className="w-5 h-5 text-slate-700" />
           </button>
           <div className="flex-1">
@@ -1185,7 +1185,7 @@ const handleStopClick = async (stop: BusStop) => {
                 showToast("즐겨찾기에 추가했어요");
               }
             }}
-            className="p-2 rounded-full hover:bg-slate-100"
+            className="p-2 rounded-full active:bg-slate-100"
           >
             <Star
               className={`w-5 h-5 transition-colors ${
@@ -1204,7 +1204,7 @@ const handleStopClick = async (stop: BusStop) => {
         </div>
         <button
           onClick={() => setShowSchedule(true)}
-          className="mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 bg-slate-100 text-blue-700 rounded-xl text-sm font-semibold hover:bg-slate-200 transition-colors"
+          className="mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 bg-slate-100 text-blue-700 rounded-xl text-sm font-semibold active:bg-slate-200 transition-colors"
         >
           <Clock className="w-4 h-4" />
           배차시간 보기
@@ -1231,7 +1231,7 @@ const handleStopClick = async (stop: BusStop) => {
         {busStatus === "error" && (
           <button
             onClick={() => retryBuses()}
-            className="text-[11px] font-semibold text-blue-600 ml-auto hover:underline"
+            className="text-[11px] font-semibold text-blue-600 ml-auto active:underline"
           >
             다시 시도
           </button>
@@ -1279,7 +1279,7 @@ const handleStopClick = async (stop: BusStop) => {
                     <button
                       onClick={() => handleStopClick(stop)}
                       disabled={addingStopId === stop.id}
-                      className="flex-1 flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-white transition-colors text-left"
+                      className="flex-1 flex items-center justify-between py-2.5 px-3 rounded-xl active:bg-white transition-colors text-left"
                     >
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-[11px] text-slate-400 font-medium w-5 shrink-0">
@@ -1437,7 +1437,7 @@ function DispatchScheduleModal({
             <Clock className="w-5 h-5 text-blue-600" />
             <h2 className="text-lg font-bold text-slate-900">배차시간</h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-slate-100">
+          <button onClick={onClose} className="p-1.5 rounded-full active:bg-slate-100">
             <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>

@@ -199,7 +199,7 @@ export function MyScreen() {
               {state.favorites.map((fav) => (
                   <div
                     key={fav.id}
-                    className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 transition-colors"
+                    className="flex items-center gap-3 p-2.5 rounded-xl active:bg-slate-50 transition-colors"
                   >
                     <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center shrink-0">
                       <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
@@ -214,13 +214,13 @@ export function MyScreen() {
                         />
                         <button
                           onClick={saveEdit}
-                          className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg"
+                          className="p-1.5 text-emerald-600 active:bg-emerald-50 rounded-lg"
                         >
                           <Check className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => setEditingId(null)}
-                          className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg"
+                          className="p-1.5 text-slate-400 active:bg-slate-100 rounded-lg"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -242,14 +242,14 @@ export function MyScreen() {
                         </div>
                         <button
                           onClick={() => setShortcutFavorite(fav)}
-                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-1.5 text-slate-400 active:text-blue-600 active:bg-blue-50 rounded-lg transition-colors"
                           aria-label="홈 화면 바로가기 추가"
                         >
                           <Smartphone className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => startEdit(fav.id, fav.label)}
-                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-1.5 text-slate-400 active:text-blue-600 active:bg-blue-50 rounded-lg transition-colors"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
@@ -258,7 +258,7 @@ export function MyScreen() {
                             dispatch({ type: "REMOVE_FAVORITE", id: fav.id });
                             showToast("삭제했어요");
                           }}
-                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-1.5 text-slate-400 active:text-red-500 active:bg-red-50 rounded-lg transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -451,7 +451,7 @@ function SettingRow({
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors ${
+      className={`w-full flex items-center gap-3 px-4 py-3.5 active:bg-slate-50 transition-colors ${
         !last ? "border-b border-slate-50" : ""
       }`}
     >

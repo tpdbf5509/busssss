@@ -189,7 +189,7 @@ function AppContent() {
                 setQuickViewBanner(null);
                 clearDeepLinkParam();
               }}
-              className="text-slate-300 hover:text-slate-500 shrink-0"
+              className="text-slate-300 active:text-slate-500 shrink-0"
               aria-label="닫기"
             >
               <X className="w-4 h-4" />

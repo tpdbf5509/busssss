@@ -145,7 +145,7 @@ export function RouteScreen() {
             <button
               type="button"
               onClick={clearResult}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-slate-200"
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full active:bg-slate-200"
             >
               <X className="w-4 h-4 text-slate-400" />
             </button>
@@ -174,7 +174,7 @@ export function RouteScreen() {
                   key={dest}
                   type="button"
                   onClick={() => handleSearch(dest)}
-                  className="rounded-full bg-white border border-slate-100 px-3.5 py-1.5 text-sm text-slate-700 hover:border-blue-200 hover:bg-blue-50 active:scale-[0.98] transition-all"
+                  className="rounded-full bg-white border border-slate-100 px-3.5 py-1.5 text-sm text-slate-700 active:border-blue-200 active:bg-blue-50 active:scale-[0.98] transition-all"
                 >
                   {dest}
                 </button>
@@ -263,7 +263,7 @@ export function RouteScreen() {
             <button
               type="button"
               onClick={clearResult}
-              className="w-full rounded-2xl border border-slate-100 bg-white py-3.5 text-sm font-medium text-slate-600 hover:bg-slate-50 active:scale-[0.99] transition-all"
+              className="w-full rounded-2xl border border-slate-100 bg-white py-3.5 text-sm font-medium text-slate-600 active:bg-slate-50 active:scale-[0.99] transition-all"
             >
               다른 목적지 검색
             </button>

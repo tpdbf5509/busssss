@@ -68,7 +68,7 @@ export function AlertScreen() {
           </div>
           <button
             onClick={markAllRead}
-            className="text-xs text-blue-600 font-medium hover:underline"
+            className="text-xs text-blue-600 font-medium active:underline"
           >
             모두 읽음
           </button>
@@ -86,7 +86,7 @@ export function AlertScreen() {
             </div>
             <button
               onClick={handleRequestPermission}
-              className="shrink-0 text-xs font-semibold text-blue-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-full transition-colors"
+              className="shrink-0 text-xs font-semibold text-blue-600 bg-slate-100 active:bg-slate-200 px-3 py-1.5 rounded-full transition-colors"
             >
               허용하기
             </button>
@@ -98,7 +98,7 @@ export function AlertScreen() {
           <h2 className="text-sm font-bold text-slate-700">하차 알림 설정</h2>
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1 text-xs text-blue-600 font-medium bg-slate-100 px-3 py-1.5 rounded-full hover:bg-slate-200 transition-colors"
+            className="flex items-center gap-1 text-xs text-blue-600 font-medium bg-slate-100 px-3 py-1.5 rounded-full active:bg-slate-200 transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             추가
@@ -111,7 +111,7 @@ export function AlertScreen() {
             <p className="text-sm text-slate-400">설정된 하차 알림이 없어요</p>
             <button
               onClick={() => setShowAdd(true)}
-              className="mt-3 text-sm text-blue-600 font-medium hover:underline"
+              className="mt-3 text-sm text-blue-600 font-medium active:underline"
             >
               알림 설정하기
             </button>
@@ -229,7 +229,7 @@ function AlertCard({
           {alert.vibrate && <Vibrate className="w-3.5 h-3.5 text-slate-400" />}
           <button
             onClick={onRemove}
-            className="text-slate-300 hover:text-red-500 transition-colors ml-1"
+            className="text-slate-300 active:text-red-500 transition-colors ml-1"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -319,7 +319,7 @@ function AddAlertModal({
                   setSelectedStop(null);
                 }
               }}
-              className="p-1 -ml-1 rounded-full hover:bg-slate-100"
+              className="p-1 -ml-1 rounded-full active:bg-slate-100"
             >
               <ArrowLeft className="w-5 h-5 text-slate-600" />
             </button>
@@ -368,7 +368,7 @@ function AddAlertModal({
                       setSelectedRoute(route);
                       setStep("stop");
                     }}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 text-left"
+                    className="w-full flex items-center gap-3 p-3 rounded-xl active:bg-slate-50 text-left"
                   >
                     <div
                       className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
@@ -418,7 +418,7 @@ function AddAlertModal({
                       setSelectedStop(stop);
                       setStep("options");
                     }}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 text-left"
+                    className="w-full flex items-center gap-3 p-3 rounded-xl active:bg-slate-50 text-left"
                   >
                     <span className="text-[11px] text-slate-400 w-6 shrink-0">{stop.order}</span>
                     <span className="text-sm font-medium text-slate-800 flex-1">{stop.name}</span>
