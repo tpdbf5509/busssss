@@ -25,6 +25,19 @@
   body {
     font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background-color: #ffffff;
+
+    /* 길게 눌렀을 때 글자가 드래그 선택되는 걸 막는다. 웹페이지에서는
+       당연한 동작이지만 앱에서는 일어나지 않는다. 실제로 복사가 필요한
+       곳에는 아래 .selectable로 다시 켠다. */
+    -webkit-user-select: none;
+    user-select: none;
+
+    /* iOS에서 길게 눌렀을 때 뜨는 "복사 / 공유" 팝업을 끈다. */
+    -webkit-touch-callout: none;
+
+    /* 가로로 눕혔을 때 iOS가 글자를 제멋대로 키우는 동작을 끈다. */
+    -webkit-text-size-adjust: 100%;
+
     touch-action: pan-x pan-y;
     height: 100%;
     overflow: hidden;
@@ -37,12 +50,21 @@
   #root {
     height: 100%;
     overflow: hidden;
+    /* html/body와 같이 막아야 안쪽 스크롤 영역이 끝에 닿았을 때
+       바깥이 딸려 움직이지 않는다. */
+    overscroll-behavior: none;
   }
 
+  /* 입력 요소는 위 body의 user-select: none에서 예외로 둔다. 일부 브라우저는
+     부모가 선택 금지면 입력칸 안에서도 커서 끌기·전체선택이 막힌다 —
+     검색창에서 오타를 고치지 못하는 문제가 된다. */
   input,
   textarea,
   select {
     font-size: 16px;
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
   }
 }
 
@@ -97,12 +119,25 @@
       padding-bottom: 20px;
     }
   }
-  .scrollbar-hide {
+  /* 스크롤 영역: 스크롤바를 감추고 iOS 관성 스크롤을 켠다.
+     .app-scroll은 같은 뜻의 다른 이름이라 규칙을 따로 만들지 않고 함께 묶는다. */
+  .scrollbar-hide,
+  .app-scroll {
     -ms-overflow-style: none;
     scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
   }
-  .scrollbar-hide::-webkit-scrollbar {
+  .scrollbar-hide::-webkit-scrollbar,
+  .app-scroll::-webkit-scrollbar {
     display: none;
+  }
+
+  /* 글자를 실제로 복사해야 하는 곳에만 선택을 되살린다.
+     정류장 이름이나 노선 번호를 남에게 보내려는 경우가 있다. */
+  .selectable {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
   }
   .w-4\.5 {
     width: 1.125rem;
@@ -210,4 +245,16 @@ html.color-blind .bg-emerald-600 {
 html.color-blind .text-emerald-600,
 html.color-blind .text-emerald-700 {
   color: #b45309 !important;
+}
+
+/* 기기 접근성 설정에서 "동작 줄이기"를 켠 사용자에게는 모든 전환을
+   즉시 끝낸다. 어지럼증·멀미를 겪는 사용자를 위한 OS 차원의 요청이다. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
