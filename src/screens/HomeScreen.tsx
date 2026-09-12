@@ -238,11 +238,12 @@ export function HomeScreen({
             빈 공간이 생겼다. 마이 탭 헤더와 높이를 맞추려던 값인데, 두 화면을
             나란히 보는 일이 없어 그 이득보다 손해가 크다. */}
         <div className="flex flex-col justify-center">
-          {/* "전주시 버스 노선 정보"를 뺐다. 오른쪽 칩이 이미 현재 도시를
-              알려주고 있어 정보가 겹쳤고, 화면 폭을 가로지르는 긴 줄이라
-              측정하면 도착 시간(무게 2465)보다 두 배 무거웠다(4900).
-              헤더는 앱 이름 + 현재 도시만 남긴다.
-              아래 여백(mb-1.5)은 부제와의 간격이었으므로 함께 뺀다. */}
+          {/* 원래 부제("전주시 버스 노선 정보")는 text-sm에 화면 폭을 가로지르는
+              한 줄이라 도착 시간보다 무거웠다. 문구를 줄이고 11px/regular/
+              white-80으로 낮춰 다시 넣는다 — 앱 이름 아래 정체성 한 줄이
+              없으면 헤더가 비어 보인다. 도시 선택기(14px medium, 흰 알약)보다
+              약해야 하므로 크기·굵기·명도를 모두 한 단계씩 내렸다.
+              leading-4는 헤더가 부제 때문에 필요 이상 자라지 않게 하는 값이다. */}
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold tracking-tight">BUS STOP</h1>
             <button
@@ -257,6 +258,9 @@ export function HomeScreen({
               <ChevronDown className="w-3.5 h-3.5" />
             </button>
           </div>
+          <p className="mt-0.5 text-[11px] leading-4 font-normal text-white/80">
+            전주시 버스
+          </p>
         </div>
       </header>
 
