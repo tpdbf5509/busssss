@@ -226,7 +226,10 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                     setSearchTab("route");
                     setQuery("");
                   }}
-                  className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  /* 흰 알약의 크기는 그대로 두고 세로로만 3px씩 투명하게
+                     넓혀 38 -> 44px를 만든다. 알약을 키우면 세그먼트 전체와
+                     아래 검색 입력이 함께 내려간다. */
+                  className={`relative flex-1 py-2 rounded-lg text-sm font-semibold transition-colors before:content-[''] before:absolute before:inset-x-0 before:-inset-y-[3px] ${
                     searchTab === "route"
                       ? "bg-surface text-brand border border-line"
                       : "text-muted"
@@ -239,7 +242,10 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                     setSearchTab("station");
                     setQuery("");
                   }}
-                  className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  /* 흰 알약의 크기는 그대로 두고 세로로만 3px씩 투명하게
+                     넓혀 38 -> 44px를 만든다. 알약을 키우면 세그먼트 전체와
+                     아래 검색 입력이 함께 내려간다. */
+                  className={`relative flex-1 py-2 rounded-lg text-sm font-semibold transition-colors before:content-[''] before:absolute before:inset-x-0 before:-inset-y-[3px] ${
                     searchTab === "station"
                       ? "bg-surface text-brand border border-line"
                       : "text-muted"
@@ -264,7 +270,9 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                 {query && (
                   <button
                     onClick={() => setQuery("")}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2"
+                    /* 아이콘은 16px 그대로. 이미 absolute라 ::before가 이
+                       버튼을 기준으로 잡힌다(relative를 더하면 위치가 깨진다). */
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 before:content-[''] before:absolute before:-inset-3.5"
                   >
                     <X className="w-4 h-4 text-slate-400" />
                   </button>
@@ -356,7 +364,11 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
 
                     <button
                       onClick={(e) => toggleFavorite(route, e)}
-                      className="p-1 -m-1 rounded-full active:bg-amber-50 shrink-0"
+                      /* 별은 행(노선 이동) 안에 있는 다른 동작이라 눌리는 영역이
+                         행보다 우선해야 한다. 오른쪽은 판이 overflow-hidden이라
+                         12px 밖에 여유가 없어(실측) 8px만 넓히고 모자란 만큼을
+                         행 안쪽(왼쪽 12px)으로 가져온다. */
+                      className="relative p-1 -m-1 rounded-full active:bg-amber-50 shrink-0 before:content-[''] before:absolute before:-inset-y-2.5 before:-left-3 before:-right-2"
                     >
                       <Star
                         className={`w-4 h-4 transition-colors ${
@@ -423,7 +435,8 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                     </div>
                     <button
                       onClick={(e) => toggleStationFavorite(station, e)}
-                      className="p-1.5 rounded-full active:bg-amber-50"
+                      /* 위와 같은 이유로 오른쪽은 6px만, 왼쪽은 10px 넓힌다. */
+                      className="relative p-1.5 rounded-full active:bg-amber-50 before:content-[''] before:absolute before:-inset-y-2 before:-left-2.5 before:-right-1.5"
                     >
                       <Star
                         className={`w-4 h-4 transition-colors ${
@@ -579,7 +592,9 @@ function StationRouteCard({
         <button
           type="button"
           onClick={onToggleFavorite}
-          className="absolute top-1/2 -translate-y-1/2 right-2 p-2 rounded-full active:bg-canvas touch-manipulation"
+          /* 이미 absolute라 ::before가 이 버튼 기준으로 잡힌다. 오른쪽 여유가
+             8px뿐이라 4px만 넓히고 나머지는 왼쪽(행 안쪽)으로 가져온다. */
+          className="absolute top-1/2 -translate-y-1/2 right-2 p-2 rounded-full active:bg-canvas touch-manipulation before:content-[''] before:absolute before:-inset-y-1.5 before:-left-2 before:-right-1"
           aria-label={isFavorited ? "즐겨찾기 해제" : "즐겨찾기 추가"}
         >
           <Star
@@ -848,7 +863,8 @@ const isAllRouteFavorited = (route: Route) =>
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            className="p-1.5 -ml-1.5 rounded-full active:bg-slate-100"
+            /* 왼쪽은 화면 가장자리까지 10px뿐이라 8px만, 오른쪽은 4px 넓힌다. */
+            className="relative p-1.5 -ml-1.5 rounded-full active:bg-slate-100 before:content-[''] before:absolute before:-inset-y-1.5 before:-left-2 before:-right-1"
           >
             <ArrowLeft className="w-5 h-5 text-slate-700" />
           </button>
@@ -872,7 +888,7 @@ const isAllRouteFavorited = (route: Route) =>
         <div className="flex bg-canvas rounded-xl p-1">
           <button
             onClick={() => setDetailTab("arrival")}
-            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            className={`relative flex-1 py-2 rounded-lg text-sm font-semibold transition-colors before:content-[''] before:absolute before:inset-x-0 before:-inset-y-[3px] ${
               detailTab === "arrival"
                 ? "bg-surface text-brand border border-line"
                 : "text-muted"
@@ -883,7 +899,7 @@ const isAllRouteFavorited = (route: Route) =>
 
           <button
             onClick={() => setDetailTab("all")}
-            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            className={`relative flex-1 py-2 rounded-lg text-sm font-semibold transition-colors before:content-[''] before:absolute before:inset-x-0 before:-inset-y-[3px] ${
               detailTab === "all"
                 ? "bg-surface text-brand border border-line"
                 : "text-muted"
@@ -970,7 +986,7 @@ const isAllRouteFavorited = (route: Route) =>
                   <button
                     type="button"
                     onClick={() => setShowMoreRoutes((v) => !v)}
-                    className="w-full flex items-center justify-center gap-1 py-2.5 text-xs font-medium text-slate-400 active:text-slate-600"
+                    className="relative w-full flex items-center justify-center gap-1 py-2.5 text-xs font-medium text-slate-400 active:text-slate-600 before:content-[''] before:absolute before:inset-x-0 before:-inset-y-1"
                   >
                     {showMoreRoutes ? "접기" : `다른 노선 보기 (${restRoutes.length})`}
                     <ChevronDown
@@ -1086,7 +1102,8 @@ const isAllRouteFavorited = (route: Route) =>
                             e.stopPropagation();
                             handleAllRouteClick(route);
                           }}
-                          className="p-1 -m-1 shrink-0 rounded-full active:bg-canvas touch-manipulation"
+                          /* 검색 결과의 별과 같은 이유·같은 값(오른쪽 여유 12px). */
+                          className="relative p-1 -m-1 shrink-0 rounded-full active:bg-canvas touch-manipulation before:content-[''] before:absolute before:-inset-y-2.5 before:-left-3 before:-right-2"
                           aria-label="즐겨찾기"
                         >
                           <Star
@@ -1212,7 +1229,10 @@ const handleStopClick = async (stop: BusStop) => {
     <div className="bg-slate-50">
       <header className="bg-white px-4 pt-safe-14 pb-5 border-b border-slate-100 sticky top-0 z-30">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="p-1.5 -ml-1.5 rounded-full active:bg-slate-100">
+          <button
+            onClick={onBack}
+            className="relative p-1.5 -ml-1.5 rounded-full active:bg-slate-100 before:content-[''] before:absolute before:-inset-y-1.5 before:-left-2 before:-right-1"
+          >
             <ArrowLeft className="w-5 h-5 text-slate-700" />
           </button>
           <div className="flex-1">
@@ -1246,7 +1266,7 @@ const handleStopClick = async (stop: BusStop) => {
                 showToast("즐겨찾기에 추가했어요");
               }
             }}
-            className="p-2 rounded-full active:bg-slate-100"
+            className="relative p-2 rounded-full active:bg-slate-100 before:content-[''] before:absolute before:-inset-y-1 before:-left-1.5 before:-right-0.5"
           >
             <Star
               className={`w-5 h-5 transition-colors ${
@@ -1265,7 +1285,7 @@ const handleStopClick = async (stop: BusStop) => {
         </div>
         <button
           onClick={() => setShowSchedule(true)}
-          className="mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 bg-slate-100 text-blue-700 rounded-xl text-sm font-semibold active:bg-slate-200 transition-colors"
+          className="relative mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 bg-slate-100 text-blue-700 rounded-xl text-sm font-semibold active:bg-slate-200 transition-colors before:content-[''] before:absolute before:inset-x-0 before:-inset-y-0.5"
         >
           <Clock className="w-4 h-4" />
           배차시간 보기
@@ -1292,7 +1312,9 @@ const handleStopClick = async (stop: BusStop) => {
         {busStatus === "error" && (
           <button
             onClick={() => retryBuses()}
-            className="text-[11px] font-semibold text-blue-600 ml-auto active:underline"
+            /* 화면에서 가장 작은 표적(16.5px)이었다. 글자 크기는 그대로 두고
+               위아래로 14px씩 넓힌다 — 위 33px, 아래 16px의 여유 안에 들어간다. */
+            className="relative text-[11px] font-semibold text-blue-600 ml-auto active:underline before:content-[''] before:absolute before:-inset-x-2 before:-inset-y-[14px]"
           >
             다시 시도
           </button>
@@ -1340,7 +1362,9 @@ const handleStopClick = async (stop: BusStop) => {
                     <button
                       onClick={() => handleStopClick(stop)}
                       disabled={addingStopId === stop.id}
-                      className="flex-1 flex items-center justify-between py-2.5 px-3 rounded-xl active:bg-white transition-colors text-left"
+                      /* 행 사이 간격이 4px뿐이라 위아래 2px씩만 넓힌다. 이웃 행과
+                         맞닿기는 해도 겹치지는 않는다(간격 4 -> 0). */
+                      className="relative flex-1 flex items-center justify-between py-2.5 px-3 rounded-xl active:bg-white transition-colors text-left before:content-[''] before:absolute before:inset-x-0 before:-inset-y-0.5"
                     >
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-[11px] text-slate-400 font-medium w-5 shrink-0">
@@ -1498,7 +1522,10 @@ function DispatchScheduleModal({
             <Clock className="w-5 h-5 text-blue-600" />
             <h2 className="text-lg font-bold text-slate-900">배차시간</h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-full active:bg-slate-100">
+          <button
+            onClick={onClose}
+            className="relative p-1.5 rounded-full active:bg-slate-100 before:content-[''] before:absolute before:-inset-1.5"
+          >
             <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
