@@ -30,7 +30,15 @@ const PRESSABLE =
 
    96px이면 시간 문구는 모두 들어가고, 그보다 긴 "N정거장"·"정보 없음"은
    아래 ETA_SIZE에서 글자를 줄여 맞춘다(정류장 상세의 같은 열도 같은 값). */
-const ETA_COL = "w-[96px] shrink-0 text-right";
+const ETA_COL =
+  "w-[96px] shrink-0 text-right min-h-[49px] flex flex-col justify-center items-end";
+
+/* 도착 정보 열이 차지하는 세로 공간을 상태와 무관하게 고정한다.
+   가장 높은 상태는 "시간 + 정거장 수"로, 28px 글자 + 4px 간격 + 11px 글자
+   = 49px다. 예전에는 로딩 스켈레톤이 26px뿐이라 값이 들어오는 순간 카드가
+   75→83px로 커지며 아래 카드들이 8px씩 밀렸다. 20초마다 갱신되므로 그때마다
+   목록이 흔들렸다. 이제 로딩·시간·정거장수·정보없음·준비중이 모두 같은
+   49px을 점유한다. */
 
 /* 도착 시간 글자 크기.
    "3분 후"처럼 실제 시간이 있으면 화면에서 가장 크게 둔다 — 사용자가 이
@@ -40,12 +48,13 @@ const ETA_COL = "w-[96px] shrink-0 text-right";
 const ETA_SIZE = { time: "text-[28px]", weak: "text-[22px]" } as const;
 
 function ArrivalSkeleton() {
-  /* 로딩 중에 "조회 중" 글자를 넣으면 실제 값으로 바뀔 때 글자 수가 달라져
-     레이아웃이 튄다. 완성된 카드와 같은 높이의 회색 블록을 깔아 두면
-     값이 들어와도 자리가 그대로다. */
+  /* 완성된 모습과 같은 두 줄로 깔아 둔다 — 위는 도착 시간 자리, 아래는
+     남은 정거장 수 자리. 한 덩어리로 두면 값이 들어올 때 모양이 바뀐다.
+     전체 높이는 ETA_COL의 min-h가 잡아 주므로 여기서는 모양만 맞춘다. */
   return (
-    <div className="flex items-center justify-end gap-1.5">
-      <div className="h-[26px] w-12 rounded-md bg-slate-200/70 animate-pulse" />
+    <div className="flex flex-col items-end">
+      <div className="h-[26px] w-[62px] rounded-md bg-slate-200/70 animate-pulse" />
+      <div className="mt-1 h-[11px] w-[42px] rounded bg-slate-200/70 animate-pulse" />
     </div>
   );
 }
@@ -233,7 +242,10 @@ export function HomeScreen({
             <h1 className="text-2xl font-bold tracking-tight">BUS STOP</h1>
             <button
               onClick={() => setRegionUnderDevOpen(true)}
-              className={`flex items-center gap-1 bg-white/15 rounded-full px-3 py-1.5 text-sm font-medium active:bg-white/25 ${PRESSABLE}`}
+              /* 알약 배경이 눈에 보이므로 패딩을 키우면 알약 자체가 커진다.
+                 투명한 ::before로 위아래만 6px씩 넓혀(32→44px) 보이는 크기는
+                 그대로 두고 누를 수 있는 영역만 확보한다. */
+              className={`relative flex items-center gap-1 bg-white/15 rounded-full px-3 py-1.5 text-sm font-medium active:bg-white/25 before:content-[''] before:absolute before:inset-x-0 before:-inset-y-1.5 ${PRESSABLE}`}
             >
               <MapPin className="w-4 h-4" />
               <span>{state.region.sigungu}</span>
@@ -272,11 +284,17 @@ export function HomeScreen({
           <h3 className="text-xs font-semibold text-muted tracking-wide">
             즐겨찾기
           </h3>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className={`p-2 -m-0.5 rounded-full text-faint active:bg-slate-200/60 disabled:opacity-40 ${PRESSABLE}`}
+              /* 아이콘 크기(15px)는 그대로 두고 상자만 44×44로. 평소에는 배경이
+                 없어 보이는 변화가 없고, 누를 때 생기는 원만 커진다.
+                 음수 마진으로 주변 배치가 밀리지 않게 상쇄한다. */
+              /* 음수 마진을 사방에 주면 오른쪽으로도 10px 당겨져 옆 버튼(편집)의
+                 터치 영역과 겹친다. 왼쪽과 위아래만 당긴다 — 오른쪽은 옆 버튼과의
+                 간격을 그대로 남겨 둬야 한다. */
+              className={`w-11 h-11 -my-2.5 -ml-2.5 flex items-center justify-center rounded-full text-faint active:bg-slate-200/60 disabled:opacity-40 ${PRESSABLE}`}
               aria-label="새로고침"
               aria-busy={refreshing}
             >
@@ -288,14 +306,17 @@ export function HomeScreen({
             {state.favorites.length > 0 && (
               <button
                 onClick={() => setEditMode((v) => !v)}
-                className={`px-2 py-1 rounded-lg text-xs text-muted font-medium active:bg-slate-200/60 ${PRESSABLE}`}
+                /* 글자 크기는 그대로 두고 높이만 44px로. 평소 배경이 투명해서
+                   보이는 변화가 없다. 옆 버튼과 영역이 겹치지 않도록 가로는
+                   px-3까지만 넓힌다(아래 간격 gap-1.5와 함께 측정으로 확인). */
+                className={`min-h-11 flex items-center px-3 rounded-lg text-xs text-muted font-medium active:bg-slate-200/60 ${PRESSABLE}`}
               >
                 {editMode ? "완료" : "편집"}
               </button>
             )}
             <button
               onClick={() => onNavigate("my")}
-              className={`px-2 py-1 rounded-lg text-xs text-brand font-medium active:bg-brand/10 ${PRESSABLE}`}
+              className={`min-h-11 flex items-center px-3 rounded-lg text-xs text-brand font-medium active:bg-brand/10 ${PRESSABLE}`}
             >
               전체보기
             </button>
