@@ -73,7 +73,8 @@ function FavoriteArrivalInfo({
 
   let subtitle: string;
   if (isRoute) {
-    subtitle = "노선";
+    // 노선 목록이 아직 안 왔으면 방향을 모르니 종류만 알린다.
+    subtitle = directionLabel ?? "노선";
   } else if (!isStopRoute) {
     subtitle = "정류장";
   } else if (directionLabel) {
@@ -294,8 +295,15 @@ export function HomeScreen({
                 isStopRoute && fav.appRouteId
                   ? routes?.find((r) => r.id === fav.appRouteId)
                   : undefined;
-              const directionLabel = stopRoute
-                ? `${stopRoute.start || "기점"} → ${stopRoute.end || "종점"}`
+
+              /* 방향 문구는 노선 즐겨찾기에도 필요하다. 같은 번호의 반대 방향을
+                 둘 다 즐겨찾기하면 목록에 "10번 / 노선"이 두 줄로 똑같이 찍혀,
+                 눌러 보기 전에는 어느 쪽인지 알 수 없었다. 배지 색(본선 파랑 /
+                 분선 초록)만 달랐는데 색만으로 구분하게 두면 안 된다.
+                 start/end는 이미 받아 둔 값이라 새로 조회하지 않는다. */
+              const directionRoute = matchedRoute ?? stopRoute;
+              const directionLabel = directionRoute
+                ? `${directionRoute.start || "기점"} → ${directionRoute.end || "종점"}`
                 : undefined;
 
               // route와 stop_route는 실제 버스 노선이라 본선/분선 카테고리 색을

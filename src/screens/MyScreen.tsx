@@ -18,6 +18,9 @@ import {
   Smartphone,
 } from "lucide-react";
 import { useApp } from "@/store/appContext";
+import { useAsync } from "@/hooks/useAsync";
+import { fetchAllRoutes } from "@/services/routeService";
+import type { Route } from "@/types/route";
 import { AddShortcutSheet } from "@/components/AddShortcutSheet";
 import { Toggle } from "@/components/ui";
 import { showToast } from "@/lib/toastStore";
@@ -60,6 +63,16 @@ function applySettings(s: AppSettings) {
   root.classList.toggle("color-blind", s.colorBlind);
 }
 
+/** 노선 즐겨찾기의 기점 → 종점. 알 수 없으면 null을 돌려 부르는 쪽이 종류를 쓴다. */
+function favoriteDirection(fav: Favorite, routes: Route[] | null | undefined): string | null {
+  if (!routes) return null;
+  const routeId = fav.type === "route" ? fav.refId : fav.appRouteId;
+  if (!routeId) return null;
+  const route = routes.find((r) => r.id === routeId);
+  if (!route) return null;
+  return `${route.start || "기점"} → ${route.end || "종점"}`;
+}
+
 export function MyScreen() {
   const { state, dispatch } = useApp();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -69,6 +82,11 @@ export function MyScreen() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [shortcutFavorite, setShortcutFavorite] = useState<Favorite | null>(null);
+
+  /* 즐겨찾기에 방향(기점 → 종점)을 붙이기 위해 노선 목록을 읽는다.
+     fetchAllRoutes는 모듈 수준 캐시라, 홈에서 이미 받아 뒀으면 여기서
+     네트워크 요청이 새로 나가지 않는다. */
+  const { data: routes } = useAsync(() => fetchAllRoutes(), []);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>(
     () => ("Notification" in window ? Notification.permission : "denied")
@@ -231,13 +249,17 @@ export function MyScreen() {
                           <p className="text-sm font-medium text-slate-800 truncate">
                             {fav.name}
                           </p>
-                          <p className="text-[11px] text-slate-400">
+                          {/* 같은 번호의 반대 방향을 둘 다 즐겨찾기하면 여기가
+                              "10 · 노선"으로 똑같이 찍혀 구분이 안 됐다.
+                              방향을 알 수 있으면 종류 대신 방향을 보여준다. */}
+                          <p className="text-[11px] text-slate-400 truncate">
                             {fav.label} ·{" "}
-                            {fav.type === "station"
-                              ? "정류장"
-                              : fav.type === "stop_route"
-                              ? "정류장 도착정보"
-                              : "노선"}
+                            {favoriteDirection(fav, routes) ??
+                              (fav.type === "station"
+                                ? "정류장"
+                                : fav.type === "stop_route"
+                                ? "정류장 도착정보"
+                                : "노선")}
                           </p>
                         </div>
                         <button
