@@ -23,8 +23,21 @@ const PRESSABLE =
 
 /* 도착 시간이 들어가는 열의 폭. 모든 카드에서 같은 값을 써야
    정류장 이름 길이와 무관하게 시간이 항상 같은 자리에 온다.
-   "정보 없음"(5글자)이 줄바꿈되지 않는 최소 폭으로 잡았다. */
-const ETA_COL = "w-[76px] shrink-0 text-right";
+   폭을 정하는 건 가장 긴 도착 문구다. 고정폭 숫자(tabular-nums)라 어림보다
+   넓어서, 실제 렌더로 재보니 28px 굵은 글씨에서 이렇게 나온다.
+
+     곧 도착 77 · 3분 후 71 · 11분 후 89 · 정보 없음 100 · 24정거장 106
+
+   96px이면 시간 문구는 모두 들어가고, 그보다 긴 "N정거장"·"정보 없음"은
+   아래 ETA_SIZE에서 글자를 줄여 맞춘다(정류장 상세의 같은 열도 같은 값). */
+const ETA_COL = "w-[96px] shrink-0 text-right";
+
+/* 도착 시간 글자 크기.
+   "3분 후"처럼 실제 시간이 있으면 화면에서 가장 크게 둔다 — 사용자가 이
+   카드에서 찾는 단 하나의 값이다. 시간을 못 구해 정거장 수만 남았거나
+   정보가 없을 때는 문구가 길어져 열을 넘치므로 한 단계 줄인다(22px에서
+   24정거장 84px, 정보 없음 79px으로 96px 안에 들어간다). */
+const ETA_SIZE = { time: "text-[28px]", weak: "text-[22px]" } as const;
 
 function ArrivalSkeleton() {
   /* 로딩 중에 "조회 중" 글자를 넣으면 실제 값으로 바뀔 때 글자 수가 달라져
@@ -109,7 +122,12 @@ function FavoriteArrivalInfo({
         </p>
 
         <div className="mt-1 flex items-center gap-1.5 min-w-0">
-          {isStopRoute && data && <ReliabilityTag reliability={reliability} />}
+          {/* shrink-0이 없으면 옆 문구에 밀려 "실시간"이 두 글자씩 접힌다. */}
+          {isStopRoute && data && (
+            <span className="shrink-0">
+              <ReliabilityTag reliability={reliability} />
+            </span>
+          )}
           {subtitle && (
             <p className="text-xs text-faint truncate">{subtitle}</p>
           )}
@@ -134,7 +152,9 @@ function FavoriteArrivalInfo({
             {/* tabular-nums: 20초마다 값이 갱신될 때 자릿수가 바뀌어도
                 숫자 폭이 고정이라 오른쪽 끝이 흔들리지 않는다. */}
             <p
-              className={`text-[26px] leading-none font-bold tracking-tight tabular-nums ${etaTone}`}
+              className={`${
+                data.minutes != null ? ETA_SIZE.time : ETA_SIZE.weak
+              } leading-none font-bold tracking-tight tabular-nums ${etaTone}`}
             >
               {timeLabel}
             </p>
@@ -273,11 +293,11 @@ export function HomeScreen({
             </p>
           </button>
         ) : (
-          /* 카드마다 테두리를 그리는 대신 하나의 흰 판 안에서 구분선으로
-             나눈다. 테두리 박스가 여러 개 쌓이면 문서처럼 보이고,
-             한 판으로 묶으면 리스트가 하나의 덩어리로 읽힌다.
-             divide-y는 첫 행 위에는 선을 넣지 않아 위쪽이 깔끔하다. */
-          <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-line">
+          /* 즐겨찾기 하나하나가 "지금 버스가 언제 오는지"를 담은 살아있는
+             정보 단위다. 한 판 안에 구분선으로 나누면 설정 목록처럼 읽혀서,
+             어느 카드의 도착시간인지가 눈에 안 들어온다. 카드를 독립시키고
+             사이를 띄운다. */
+          <div className="space-y-2.5">
             {state.favorites.map((fav) => {
               const isRoute = fav.type === "route";
               const isStopRoute = fav.type === "stop_route";
@@ -325,7 +345,12 @@ export function HomeScreen({
                 routeNumber;
 
               return (
-                <div key={fav.id} className="relative">
+                <div
+                  key={fav.id}
+                  /* 카드 한 장. 테두리는 1px로만 두고 그림자는 쓰지 않는다 —
+                     카드를 나누는 건 그림자가 아니라 사이의 여백이다. */
+                  className="relative bg-surface rounded-2xl border border-line"
+                >
                   <button
                     onClick={() => {
                       if (editMode) return;
@@ -358,12 +383,16 @@ export function HomeScreen({
                         return;
                       }
                     }}
-                    /* 행 전체가 하나의 터치 영역이다. 눌렀을 때 배경이
-                       바뀌는 건 iOS/안드로이드 리스트의 기본 동작이라
-                       이것만으로 "앱을 누르고 있다"는 느낌이 생긴다.
-                       카드를 축소하지 않는 이유: 한 판 안의 행이라
-                       scale을 주면 이웃 행과 경계가 어긋나 보인다. */
-                    className="w-full px-4 py-3.5 flex items-center gap-3 text-left select-none touch-manipulation transition-colors duration-75 active:bg-slate-100"
+                    /* 카드 한 장 전체가 하나의 터치 영역이다. 이제 카드가
+                       독립돼 있으므로 눌렀을 때 살짝 줄어드는 편이 자연스럽다
+                       (한 판 안의 행이었을 때는 이웃 행과 경계가 어긋나
+                       보여서 배경색만 바꿨다). */
+                    /* 편집 모드에서는 삭제 버튼이 카드 오른쪽 위에 겹쳐 앉는다.
+                       오른쪽 여백을 늘려 도착 시간이 그 아래로 들어가지 않게 한다
+                       (전에는 "11분 후"의 "후"와 "4정거장"이 가려졌다). */
+                    className={`w-full py-4 pl-4 flex items-center gap-3.5 text-left rounded-2xl ${
+                      editMode ? "pr-14" : "pr-4"
+                    } ${PRESSABLE}`}
                   >
                     {/* 왼쪽 배지: 노선번호(크게) 위에 본선/분선(작게)을 한 덩어리로. */}
                     <div

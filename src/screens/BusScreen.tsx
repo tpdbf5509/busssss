@@ -434,7 +434,7 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
 /* 도착 정보가 들어가는 오른쪽 열의 폭. 홈 화면의 ETA_COL과 같은 값이다 —
    두 화면에서 폭이 다르면 같은 정보가 화면마다 다른 자리에 온다.
    "정보 없음"(5글자)이 줄바꿈되지 않는 최소 폭. */
-const ETA_COL = "w-[76px] shrink-0 text-right";
+const ETA_COL = "w-[96px] shrink-0 text-right";
 
 /** B1. 정류장 도착 노선 한 줄 — hero(임박한 1~2개)는 크게, 나머지는 압축해서 재사용합니다. */
 function StationRouteCard({
