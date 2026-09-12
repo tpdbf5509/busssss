@@ -141,8 +141,21 @@ function FavoriteArrivalInfo({
 
       {/* 오른쪽: 도착 정보 전용 열. 폭이 고정이라 카드마다 시간이 같은 자리에 온다. */}
       <div className={ETA_COL}>
+        {/* 정류장만 또는 노선만 저장한 즐겨찾기는 도착 시간을 계산할 대상이
+            정해지지 않아 "준비중"이 된다. 데이터 오류가 아니라 정상 상태다.
+
+            그런데 여기서 끝나면 오른쪽이 비어 사용자가 "그래서 뭘 해야 하지"에
+            답을 못 얻는다. 누르면 이미 다음 화면으로 가게 돼 있으니(카드 전체가
+            버튼이다), 그 동작을 글자로 알려 준다. 별도 버튼을 만들지 않는 건
+            일부러다 — 작은 터치 영역을 또 만들면 오탭만 늘어난다. */}
         {!isStopRoute && (
-          <span className="text-sm font-medium text-faint">준비중</span>
+          <>
+            <span className="text-sm font-medium text-faint">준비중</span>
+            <span className="mt-1 flex items-center justify-end gap-0.5 text-[11px] text-brand">
+              {isRoute ? "정류장 보기" : "노선 보기"}
+              <ChevronDown className="w-3 h-3 -rotate-90" />
+            </span>
+          </>
         )}
 
         {isStopRoute && status === "loading" && !data && <ArrivalSkeleton />}
@@ -204,10 +217,14 @@ export function HomeScreen({
 
   return (
     <div className="flex flex-col bg-canvas">
-      <header className="bg-brand text-white px-5 pt-safe-16 pb-10 shrink-0">
-        {/* My탭 헤더는 아바타(h-16=64px)가 기준이라 더 높다. 텍스트만 있는
-            이 헤더도 min-h-16으로 같은 높이를 맞추고 세로 중앙 정렬한다. */}
-        <div className="min-h-16 flex flex-col justify-center">
+      {/* 위쪽 여백(pt-safe-16)은 상태바를 피하는 값이라 줄이지 않는다.
+          줄이는 건 아래쪽이다 — 검색이 -mt-6(24px)만큼 올라와 겹치므로
+          아래 여백이 40px일 필요가 없다. 브랜드 문구 크기는 그대로 둔다. */}
+      <header className="bg-brand text-white px-5 pt-safe-16 pb-8 shrink-0">
+        {/* 문구 두 줄의 실제 높이(약 55px)보다 min-h-16(64px)이 커서 그만큼
+            빈 공간이 생겼다. 마이 탭 헤더와 높이를 맞추려던 값인데, 두 화면을
+            나란히 보는 일이 없어 그 이득보다 손해가 크다. */}
+        <div className="flex flex-col justify-center">
           <div className="flex items-center justify-between mb-1.5">
             <h1 className="text-2xl font-bold tracking-tight">BUS STOP</h1>
             <button
@@ -224,20 +241,22 @@ export function HomeScreen({
       </header>
 
       {/* 검색은 정보를 보여주는 카드가 아니라 다른 화면으로 가는 입구다.
-          즐겨찾기 카드와 구분하려고 테두리를 빼고 헤더에 더 깊게 겹쳐
-          띄운다. 그림자는 헤더 위에 떠 있다는 신호로만 쓴다. */}
+          즐겨찾기 카드와 같은 격으로 보이면 안 된다 — 홈을 여는 이유는
+          검색이 아니라 저장한 버스가 언제 오는지다. 그래서 검색은 낮춘다.
+
+          그림자를 뺀 이유: 화면에서 유일한 그림자가 가장 덜 중요한 요소에
+          붙어 있어서, 즐겨찾기보다 더 떠 보였다.
+          설명문을 뺀 이유: "노선번호·기점·종점으로 찾아보세요"는 검색 화면에
+          들어가면 바로 알 수 있는 내용인데, 홈에서 두 줄을 차지했다. */}
       <section className="px-4 -mt-6 shrink-0">
         <button
           onClick={() => onNavigate("bus")}
-          className={`w-full bg-surface rounded-2xl px-4 py-3.5 flex items-center gap-3 shadow-[0_4px_16px_-4px_rgba(15,23,42,0.18)] ${PRESSABLE}`}
+          className={`w-full bg-surface rounded-2xl border border-line px-4 py-3 flex items-center gap-3 ${PRESSABLE}`}
         >
-          <Search className="w-5 h-5 text-brand shrink-0" />
-          <div className="text-left flex-1 min-w-0">
-            <p className="text-sm font-semibold text-ink">전체 노선 검색</p>
-            <p className="text-xs text-faint mt-0.5 truncate">
-              노선번호·기점·종점으로 찾아보세요
-            </p>
-          </div>
+          <Search className="w-[18px] h-[18px] text-brand shrink-0" />
+          <span className="text-sm font-semibold text-ink flex-1 min-w-0 text-left truncate">
+            전체 노선 검색
+          </span>
           <ChevronDown className="w-4 h-4 text-faint -rotate-90 shrink-0" />
         </button>
       </section>
