@@ -238,11 +238,11 @@ export function HomeScreen({
             빈 공간이 생겼다. 마이 탭 헤더와 높이를 맞추려던 값인데, 두 화면을
             나란히 보는 일이 없어 그 이득보다 손해가 크다. */}
         <div className="flex flex-col justify-center">
-          {/* 원래 부제("전주시 버스 노선 정보")는 text-sm에 화면 폭을 가로지르는
-              한 줄이라 도착 시간보다 무거웠다. 문구를 줄이고 11px/regular/
-              white-80으로 낮춰 다시 넣는다 — 앱 이름 아래 정체성 한 줄이
-              없으면 헤더가 비어 보인다. 도시 선택기(14px medium, 흰 알약)보다
-              약해야 하므로 크기·굵기·명도를 모두 한 단계씩 내렸다.
+          {/* 앱 이름 아래 정체성 한 줄이 없으면 헤더가 비어 보인다. 지웠던
+              부제를 문구를 줄여 다시 넣되, 도시 선택기(14px medium, 흰 알약)
+              보다 약해야 하므로 크기·굵기·명도를 모두 한 단계씩 내렸다.
+              실측 무게(잉크 폭 x 글자 크기 x 대비/21): 도착 시간 1910,
+              BUS STOP 655, 도시 선택기 125, 이 부제 102.
               leading-4는 헤더가 부제 때문에 필요 이상 자라지 않게 하는 값이다. */}
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold tracking-tight">BUS STOP</h1>
