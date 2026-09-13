@@ -289,17 +289,19 @@ export function HomeScreen({
             {state.favorites.length > 0 && (
               <button
                 onClick={() => setEditMode((v) => !v)}
-                /* 글자 크기는 그대로 두고 높이만 44px로. 평소 배경이 투명해서
-                   보이는 변화가 없다. 옆 버튼과 영역이 겹치지 않도록 가로는
-                   px-3까지만 넓힌다(아래 간격 gap-1.5와 함께 측정으로 확인). */
-                className={`min-h-11 flex items-center px-3 rounded-lg text-xs text-muted font-medium active:bg-slate-200/60 ${PRESSABLE}`}
+                /* 높이 44px는 투명한 min-h로 잡는다 — 평소 배경이 없어 보이는
+                   변화가 없다. 옆 버튼과 영역이 겹치지 않도록 가로는 px-3까지만
+                   넓힌다(간격 gap-1.5와 함께 측정으로 확인).
+                   글자는 12 -> 13px. 12px일 때는 "편집" 글자폭(20.8px)보다
+                   버튼 사이 간격(30px)이 더 넓어 두 글자가 따로 떠 보였다. */
+                className={`min-h-11 flex items-center px-3 rounded-lg text-[13px] text-muted font-medium active:bg-slate-200/60 ${PRESSABLE}`}
               >
                 {editMode ? "완료" : "편집"}
               </button>
             )}
             <button
               onClick={() => onNavigate("my")}
-              className={`min-h-11 flex items-center px-3 rounded-lg text-xs text-brand font-medium active:bg-brand/10 ${PRESSABLE}`}
+              className={`min-h-11 flex items-center px-3 rounded-lg text-[13px] text-brand font-medium active:bg-brand/10 ${PRESSABLE}`}
             >
               전체보기
             </button>
