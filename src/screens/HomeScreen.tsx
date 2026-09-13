@@ -194,14 +194,17 @@ export function HomeScreen({
 
   return (
     <div className="flex flex-col bg-canvas">
-      {/* 위쪽 여백(pt-safe-16)은 상태바를 피하는 값이라 줄이지 않는다.
-          줄이는 건 아래쪽이다 — 검색이 -mt-6(24px)만큼 올라와 겹치므로
-          아래 여백이 40px일 필요가 없다. 브랜드 문구 크기는 그대로 둔다. */}
-      <header className="bg-brand text-white px-5 pt-safe-16 pb-8 shrink-0">
-        {/* 문구 두 줄의 실제 높이(약 55px)보다 min-h-16(64px)이 커서 그만큼
-            빈 공간이 생겼다. 마이 탭 헤더와 높이를 맞추려던 값인데, 두 화면을
-            나란히 보는 일이 없어 그 이득보다 손해가 크다. */}
-        <div className="flex flex-col justify-center">
+      {/* 파란 헤더의 길이를 마이 탭과 같게 맞춘다. 탭을 오갈 때 파란 면이
+          위아래로 18px씩 움직이면 화면이 갈아끼워지는 것처럼 보인다.
+          높이를 숫자로 고정하지 않고 마이 탭과 같은 구성으로 맞춘다 —
+          pt-safe-16 + 64px 내용 + pb-9. 그래야 노치가 있는 기기에서
+          pt-safe-16이 늘어날 때 두 화면이 같이 늘어난다.
+          (마이 탭의 64px은 프로필 원, 여기서는 아래 min-h-16이다.) */}
+      <header className="bg-brand text-white px-5 pt-safe-16 pb-9 shrink-0">
+        {/* 내용 자체는 약 50px이지만 min-h-16으로 마이 탭의 프로필 원과 같은
+            64px을 차지하게 한다. 남는 공간은 justify-center로 위아래에
+            똑같이 나뉜다. */}
+        <div className="flex flex-col justify-center min-h-16">
           {/* 앱 이름 아래 정체성 한 줄이 없으면 헤더가 비어 보인다. 지웠던
               부제를 문구를 줄여 다시 넣되, 도시 선택기(14px medium, 흰 알약)
               보다 약해야 하므로 크기·굵기·명도를 모두 한 단계씩 내렸다.
