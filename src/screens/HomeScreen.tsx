@@ -21,42 +21,11 @@ const PRESSABLE =
   "select-none touch-manipulation transition-transform duration-100 " +
   "active:scale-[0.98]";
 
-/* 도착 시간이 들어가는 열의 폭. 모든 카드에서 같은 값을 써야
-   정류장 이름 길이와 무관하게 시간이 항상 같은 자리에 온다.
-   폭을 정하는 건 가장 긴 도착 문구다. 고정폭 숫자(tabular-nums)라 어림보다
-   넓어서, 실제 렌더로 재보니 28px 굵은 글씨에서 이렇게 나온다.
-
-     곧 도착 77 · 3분 후 71 · 11분 후 89 · 정보 없음 100 · 24정거장 106
-
-   96px이면 시간 문구는 모두 들어가고, 그보다 긴 "N정거장"·"정보 없음"은
-   아래 ETA_SIZE에서 글자를 줄여 맞춘다(정류장 상세의 같은 열도 같은 값). */
-const ETA_COL =
-  "w-[96px] shrink-0 text-right min-h-[49px] flex flex-col justify-center items-end";
-
-/* 도착 정보 열이 차지하는 세로 공간을 상태와 무관하게 고정한다.
-   가장 높은 상태는 "시간 + 정거장 수"로, 28px 글자 + 4px 간격 + 11px 글자
-   = 49px다. 예전에는 로딩 스켈레톤이 26px뿐이라 값이 들어오는 순간 카드가
-   75→83px로 커지며 아래 카드들이 8px씩 밀렸다. 20초마다 갱신되므로 그때마다
-   목록이 흔들렸다. 이제 로딩·시간·정거장수·정보없음·준비중이 모두 같은
-   49px을 점유한다. */
-
-/* 도착 시간 글자 크기.
-   "3분 후"처럼 실제 시간이 있으면 화면에서 가장 크게 둔다 — 사용자가 이
-   카드에서 찾는 단 하나의 값이다. 시간을 못 구해 정거장 수만 남았거나
-   정보가 없을 때는 문구가 길어져 열을 넘치므로 한 단계 줄인다(22px에서
-   24정거장 84px, 정보 없음 79px으로 96px 안에 들어간다). */
-const ETA_SIZE = { time: "text-[28px]", weak: "text-[22px]" } as const;
-
 function ArrivalSkeleton() {
-  /* 완성된 모습과 같은 두 줄로 깔아 둔다 — 위는 도착 시간 자리, 아래는
-     남은 정거장 수 자리. 한 덩어리로 두면 값이 들어올 때 모양이 바뀐다.
-     전체 높이는 ETA_COL의 min-h가 잡아 주므로 여기서는 모양만 맞춘다. */
-  return (
-    <div className="flex flex-col items-end">
-      <div className="h-[26px] w-[62px] rounded-md bg-slate-200/70 animate-pulse" />
-      <div className="mt-1 h-[11px] w-[42px] rounded bg-slate-200/70 animate-pulse" />
-    </div>
-  );
+  /* 도착 줄과 같은 높이(26px)로 깔아 둔다. 값이 들어올 때 줄 높이가
+     그대로라 카드가 커졌다 작아졌다 하지 않는다 — 20초마다 갱신되므로
+     여기서 1px이라도 달라지면 목록 전체가 주기적으로 흔들린다. */
+  return <div className="h-[26px] w-[86px] rounded-md bg-slate-200/70 animate-pulse" />;
 }
 
 function FavoriteArrivalInfo({
@@ -105,7 +74,7 @@ function FavoriteArrivalInfo({
         .join(" · ");
 
   /* formatArrivalText는 "12분 후 · 3정거장"처럼 두 정보를 한 문자열로 합친다.
-     시간은 오른쪽 열에 크게, 정거장 수는 그 아래 작게 나눠 넣는다. */
+     큰 글자에는 시간만 넣고 정거장 수는 작은 글자로 옆에 붙인다. */
   const full = data ? formatArrivalText(data.minutes, data.stopsAway) : "";
   const [timeLabel, stopsLabel] = full.includes(" · ")
     ? full.split(" · ")
@@ -122,49 +91,29 @@ function FavoriteArrivalInfo({
         ? "text-brand"
         : "text-ink";
 
+  /* 한 덩어리로 쌓는다: 정류장명 → 도착 시간 → 신뢰도·방향.
+     도착 시간을 오른쪽 고정폭 열에 두는 방식도 써 봤지만, 이름이 길면
+     가운데가 좁아지고 시간과 이름이 화면 양 끝으로 갈라져 한 카드가 두
+     덩어리로 읽혔다. 세로로 쌓으면 왼쪽 한 줄로 시선이 내려간다. */
   return (
-    <>
-      {/* 왼쪽: 이름 + 방향. 오른쪽 도착 열을 침범하지 않도록 min-w-0로 묶는다. */}
-      <div className="flex-1 min-w-0">
-        <p className="text-[15px] font-semibold text-ink truncate leading-snug">
-          {isRoute ? `${routeNumber}번` : fav.name}
-        </p>
+    <div className="flex-1 min-w-0">
+      <p className="text-[13px] font-semibold text-ink truncate">
+        {isRoute ? `${routeNumber}번` : fav.name}
+      </p>
 
-        <div className="mt-1 flex items-center gap-1.5 min-w-0">
-          {/* shrink-0이 없으면 옆 문구에 밀려 "실시간"이 두 글자씩 접힌다. */}
-          {isStopRoute && data && (
-            <span className="shrink-0">
-              <ReliabilityTag reliability={reliability} />
-            </span>
-          )}
-          {subtitle && (
-            <p className="text-xs text-faint truncate">{subtitle}</p>
-          )}
-          {/* 갱신 중에도 이름은 계속 보여야 한다. 예전에는 이 문구가 아랫줄을
-              통째로 대신해서, 갱신이 길어지면 이름이 사라졌다. */}
-          {isStopRoute && isRefreshing && (
-            <span className="text-xs text-faint shrink-0">· 갱신 중</span>
-          )}
-        </div>
-      </div>
-
-      {/* 오른쪽: 도착 정보 전용 열. 폭이 고정이라 카드마다 시간이 같은 자리에 온다. */}
-      <div className={ETA_COL}>
+      {/* 도착 줄. min-h로 높이를 고정해 로딩 → 값 → 오류 사이에
+          카드 높이가 변하지 않게 한다. */}
+      <div className="mt-0.5 flex items-baseline gap-2 min-w-0 min-h-[26px]">
         {/* 정류장만 또는 노선만 저장한 즐겨찾기는 도착 시간을 계산할 대상이
             정해지지 않아 "준비중"이 된다. 데이터 오류가 아니라 정상 상태다.
-
-            그런데 여기서 끝나면 오른쪽이 비어 사용자가 "그래서 뭘 해야 하지"에
-            답을 못 얻는다. 누르면 이미 다음 화면으로 가게 돼 있으니(카드 전체가
-            버튼이다), 그 동작을 글자로 알려 준다. 별도 버튼을 만들지 않는 건
-            일부러다 — 작은 터치 영역을 또 만들면 오탭만 늘어난다. */}
+            뒤에 붙는 안내는 별도 버튼이 아니라, 카드를 누르면 무슨 일이
+            생기는지 설명하는 글이다. 그래서 파란색을 쓰지 않는다. */}
         {!isStopRoute && (
           <>
-            <span className="text-sm font-medium text-faint">준비중</span>
-            {/* 파란색을 쓰지 않는다. 파랑은 이 앱에서 "누르는 것"을 뜻하는데,
-                이건 별도 버튼이 아니라 카드를 누르면 무슨 일이 생기는지
-                설명하는 글이다. 파랗게 두면 "여기를 따로 눌러야 하나"로
-                읽힌다. 행동 유도가 아니라 행동 가능성의 설명이다. */}
-            <span className="mt-1 flex items-center justify-end gap-0.5 text-[11px] text-muted">
+            <span className="text-lg font-semibold text-faint shrink-0">
+              준비중
+            </span>
+            <span className="flex items-center gap-0.5 text-[11px] text-muted shrink-0">
               {isRoute ? "정류장 보기" : "노선 보기"}
               <ChevronDown className="w-3 h-3 -rotate-90" />
             </span>
@@ -176,27 +125,42 @@ function FavoriteArrivalInfo({
         {isStopRoute && data && (
           <>
             {/* tabular-nums: 20초마다 값이 갱신될 때 자릿수가 바뀌어도
-                숫자 폭이 고정이라 오른쪽 끝이 흔들리지 않는다. */}
-            <p
-              className={`${
-                data.minutes != null ? ETA_SIZE.time : ETA_SIZE.weak
-              } leading-none font-bold tracking-tight tabular-nums ${etaTone}`}
+                숫자 폭이 고정이라 옆의 정거장 수가 좌우로 밀리지 않는다. */}
+            <span
+              className={`text-[26px] leading-none font-bold tracking-tight tabular-nums shrink-0 ${etaTone}`}
             >
               {timeLabel}
-            </p>
+            </span>
             {stopsLabel && (
-              <p className="mt-1 text-[11px] text-muted tabular-nums">
+              <span className="text-xs text-muted tabular-nums shrink-0">
                 {stopsLabel}
-              </p>
+              </span>
             )}
           </>
         )}
 
         {isStopRoute && status === "error" && !data && (
-          <span className="text-sm font-medium text-faint">정보 없음</span>
+          <span className="text-lg font-semibold text-faint">정보 없음</span>
         )}
       </div>
-    </>
+
+      {/* 신뢰도 태그와 방향 정보는 같은 아랫줄에 둔다. 도착 시간 옆에 함께
+          두면 좁은 화면에서 한 줄에 세 덩어리가 몰려 넘친다. */}
+      <div className="mt-1 flex items-center gap-2 min-w-0">
+        {/* shrink-0이 없으면 옆 문구에 밀려 "실시간"이 두 글자씩 접힌다. */}
+        {isStopRoute && data && (
+          <span className="shrink-0">
+            <ReliabilityTag reliability={reliability} />
+          </span>
+        )}
+        {subtitle && <p className="text-xs text-faint truncate">{subtitle}</p>}
+        {/* 갱신 중에도 이름은 계속 보여야 한다. 예전에는 이 문구가 아랫줄을
+            통째로 대신해서, 갱신이 길어지면 이름이 사라졌다. */}
+        {isStopRoute && isRefreshing && (
+          <span className="text-xs text-faint shrink-0">· 갱신 중</span>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -450,18 +414,17 @@ export function HomeScreen({
                        독립돼 있으므로 눌렀을 때 살짝 줄어드는 편이 자연스럽다
                        (한 판 안의 행이었을 때는 이웃 행과 경계가 어긋나
                        보여서 배경색만 바꿨다). */
-                    /* 편집 모드에서는 삭제 버튼이 카드 오른쪽 위에 겹쳐 앉는다.
-                       오른쪽 여백을 늘려 도착 시간이 그 아래로 들어가지 않게 한다
-                       (전에는 "11분 후"의 "후"와 "4정거장"이 가려졌다). */
+                    /* 편집 모드에서는 삭제 버튼이 카드 오른쪽에 겹쳐 앉는다.
+                       오른쪽 여백을 늘려 글자가 그 아래로 들어가지 않게 한다. */
                     className={`w-full py-4 pl-4 flex items-center gap-3.5 text-left rounded-2xl ${
                       editMode ? "pr-14" : "pr-4"
                     } ${PRESSABLE}`}
                   >
                     {/* 왼쪽 배지: 노선번호(크게) 위에 본선/분선(작게)을 한 덩어리로. */}
                     <div
-                      className={`w-14 py-1.5 rounded-lg flex flex-col items-center justify-center shrink-0 ${badgeBg}`}
+                      className={`w-14 py-1.5 rounded-xl flex flex-col items-center justify-center shrink-0 ${badgeBg}`}
                     >
-                      <span className="font-bold text-[15px] leading-none tracking-tight truncate max-w-full px-1 text-white">
+                      <span className="font-bold text-base leading-none tracking-tight truncate max-w-full px-1 text-white">
                         {isStation ? fav.label : badgeNumber}
                       </span>
                       <span className="text-[10px] leading-none mt-1 text-white/75">
