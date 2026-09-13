@@ -480,25 +480,18 @@ function routeHeadsign(
   return end ? `${end} 방면` : undefined;
 }
 
-/* 도착 정보가 들어가는 오른쪽 열의 폭. 홈 화면의 ETA_COL과 같은 값이다 —
-   두 화면에서 폭이 다르면 같은 정보가 화면마다 다른 자리에 온다.
-   "정보 없음"(5글자)이 줄바꿈되지 않는 최소 폭. */
-const ETA_COL = "w-[96px] shrink-0 text-right";
-
-/** B1. 정류장 도착 노선 한 줄 — hero(임박한 1~2개)는 크게, 나머지는 압축해서 재사용합니다. */
+/** B1. 정류장에 오는 버스 한 장. 도착 목록에서 재사용합니다. */
 function StationRouteCard({
   sr,
   directionLabel,
-  hero = false,
   isFavorited,
   isAdding,
   onSelect,
   onToggleFavorite,
 }: {
   sr: StationRoute;
-  /** "송천동종점 → 평화동종점". 노선 목록에서 찾지 못하면 undefined. */
+  /** "평화동종점 방면". 노선 목록에서 찾지 못하면 undefined. */
   directionLabel?: string;
-  hero?: boolean;
   isFavorited: boolean;
   isAdding: boolean;
   onSelect: () => void;
@@ -547,28 +540,23 @@ function StationRouteCard({
        별을 눌러도 바깥 행이 먼저 먹어 노선 상세로 넘어가 버릴 수 있다.
        홈 화면과 같은 방법으로 형제로 분리하고, 별은 행 위에 겹쳐 놓는다.
        행 오른쪽 패딩(pr-12)이 별이 앉을 자리를 미리 비워 둔다. */
-    <div className="relative">
+    <div className="relative bg-surface rounded-2xl border border-line">
       <button
         type="button"
         onClick={onSelect}
         disabled={isAdding}
-        /* 한 판 안의 행이라 테두리와 둥근 모서리를 갖지 않는다 — 판이 대신
-           가진다. 누를 때 축소하지 않는 이유는 홈 화면의 같은 자리 주석 참고:
-           이웃 행과 경계가 어긋나 보인다. */
-        className={`w-full text-left flex items-center gap-3 select-none touch-manipulation transition-colors duration-75 active:bg-slate-100 pl-4 pr-12 ${
-          hero ? "py-4" : "py-3"
-        }`}
+        /* 한 판 안의 행이 아니라 독립된 카드 한 장이다. 도착 시간을 오른쪽
+           고정폭 열에 두면 배지와 시간이 화면 양 끝으로 갈라져 한 카드가 두
+           덩어리로 읽혔다. 배지 옆에 세로로 쌓으면 배지 -> 방향 -> 시간으로
+           시선이 한 줄기로 내려간다(홈 즐겨찾기 카드와 같은 문법). */
+        className="w-full text-left flex items-center gap-3.5 select-none touch-manipulation transition-colors duration-75 active:bg-canvas rounded-2xl py-4 pl-4 pr-12"
       >
         <div
-          className={`relative rounded-lg flex items-center justify-center shrink-0 ${
+          className={`relative w-14 h-14 rounded-xl flex items-center justify-center shrink-0 ${
             isMain ? "bg-blue-500" : "bg-emerald-500"
-          } ${hero ? "w-14 h-14" : "w-11 h-11"}`}
+          }`}
         >
-          <span
-            className={`font-bold text-white tracking-tight truncate max-w-full px-1 ${
-              hero ? "text-base" : "text-xs"
-            }`}
-          >
+          <span className="font-bold text-base text-white tracking-tight truncate max-w-full px-1">
             {sr.routeNo}
           </span>
           {isFavorited && (
@@ -579,15 +567,27 @@ function StationRouteCard({
         </div>
 
         <div className="flex-1 min-w-0">
-          {/* 배지가 이미 노선 번호를 크게 들고 있는데 여기에 "104번"을 또 쓰면,
-              행에서 가장 진한 글자가 아무 정보도 더하지 않는다. 이 자리에는
-              "이 버스가 어디로 가는가"를 넣는다. 방향을 못 찾은 경우에만
-              예전처럼 노선 번호로 돌아간다. */}
-          <p
-            className={`font-semibold text-ink truncate ${hero ? "text-[15px]" : "text-sm"}`}
-          >
+          {/* 배지가 이미 노선 번호를 크게 들고 있어서, 여기에 "104번"을 또 쓰면
+              가장 진한 글자가 아무 정보도 더하지 않는다. 이 버스가 어디로
+              가는지를 넣는다. 방향을 못 찾은 경우에만 노선 번호로 돌아간다. */}
+          <p className="text-[13px] font-semibold text-ink truncate">
             {directionLabel ?? `${sr.routeNo}번`}
           </p>
+
+          {/* 도착 줄. min-h로 높이를 고정해 로딩 -> 값 -> 오류 사이에
+              카드 높이가 변하지 않게 한다(20초마다 갱신된다). */}
+          <div className="mt-0.5 flex items-baseline gap-2 min-w-0 min-h-[26px]">
+            <span
+              className={`text-[26px] leading-none font-bold tracking-tight tabular-nums shrink-0 ${etaTone}`}
+            >
+              {timeLabel}
+            </span>
+            {stopsLabel && (
+              <span className="text-xs text-muted tabular-nums shrink-0">
+                {stopsLabel}
+              </span>
+            )}
+          </div>
 
           {hasLiveInfo && (
             <div className="mt-1">
@@ -595,22 +595,6 @@ function StationRouteCard({
             </div>
           )}
         </div>
-
-        {/* 도착 정보 전용 열. 폭이 고정이라 노선 이름 길이와 무관하게
-            시간이 항상 같은 자리에 온다. */}
-        <div className={ETA_COL}>
-          <p
-            className={`font-bold tracking-tight tabular-nums leading-none ${etaTone} ${
-              hero ? "text-[26px]" : "text-[17px]"
-            }`}
-          >
-            {timeLabel}
-          </p>
-          {stopsLabel && (
-            <p className="mt-1 text-[11px] text-muted tabular-nums">{stopsLabel}</p>
-          )}
-        </div>
-
       </button>
 
       {isAdding ? (
@@ -948,12 +932,18 @@ const isAllRouteFavorited = (route: Route) =>
             {status === "loading" && (
               /* 완성된 목록과 같은 모양(한 판 + 구분선, 같은 행 높이)으로 깔아야
                  값이 들어올 때 목록이 튀지 않는다. */
-              <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-line">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="px-4 py-3 flex items-center gap-3">
-                    <LoadingSkeleton className="w-11 h-11 shrink-0" />
-                    <LoadingSkeleton className="h-4 flex-1" />
-                    <LoadingSkeleton className="h-5 w-[76px] shrink-0" />
+              <div className="space-y-2.5">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="bg-surface rounded-2xl border border-line py-4 pl-4 pr-12 flex items-center gap-3.5"
+                  >
+                    <LoadingSkeleton className="w-14 h-14 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <LoadingSkeleton className="h-[17px] w-[120px]" />
+                      <LoadingSkeleton className="mt-1 h-[26px] w-[86px]" />
+                      <LoadingSkeleton className="mt-1.5 h-3 w-[52px]" />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -974,23 +964,17 @@ const isAllRouteFavorited = (route: Route) =>
             )}
 
             {status === "success" && routesWithInfo.length > 0 && (
-              /* 예전에는 이 영역이 [파란 섹션 라벨] + [판] + [빈 간격] +
-                 [펼치기 버튼] + [또 다른 판]으로 다섯 조각이었다. 화면을 열면
-                 조각들이 흩어져 있고 아래는 텅 비어 보였다. 판 하나로 합치고
-                 펼치기 버튼도 그 판의 마지막 행으로 넣는다 — 이 탭의 내용은
-                 "이 정류장에 오는 버스들" 하나이므로 물체도 하나여야 한다.
-                 파란 라벨("지금 타야 할 버스")은 뺐다. 파랑은 이 화면에서
-                 도착 시간이 임박했다는 뜻인데, 라벨이 그보다 위에서 같은
-                 파랑을 쓰면 눈이 라벨부터 읽는다. 위에 오는 버스가 먼저
-                 크게 나오므로 라벨 없이도 순서는 전달된다. */
-              <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-line">
+              /* 버스 한 대 한 대가 "언제 오는가"를 담은 독립된 정보 단위다.
+                 한 판 안에 구분선으로 나누면 설정 목록처럼 읽혀서 어느 카드의
+                 도착 시간인지가 눈에 안 들어온다. 카드를 띄우고 사이를 벌린다
+                 (홈 즐겨찾기와 같은 문법). */
+              <div className="space-y-2.5">
                 {heroRoutes.length > 0 && (
                   <>
                     {heroRoutes.map((sr) => (
                         <StationRouteCard
                           key={sr.routeId}
                           sr={sr}
-                          hero
                           directionLabel={routeHeadsign(sr, allRoutes)}
                           isFavorited={isArrivalFavorited(sr)}
                           isAdding={addingRouteNo === sr.routeNo}
@@ -1029,13 +1013,12 @@ const isAllRouteFavorited = (route: Route) =>
                   </>
                 )}
 
-                {/* 펼치기·접기는 판의 마지막 행이다. 판 바깥에 따로 두면
-                    화면이 [판] + [떠 있는 버튼]으로 나뉘어 보인다. */}
+                {/* 카드들이 독립돼 있으므로 이 버튼도 카드 바깥에 둔다. */}
                 {restRoutes.length > 0 && heroRoutes.length > 0 && (
                   <button
                     type="button"
                     onClick={() => setShowMoreRoutes((v) => !v)}
-                    className="relative w-full flex items-center justify-center gap-1 py-3 text-xs font-medium text-muted active:bg-canvas before:content-[''] before:absolute before:inset-x-0 before:-inset-y-1"
+                    className="relative w-full flex items-center justify-center gap-1 pt-1 pb-2 text-xs font-medium text-muted active:text-ink before:content-[''] before:absolute before:inset-x-0 before:-inset-y-2"
                   >
                     {showMoreRoutes ? "접기" : `다른 노선 ${restRoutes.length}개 더 보기`}
                     <ChevronDown
