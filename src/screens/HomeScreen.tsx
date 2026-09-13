@@ -270,8 +270,10 @@ export function HomeScreen({
 
           그림자를 뺀 이유: 화면에서 유일한 그림자가 가장 덜 중요한 요소에
           붙어 있어서, 즐겨찾기보다 더 떠 보였다.
-          설명문을 뺀 이유: "노선번호·기점·종점으로 찾아보세요"는 검색 화면에
-          들어가면 바로 알 수 있는 내용인데, 홈에서 두 줄을 차지했다. */}
+          설명문은 한 번 뺐다가 되돌렸다. 제목만 남기니 이 영역이 무엇으로
+          들어가는 입구인지가 "전체 노선 검색" 다섯 글자에만 걸려 있었다.
+          대신 원래의 text-slate-400을 같은 값의 토큰(text-faint)으로 바꾸고
+          12px·regular를 유지해, 카드 안에서 제목보다 확실히 아래에 둔다. */}
       <section className="px-4 -mt-6 shrink-0">
         <button
           onClick={() => onNavigate("bus")}
@@ -282,8 +284,13 @@ export function HomeScreen({
           className={`w-full bg-surface rounded-2xl px-4 py-3 flex items-center gap-3 ${PRESSABLE}`}
         >
           <Search className="w-[18px] h-[18px] text-brand shrink-0" />
-          <span className="text-sm font-semibold text-ink flex-1 min-w-0 text-left truncate">
-            전체 노선 검색
+          <span className="flex-1 min-w-0 text-left">
+            <span className="block text-sm font-semibold text-ink truncate">
+              전체 노선 검색
+            </span>
+            <span className="mt-0.5 block text-xs text-faint truncate">
+              노선번호·기점·종점으로 찾아보세요
+            </span>
           </span>
           <ChevronDown className="w-4 h-4 text-faint -rotate-90 shrink-0" />
         </button>
