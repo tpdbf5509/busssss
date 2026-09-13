@@ -457,6 +457,29 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
   );
 }
 
+/**
+ * 도착 목록의 한 노선이 "어디로 가는지"를 만든다.
+ *
+ * "기점 → 종점"을 다 쓰면 도착 시간 열(96px)과 배지(56px) 사이에 130px밖에
+ * 남지 않아 종점이 잘린다 — 정작 중요한 쪽이 잘린다. 정류장에 서 있는
+ * 사람에게 필요한 건 출발지가 아니라 향하는 곳이므로 "OO 방면"만 쓴다
+ * (버스 정류장 안내판의 표기와도 같다).
+ *
+ * TAGO 도착 응답에는 방향 정보가 없어서 이미 받아 둔 노선 목록으로 채운다
+ * (새로 조회하지 않는다). 못 찾으면 undefined를 돌려주고 호출 쪽이
+ * 예전처럼 노선 번호를 쓴다.
+ */
+function routeHeadsign(
+  sr: StationRoute,
+  routes: Route[] | null | undefined,
+): string | undefined {
+  const match = routes?.find(
+    (r) => r.number === sr.routeNo || r.rawNumber === sr.routeNo,
+  );
+  const end = match?.end?.trim();
+  return end ? `${end} 방면` : undefined;
+}
+
 /* 도착 정보가 들어가는 오른쪽 열의 폭. 홈 화면의 ETA_COL과 같은 값이다 —
    두 화면에서 폭이 다르면 같은 정보가 화면마다 다른 자리에 온다.
    "정보 없음"(5글자)이 줄바꿈되지 않는 최소 폭. */
@@ -465,6 +488,7 @@ const ETA_COL = "w-[96px] shrink-0 text-right";
 /** B1. 정류장 도착 노선 한 줄 — hero(임박한 1~2개)는 크게, 나머지는 압축해서 재사용합니다. */
 function StationRouteCard({
   sr,
+  directionLabel,
   hero = false,
   isFavorited,
   isAdding,
@@ -472,6 +496,8 @@ function StationRouteCard({
   onToggleFavorite,
 }: {
   sr: StationRoute;
+  /** "송천동종점 → 평화동종점". 노선 목록에서 찾지 못하면 undefined. */
+  directionLabel?: string;
   hero?: boolean;
   isFavorited: boolean;
   isAdding: boolean;
@@ -553,13 +579,14 @@ function StationRouteCard({
         </div>
 
         <div className="flex-1 min-w-0">
+          {/* 배지가 이미 노선 번호를 크게 들고 있는데 여기에 "104번"을 또 쓰면,
+              행에서 가장 진한 글자가 아무 정보도 더하지 않는다. 이 자리에는
+              "이 버스가 어디로 가는가"를 넣는다. 방향을 못 찾은 경우에만
+              예전처럼 노선 번호로 돌아간다. */}
           <p
             className={`font-semibold text-ink truncate ${hero ? "text-[15px]" : "text-sm"}`}
           >
-            {sr.routeNo}번
-            {sr.routeTp ? (
-              <span className="text-xs font-normal text-faint ml-1.5">{sr.routeTp}</span>
-            ) : null}
+            {directionLabel ?? `${sr.routeNo}번`}
           </p>
 
           {hasLiveInfo && (
@@ -843,7 +870,7 @@ const isAllRouteFavorited = (route: Route) =>
     });
   }, [routes]);
 
-  const HERO_COUNT = 2;
+  const HERO_COUNT = 3;
   // "실시간 도착" 탭은 지금 실제로 다가오고 있는 버스만 보여주는 탭이다.
   // 정류장을 지나는 노선 전체 목록은 "전체 경유노선" 탭의 몫이므로,
   // 여기서는 도착정보가 있는 노선만 남긴다.
@@ -918,10 +945,6 @@ const isAllRouteFavorited = (route: Route) =>
 
         {detailTab === "arrival" && (
           <>
-            <p className="text-xs text-slate-400 mb-3">
-              이 정류장을 경유하는 노선
-            </p>
-
             {status === "loading" && (
               /* 완성된 목록과 같은 모양(한 판 + 구분선, 같은 행 높이)으로 깔아야
                  값이 들어올 때 목록이 튀지 않는다. */
@@ -951,21 +974,24 @@ const isAllRouteFavorited = (route: Route) =>
             )}
 
             {status === "success" && routesWithInfo.length > 0 && (
-              <div className="space-y-2">
+              /* 예전에는 이 영역이 [파란 섹션 라벨] + [판] + [빈 간격] +
+                 [펼치기 버튼] + [또 다른 판]으로 다섯 조각이었다. 화면을 열면
+                 조각들이 흩어져 있고 아래는 텅 비어 보였다. 판 하나로 합치고
+                 펼치기 버튼도 그 판의 마지막 행으로 넣는다 — 이 탭의 내용은
+                 "이 정류장에 오는 버스들" 하나이므로 물체도 하나여야 한다.
+                 파란 라벨("지금 타야 할 버스")은 뺐다. 파랑은 이 화면에서
+                 도착 시간이 임박했다는 뜻인데, 라벨이 그보다 위에서 같은
+                 파랑을 쓰면 눈이 라벨부터 읽는다. 위에 오는 버스가 먼저
+                 크게 나오므로 라벨 없이도 순서는 전달된다. */
+              <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-line">
                 {heroRoutes.length > 0 && (
                   <>
-                    <p className="text-[11px] font-semibold text-blue-600 mb-1">
-                      지금 타야 할 버스
-                    </p>
-                    {/* 카드마다 테두리를 그리는 대신 하나의 흰 판 안에서 구분선으로
-                        나눈다. 테두리 박스가 여러 개 쌓이면 문서처럼 보인다
-                        (홈 화면의 즐겨찾기와 같은 문법). */}
-                    <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-line mb-5">
-                      {heroRoutes.map((sr) => (
+                    {heroRoutes.map((sr) => (
                         <StationRouteCard
                           key={sr.routeId}
                           sr={sr}
                           hero
+                          directionLabel={routeHeadsign(sr, allRoutes)}
                           isFavorited={isArrivalFavorited(sr)}
                           isAdding={addingRouteNo === sr.routeNo}
                           onSelect={() => {
@@ -978,29 +1004,16 @@ const isAllRouteFavorited = (route: Route) =>
                           onToggleFavorite={() => handleRouteClick(sr)}
                         />
                       ))}
-                    </div>
                   </>
                 )}
 
-                {restRoutes.length > 0 && heroRoutes.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setShowMoreRoutes((v) => !v)}
-                    className="relative w-full flex items-center justify-center gap-1 py-2.5 text-xs font-medium text-slate-400 active:text-slate-600 before:content-[''] before:absolute before:inset-x-0 before:-inset-y-1"
-                  >
-                    {showMoreRoutes ? "접기" : `다른 노선 보기 (${restRoutes.length})`}
-                    <ChevronDown
-                      className={`w-3.5 h-3.5 transition-transform ${showMoreRoutes ? "rotate-180" : ""}`}
-                    />
-                  </button>
-                )}
-
                 {(showMoreRoutes || heroRoutes.length === 0) && (
-                  <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-line">
+                  <>
                     {restRoutes.map((sr) => (
                       <StationRouteCard
                         key={sr.routeId}
                         sr={sr}
+                        directionLabel={routeHeadsign(sr, allRoutes)}
                         isFavorited={isArrivalFavorited(sr)}
                         isAdding={addingRouteNo === sr.routeNo}
                         onSelect={() => {
@@ -1013,7 +1026,22 @@ const isAllRouteFavorited = (route: Route) =>
                         onToggleFavorite={() => handleRouteClick(sr)}
                       />
                     ))}
-                  </div>
+                  </>
+                )}
+
+                {/* 펼치기·접기는 판의 마지막 행이다. 판 바깥에 따로 두면
+                    화면이 [판] + [떠 있는 버튼]으로 나뉘어 보인다. */}
+                {restRoutes.length > 0 && heroRoutes.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowMoreRoutes((v) => !v)}
+                    className="relative w-full flex items-center justify-center gap-1 py-3 text-xs font-medium text-muted active:bg-canvas before:content-[''] before:absolute before:inset-x-0 before:-inset-y-1"
+                  >
+                    {showMoreRoutes ? "접기" : `다른 노선 ${restRoutes.length}개 더 보기`}
+                    <ChevronDown
+                      className={`w-3.5 h-3.5 transition-transform ${showMoreRoutes ? "rotate-180" : ""}`}
+                    />
+                  </button>
                 )}
               </div>
             )}
@@ -1026,10 +1054,6 @@ const isAllRouteFavorited = (route: Route) =>
 
         {detailTab === "all" && (
           <>
-            <p className="text-xs text-slate-400 mb-3">
-              이 정류장을 경유하는 모든 노선
-            </p>
-
             {allStatus === "loading" && (
               /* 완성된 목록과 같은 모양(한 판 + 구분선, 같은 행 높이)으로 깔아야
                  값이 들어올 때 목록이 튀지 않는다. */
@@ -1073,22 +1097,27 @@ const isAllRouteFavorited = (route: Route) =>
                       onKeyDown={(e) => e.key === "Enter" && onSelectRoute(route)}
                       className="w-full px-4 py-3 text-left flex items-center gap-3 cursor-pointer select-none touch-manipulation transition-colors duration-75 active:bg-slate-100"
                     >
+                      {/* 노선 검색 결과와 같은 배지를 쓴다. 같은 것(노선)을
+                          두 화면에서 다르게 그릴 이유가 없고, 본선/분선이
+                          배지 안으로 들어가면 아래 한 줄을 지울 수 있다. */}
                       <div
-                        className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+                        className={`min-w-[56px] py-1.5 px-2 rounded-xl flex flex-col items-center justify-center shrink-0 ${
                           isMain ? "bg-blue-500" : "bg-emerald-500"
                         }`}
                       >
-                        <span className="font-bold text-sm text-white">
+                        <span className="font-bold text-base leading-none tracking-tight text-white truncate max-w-full">
                           {route.number}
+                        </span>
+                        <span className="text-[10px] leading-none mt-1 text-white opacity-80">
+                          {isMain ? "본선" : "분선"}
                         </span>
                       </div>
 
+                      {/* 배지에 번호가 이미 있다. 진한 글자에는 이 노선이
+                          어디로 가는지를 넣고, 본선/분선을 아래에 둔다 —
+                          노선 검색 결과와 같은 읽는 순서가 된다. */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-ink">
-                          {route.number}번
-                        </p>
-
-                        <p className="text-xs text-faint mt-0.5 truncate">
+                        <p className="text-sm font-semibold text-ink truncate">
                           {route.start} → {route.end}
                         </p>
                       </div>
@@ -1235,10 +1264,14 @@ const handleStopClick = async (stop: BusStop) => {
           >
             <ArrowLeft className="w-5 h-5 text-slate-700" />
           </button>
-          <div className="flex-1">
-            <h1 className="text-lg font-bold text-slate-900">
-              {getRouteCategory(route.name)}
-              {route.number}
+          {/* 예전에는 "본선104"처럼 분류와 번호가 붙어 한 단어로 읽혔다.
+              번호를 제목으로 세우고 분류는 옆의 작은 태그로 내린다. */}
+          <div className="flex-1 min-w-0">
+            <h1 className="flex items-baseline gap-1.5 text-lg font-bold text-slate-900">
+              {route.number}번
+              <span className="text-[11px] font-medium text-slate-400">
+                {getRouteCategory(route.name)}
+              </span>
             </h1>
             <p className="text-xs text-slate-400 mt-0.5">
               {route.start || "기점 정보 없음"} → {route.end || "종점 정보 없음"}
@@ -1277,17 +1310,21 @@ const handleStopClick = async (stop: BusStop) => {
             />
           </button>
         </div>
+        {/* 값이 없는 항목은 라벨만 남아 "-" 하나가 줄 끝에 떠 있었다.
+            있는 것만 쓴다. */}
         <div className="flex items-center gap-4 mt-3 text-[11px] text-slate-400">
           <span>첫차 {route.firstBus}</span>
           <span>막차 {route.lastBus}</span>
-          <span>배차간격 {route.interval}</span>
-          <span>{route.distance}</span>
+          <span>배차 {route.interval}</span>
+          {route.distance && route.distance !== "-" && <span>{route.distance}</span>}
         </div>
         <button
           onClick={() => setShowSchedule(true)}
-          className="relative mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 bg-slate-100 text-blue-700 rounded-xl text-sm font-semibold active:bg-slate-200 transition-colors before:content-[''] before:absolute before:inset-x-0 before:-inset-y-0.5"
+          /* 파랑은 이 앱에서 "곧 온다"는 뜻이다. 보조 동작인 이 버튼이
+             파란 글씨를 쓰면 도착 시간과 같은 무게로 읽힌다. 회색으로 내린다. */
+          className="relative mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-sm font-semibold active:bg-slate-200 transition-colors before:content-[''] before:absolute before:inset-x-0 before:-inset-y-0.5"
         >
-          <Clock className="w-4 h-4" />
+          <Clock className="w-4 h-4 text-slate-400" />
           배차시간 보기
           <ChevronDown className="w-4 h-4" />
         </button>
