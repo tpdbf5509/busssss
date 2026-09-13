@@ -289,19 +289,22 @@ export function HomeScreen({
             {state.favorites.length > 0 && (
               <button
                 onClick={() => setEditMode((v) => !v)}
-                /* 높이 44px는 투명한 min-h로 잡는다 — 평소 배경이 없어 보이는
-                   변화가 없다. 옆 버튼과 영역이 겹치지 않도록 가로는 px-3까지만
-                   넓힌다(간격 gap-1.5와 함께 측정으로 확인).
-                   글자는 12 -> 13px. 12px일 때는 "편집" 글자폭(20.8px)보다
-                   버튼 사이 간격(30px)이 더 넓어 두 글자가 따로 떠 보였다. */
-                className={`min-h-11 flex items-center px-3 rounded-lg text-[13px] text-muted font-medium active:bg-slate-200/60 ${PRESSABLE}`}
+                /* 글자는 13px. 12px일 때는 "편집" 글자폭(20.8px)보다 버튼 사이
+                   간격(30px)이 더 넓어, 오른쪽 세 개가 한 덩어리로 안 읽히고
+                   따로 떠 보였다.
+                   좌우 패딩은 8px까지만 준다. 간격이 글자폭보다 좁아지면서
+                   셋이 하나로 묶인다(글자 사이 30 -> 22px). 모자란 폭은
+                   투명한 ::before로 채워 터치 영역은 44px을 유지한다 —
+                   버튼 사이 6px을 양쪽에서 3px씩 먹으므로 맞닿기만 하고
+                   겹치지는 않는다. */
+                className={`relative min-h-11 flex items-center px-2 rounded-lg text-[13px] text-muted font-medium active:bg-slate-200/60 before:content-[''] before:absolute before:-inset-x-[3px] before:inset-y-0 ${PRESSABLE}`}
               >
                 {editMode ? "완료" : "편집"}
               </button>
             )}
             <button
               onClick={() => onNavigate("my")}
-              className={`min-h-11 flex items-center px-3 rounded-lg text-[13px] text-brand font-medium active:bg-brand/10 ${PRESSABLE}`}
+              className={`relative min-h-11 flex items-center px-2 rounded-lg text-[13px] text-brand font-medium active:bg-brand/10 before:content-[''] before:absolute before:-inset-x-[3px] before:inset-y-0 ${PRESSABLE}`}
             >
               전체보기
             </button>
