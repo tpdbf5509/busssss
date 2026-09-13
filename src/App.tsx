@@ -135,7 +135,7 @@ function AppContent() {
   const showStorageErrorBanner = !!state.storageError && !state.storageError.dismissed;
 
   return (
-    <div className="max-w-md mx-auto bg-slate-50 fixed inset-0 overflow-hidden flex flex-col">
+    <div className="max-w-md mx-auto bg-canvas fixed inset-0 overflow-hidden flex flex-col">
       {dropoffAlarm && (
         <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-6">
           {/* animate-pulse는 로딩 스켈레톤용 무한 opacity 깜빡임이다. 사용자가

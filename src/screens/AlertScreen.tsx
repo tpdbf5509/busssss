@@ -18,7 +18,7 @@ import { fetchAllRoutes, fetchStopsForRoute } from "@/services/routeService";
 import { Toggle, EmptyState, LoadingSkeleton } from "@/components/ui";
 import { showToast } from "@/lib/toastStore";
 import { indexOfStopByOrder, maxStopsBefore } from "@/lib/stopPosition";
-import { isMainRoute } from "@/lib/routeCategory";
+import { getRouteCategory, isMainRoute } from "@/lib/routeCategory";
 import type { AlertSetting, AlertRecord } from "@/types";
 import type { Route, BusStop } from "@/types/route";
 import {
@@ -206,7 +206,18 @@ function AlertCard({
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className="font-semibold text-ink">{alert.routeName}</span>
+            {/* alert.routeName은 route.name("본선104")을 그대로 담고 있다.
+                그대로 쓰면 분류와 번호가 한 단어로 붙어 읽히고, 같은 노선이
+                버스 화면("104번 본선")과 다르게 보인다. 표시만 맞춘다 —
+                저장된 값은 건드리지 않는다. */}
+            <span className="flex items-baseline gap-1.5">
+              <span className="font-semibold text-ink">
+                {alert.routeNumber ? `${alert.routeNumber}번` : alert.routeName}
+              </span>
+              <span className="text-[11px] font-medium text-faint">
+                {getRouteCategory(alert.routeName)}
+              </span>
+            </span>
             <span
               className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
                 alert.active ? "bg-canvas text-brand" : "bg-canvas text-faint"

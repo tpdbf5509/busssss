@@ -217,8 +217,8 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
   }
   return (
     <div className="h-full flex flex-col overflow-hidden bg-canvas">
-            <header className="bg-white px-5 pt-safe-16 pb-5 border-b border-slate-100 sticky top-0 z-30 shrink-0">
-              <h1 className="text-xl font-bold text-slate-900 mb-3">버스 검색</h1>
+            <header className="bg-white px-5 pt-safe-16 pb-5 border-b border-line sticky top-0 z-30 shrink-0">
+              <h1 className="text-xl font-bold text-ink mb-3">버스 검색</h1>
 
               <div className="flex bg-canvas rounded-xl p-1 mb-3">
                 <button
@@ -869,8 +869,8 @@ const isAllRouteFavorited = (route: Route) =>
   const restRoutes = routesWithInfo.slice(HERO_COUNT);
 
   return (
-    <div className="bg-slate-50">
-      <header className="bg-white px-4 pt-safe-14 pb-5 border-b border-slate-100 sticky top-0 z-30">
+    <div className="bg-canvas">
+      <header className="bg-white px-4 pt-safe-14 pb-5 border-b border-line sticky top-0 z-30">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
@@ -881,7 +881,7 @@ const isAllRouteFavorited = (route: Route) =>
           </button>
 
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-bold text-slate-900 truncate">
+            <h1 className="text-lg font-bold text-ink truncate">
               {station.name}
             </h1>
 
@@ -1238,8 +1238,8 @@ const handleStopClick = async (stop: BusStop) => {
 
  
   return (
-    <div className="bg-slate-50">
-      <header className="bg-white px-4 pt-safe-14 pb-5 border-b border-slate-100 sticky top-0 z-30">
+    <div className="bg-canvas">
+      <header className="bg-white px-4 pt-safe-14 pb-5 border-b border-line sticky top-0 z-30">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
@@ -1250,7 +1250,7 @@ const handleStopClick = async (stop: BusStop) => {
           {/* 예전에는 "본선104"처럼 분류와 번호가 붙어 한 단어로 읽혔다.
               번호를 제목으로 세우고 분류는 옆의 작은 태그로 내린다. */}
           <div className="flex-1 min-w-0">
-            <h1 className="flex items-baseline gap-1.5 text-lg font-bold text-slate-900">
+            <h1 className="flex items-baseline gap-1.5 text-lg font-bold text-ink">
               {route.number}번
               <span className="text-[11px] font-medium text-slate-400">
                 {getRouteCategory(route.name)}
@@ -1552,8 +1552,13 @@ function DispatchScheduleModal({
 
         <div className="px-5 py-4 border-b border-slate-100">
           <div className="flex items-center gap-2 mb-3">
-            <span className="font-bold text-slate-900 text-lg">{route.number}번</span>
-            <span className="text-xs text-slate-400">{route.name}</span>
+            {/* route.name은 "본선104"라 그대로 쓰면 번호가 두 번 나오고
+                분류와 번호가 한 단어로 붙는다. 노선 상세 제목과 같은 표기로
+                맞춘다 — 같은 노선이 화면마다 다르게 보이면 안 된다. */}
+            <span className="font-bold text-ink text-lg">{route.number}번</span>
+            <span className="text-xs text-slate-400">
+              {getRouteCategory(route.name)}
+            </span>
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-slate-50 rounded-xl p-3 text-center">
