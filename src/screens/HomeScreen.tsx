@@ -241,7 +241,10 @@ export function HomeScreen({
           들어가는 입구인지가 "전체 노선 검색" 다섯 글자에만 걸려 있었다.
           대신 원래의 text-slate-400을 같은 값의 토큰(text-faint)으로 바꾸고
           12px·regular를 유지해, 카드 안에서 제목보다 확실히 아래에 둔다. */}
-      <section className="px-4 -mt-6 shrink-0">
+      {/* 파란 헤더를 파고드는 깊이도 마이 탭과 같은 -mt-3(12px)으로 둔다.
+          헤더 길이만 맞추고 이 값이 다르면, 카드 위로 보이는 파란 면의
+          양이 화면마다 달라 탭을 오갈 때 여전히 다르게 보인다. */}
+      <section className="px-4 -mt-3 shrink-0">
         <button
           onClick={() => onNavigate("bus")}
           /* 테두리를 뺀다. 검색과 즐겨찾기 카드가 둘 다 "흰 배경 + 1px 테두리
