@@ -18,7 +18,7 @@ export function ErrorState({ onRetry }: { onRetry: () => void }) {
       <p className="text-slate-400 text-sm mb-4">잠시 후 다시 시도해 주세요</p>
       <button
         onClick={onRetry}
-        className="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-medium hover:bg-slate-800 transition-colors flex items-center gap-2"
+        className="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-medium active:bg-slate-800 transition-colors flex items-center gap-2"
       >
         <Loader2 className="w-4 h-4" />
         다시 시도

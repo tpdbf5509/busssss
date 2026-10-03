@@ -94,7 +94,7 @@ export function CardScreen() {
                 setCustomMode((v) => !v);
                 if (!customMode) setCustomInput(amount > 0 ? String(amount) : "");
               }}
-              className="text-xs text-blue-600 font-medium hover:underline"
+              className="text-xs text-blue-600 font-medium active:underline"
             >
               {customMode ? "금액 선택" : "직접 입력"}
             </button>
@@ -109,7 +109,7 @@ export function CardScreen() {
                   className={`py-2.5 rounded-xl text-sm font-medium transition-colors ${
                     amount === amt
                       ? "bg-blue-600 text-white"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      : "bg-slate-100 text-slate-600 active:bg-slate-200"
                   }`}
                 >
                   {formatLabel(amt)}
@@ -144,7 +144,7 @@ export function CardScreen() {
                 setAmount(next);
                 if (customMode) setCustomInput(next > 0 ? String(next) : "");
               }}
-              className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors"
+              className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center active:bg-slate-200 transition-colors"
             >
               <Minus className="w-4 h-4 text-slate-600" />
             </button>
@@ -160,7 +160,7 @@ export function CardScreen() {
                 setAmount(next);
                 if (customMode) setCustomInput(String(next));
               }}
-              className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors"
+              className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center active:bg-slate-200 transition-colors"
             >
               <Plus className="w-4 h-4 text-slate-600" />
             </button>
@@ -169,7 +169,7 @@ export function CardScreen() {
           <button
             onClick={handleCharge}
             disabled={charging || amount <= 0}
-            className="w-full py-3.5 bg-blue-600 text-white rounded-2xl font-semibold text-sm hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full py-3.5 bg-blue-600 text-white rounded-2xl font-semibold text-sm active:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {charging ? (
               <>

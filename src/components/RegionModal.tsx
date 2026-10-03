@@ -43,7 +43,7 @@ export function RegionModal({
       <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl animate-slide-up">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <h2 className="text-lg font-bold text-slate-900">지역 선택</h2>
-          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-slate-100">
+          <button onClick={onClose} className="p-1.5 rounded-full active:bg-slate-100">
             <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
@@ -57,7 +57,7 @@ export function RegionModal({
                 className={`w-full text-left px-4 py-3.5 text-sm transition-colors flex items-center justify-between ${
                   selectedSido === sido
                     ? "bg-slate-100 text-blue-700 font-semibold"
-                    : "text-slate-600 hover:bg-slate-50"
+                    : "text-slate-600 active:bg-slate-50"
                 }`}
               >
                 <span>{sido}</span>
@@ -75,7 +75,7 @@ export function RegionModal({
                 className={`w-full text-left px-4 py-3.5 text-sm transition-colors flex items-center justify-between ${
                   selectedSigungu === sg
                     ? "bg-slate-100 text-blue-700 font-semibold"
-                    : "text-slate-600 hover:bg-slate-50"
+                    : "text-slate-600 active:bg-slate-50"
                 }`}
               >
                 <span className="truncate">{sg}</span>
@@ -96,7 +96,7 @@ export function RegionModal({
           </div>
           <button
             onClick={() => onSelect(selectedSido, selectedSigungu)}
-            className="w-full py-3.5 bg-blue-600 text-white rounded-2xl font-semibold text-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-1"
+            className="w-full py-3.5 bg-blue-600 text-white rounded-2xl font-semibold text-sm active:bg-blue-700 transition-colors flex items-center justify-center gap-1"
           >
             이 지역으로 설정
             <ChevronRight className="w-4 h-4" />
