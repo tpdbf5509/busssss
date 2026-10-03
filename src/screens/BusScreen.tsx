@@ -333,13 +333,13 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                       return (
                         <div
                           className={`min-w-[56px] py-1.5 px-2 rounded-xl flex flex-col items-center justify-center shrink-0 ${
-                            isMain ? "bg-blue-500" : "bg-emerald-500"
+                            isMain ? "bg-route-main" : "bg-route-branch"
                           }`}
                         >
                           <span className="font-bold text-base leading-none tracking-tight text-white truncate max-w-full">
                             {route.number}
                           </span>
-                          <span className="text-[10px] leading-none mt-1 text-white opacity-80">
+                          <span className="text-[10px] leading-none mt-1 text-white">
                             {label}
                           </span>
                         </div>
@@ -553,7 +553,7 @@ function StationRouteCard({
       >
         <div
           className={`relative w-14 h-14 rounded-xl flex items-center justify-center shrink-0 ${
-            isMain ? "bg-blue-500" : "bg-emerald-500"
+            isMain ? "bg-route-main" : "bg-route-branch"
           }`}
         >
           <span className="font-bold text-base text-white tracking-tight truncate max-w-full px-1">
@@ -1085,13 +1085,13 @@ const isAllRouteFavorited = (route: Route) =>
                           배지 안으로 들어가면 아래 한 줄을 지울 수 있다. */}
                       <div
                         className={`min-w-[56px] py-1.5 px-2 rounded-xl flex flex-col items-center justify-center shrink-0 ${
-                          isMain ? "bg-blue-500" : "bg-emerald-500"
+                          isMain ? "bg-route-main" : "bg-route-branch"
                         }`}
                       >
                         <span className="font-bold text-base leading-none tracking-tight text-white truncate max-w-full">
                           {route.number}
                         </span>
-                        <span className="text-[10px] leading-none mt-1 text-white opacity-80">
+                        <span className="text-[10px] leading-none mt-1 text-white">
                           {isMain ? "본선" : "분선"}
                         </span>
                       </div>

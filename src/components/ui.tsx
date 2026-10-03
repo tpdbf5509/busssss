@@ -1,24 +1,28 @@
 import { Loader2, AlertTriangle, Inbox, Radio, Clock3 } from "lucide-react";
 import { formatArrivalText } from "@/lib/formatArrival";
-import type { ReliabilityState } from "@/lib/reliability";
+import {
+  reliabilityChipKind,
+  type ReliabilityChipKind,
+  type ReliabilityState,
+} from "@/lib/reliability";
 
 export function LoadingSkeleton({ className = "" }: { className?: string }) {
   return (
-    <div className={`animate-pulse bg-slate-200/70 rounded-xl ${className}`} />
+    <div className={`animate-pulse bg-line rounded-xl ${className}`} />
   );
 }
 
 export function ErrorState({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-      <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-        <AlertTriangle className="w-7 h-7 text-red-500" />
+      <div className="w-14 h-14 rounded-full bg-canvas flex items-center justify-center mb-4">
+        <AlertTriangle className="w-7 h-7 text-danger" />
       </div>
-      <p className="text-slate-700 font-medium mb-1">정보를 불러오지 못했어요</p>
-      <p className="text-slate-400 text-sm mb-4">잠시 후 다시 시도해 주세요</p>
+      <p className="text-ink font-medium mb-1">정보를 불러오지 못했어요</p>
+      <p className="text-muted text-sm mb-4">잠시 후 다시 시도해 주세요</p>
       <button
         onClick={onRetry}
-        className="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-medium active:bg-slate-800 transition-colors flex items-center gap-2"
+        className="px-5 py-2.5 bg-ink text-white rounded-xl text-sm font-medium active:bg-ink/90 transition-colors flex items-center gap-2"
       >
         <Loader2 className="w-4 h-4" />
         다시 시도
@@ -38,11 +42,11 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-      <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-        <Icon className="w-7 h-7 text-slate-400" />
+      <div className="w-14 h-14 rounded-full bg-canvas flex items-center justify-center mb-4">
+        <Icon className="w-7 h-7 text-faint" />
       </div>
-      <p className="text-slate-600 font-medium mb-1">{title}</p>
-      {subtitle && <p className="text-slate-400 text-sm">{subtitle}</p>}
+      <p className="text-ink font-medium mb-1">{title}</p>
+      {subtitle && <p className="text-muted text-sm">{subtitle}</p>}
     </div>
   );
 }
@@ -57,8 +61,9 @@ export function Toggle({
   return (
     <button
       onClick={() => onChange(!checked)}
+      /* 꺼짐 색(slate-300)은 맞는 토큰이 아직 없다. 4단계에서 토큰으로 바꾼다. */
       className={`relative w-11 h-6 rounded-full transition-colors ${
-        checked ? "bg-blue-600" : "bg-slate-300"
+        checked ? "bg-brand" : "bg-slate-300"
       }`}
     >
       <span
@@ -79,10 +84,10 @@ export function ArrivalBadge({
 }) {
   const color =
     minutes <= 3
-      ? "bg-slate-100 text-red-600"
+      ? "bg-canvas text-danger"
       : minutes <= 10
-      ? "bg-slate-100 text-blue-600"
-      : "bg-slate-100 text-slate-500";
+      ? "bg-canvas text-brand"
+      : "bg-canvas text-muted";
   return (
     <span
       className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${color}`}
@@ -92,40 +97,61 @@ export function ArrivalBadge({
   );
 }
 
+const CHIP_CONTENT: Record<
+  ReliabilityChipKind,
+  { label: string; Icon: typeof Radio; text: string; bg: string }
+> = {
+  live: { label: "실시간", Icon: Radio, text: "text-live", bg: "bg-live-soft" },
+  delay: { label: "지연 의심", Icon: AlertTriangle, text: "text-delay", bg: "bg-delay-soft" },
+  pending: { label: "확인 중", Icon: Clock3, text: "text-pending", bg: "bg-canvas" },
+};
+
+/**
+ * 신뢰도 칩 한 개 (DESIGN.md 4-2).
+ *
+ * 높이 20px(1.25rem), 좌우 8px, 아이콘 12px. 모두 rem이라 큰 글씨에서 함께
+ * 커진다. 상태는 색만이 아니라 아이콘과 글자로도 구분한다(색약 대응).
+ *
+ * onHero: 파란 히어로 카드 위에서는 틴트 배경이 묻혀서, 흰 배경에 상태 색
+ * 글자를 쓴다(DESIGN.md 7-3).
+ */
+export function ReliabilityChip({
+  kind,
+  onHero = false,
+}: {
+  kind: ReliabilityChipKind;
+  onHero?: boolean;
+}) {
+  const { label, Icon, text, bg } = CHIP_CONTENT[kind];
+  return (
+    <span
+      className={`inline-flex items-center gap-1 h-5 px-2 rounded-full text-micro whitespace-nowrap ${text} ${
+        onHero ? "bg-surface" : bg
+      }`}
+    >
+      <Icon className="w-3 h-3 shrink-0" aria-hidden="true" />
+      {label}
+    </span>
+  );
+}
+
 /**
  * A1. 도착정보 신뢰도 태그.
  * 색상만이 아니라 아이콘/문구로도 구분해서(B3 접근성) 실시간 GPS 기반인지
  * 배차표 기반 추정인지, 그리고 지연이 의심되는지를 알려줍니다.
  */
-export function ReliabilityTag({ reliability }: { reliability: ReliabilityState }) {
-  if (reliability.source === "unknown") return null;
-
-  if (reliability.delayed) {
-    return (
-      <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-600">
-        <AlertTriangle className="w-2.5 h-2.5" />
-        지연 의심
-      </span>
-    );
-  }
-
-  if (reliability.source === "realtime") {
-    return (
-      <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-emerald-600">
-        <Radio className="w-2.5 h-2.5" />
-        실시간
-      </span>
-    );
-  }
-
-  return (
-    <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-slate-400">
-      <Clock3 className="w-2.5 h-2.5" />
-      확인 중
-    </span>
-  );
+export function ReliabilityTag({
+  reliability,
+  onHero = false,
+}: {
+  reliability: ReliabilityState;
+  onHero?: boolean;
+}) {
+  const kind = reliabilityChipKind(reliability);
+  if (!kind) return null;
+  return <ReliabilityChip kind={kind} onHero={onHero} />;
 }
 
 export function Spinner({ className = "" }: { className?: string }) {
-  return <Loader2 className={`w-5 h-5 animate-spin text-blue-500 ${className}`} />;
+  return <Loader2 className={`w-5 h-5 animate-spin text-brand ${className}`} />;
 }

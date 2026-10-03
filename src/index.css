@@ -247,6 +247,29 @@ html.color-blind .text-emerald-700 {
   color: #b45309 !important;
 }
 
+/* 토큰으로 바꾼 노선 배지와 신뢰도 칩(DESIGN.md 4-2)에도 같은 대체 색을 건다.
+   클래스 이름이 바뀌면 위 규칙이 걸리지 않아, 색약 모드에서 본선과 분선이
+   다시 파랑/초록으로만 갈리게 된다.
+   - 분선 배지: 위 -500 배지와 같은 주황(흰 글자 대비 유지)
+   - 실시간 칩: 파랑 계열. 지연 의심과 같은 주황으로 두면 두 상태가 같은
+     색이 된다. 위 text-blue / bg-blue-50 대체 값을 쓴다.
+   - 지연 의심 칩: 주황 글자 + 위 bg-emerald-50 대체 값(연한 노랑) */
+html.color-blind .bg-route-branch {
+  background-color: #b45309 !important;
+}
+html.color-blind .text-live {
+  color: #1d4ed8 !important;
+}
+html.color-blind .bg-live-soft {
+  background-color: #dbeafe !important;
+}
+html.color-blind .text-delay {
+  color: #b45309 !important;
+}
+html.color-blind .bg-delay-soft {
+  background-color: #fef3c7 !important;
+}
+
 /* 기기 접근성 설정에서 "동작 줄이기"를 켠 사용자에게는 모든 전환을
    즉시 끝낸다. 어지럼증·멀미를 겪는 사용자를 위한 OS 차원의 요청이다. */
 @media (prefers-reduced-motion: reduce) {

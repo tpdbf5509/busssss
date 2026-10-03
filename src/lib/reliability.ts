@@ -29,6 +29,20 @@ export interface ReliabilityState {
   delayed: boolean;
 }
 
+/** 신뢰도 칩의 종류. 화면에 그릴 칩 하나를 고른 결과다. */
+export type ReliabilityChipKind = "live" | "delay" | "pending";
+
+/**
+ * 신뢰도 상태를 화면에 보여 줄 칩 종류로 바꿉니다.
+ * 지연 의심이 실시간·확인 중보다 먼저입니다. 사용자가 꼭 알아야 하는
+ * 경고이기 때문입니다. unknown이면 보여 줄 근거가 없어 칩을 그리지 않습니다.
+ */
+export function reliabilityChipKind(reliability: ReliabilityState): ReliabilityChipKind | null {
+  if (reliability.source === "unknown") return null;
+  if (reliability.delayed) return "delay";
+  return reliability.source === "realtime" ? "live" : "pending";
+}
+
 /**
  * 실시간 도착정보 추적 상태를 세션 동안 들고 있다가, 매 폴링 결과를 넣으면
  * 신뢰도(source)와 지연 여부(delayed)를 계산해 주는 트래커.

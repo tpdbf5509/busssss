@@ -402,7 +402,7 @@ function AddAlertModal({
                   >
                     <div
                       className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                        isMain ? "bg-blue-500" : "bg-emerald-500"
+                        isMain ? "bg-route-main" : "bg-route-branch"
                       }`}
                     >
                       <span className="text-white font-bold text-xs">{route.number}</span>

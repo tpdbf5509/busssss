@@ -86,7 +86,7 @@ function FavoriteArrivalInfo({
   const etaTone = !data
     ? "text-faint"
     : reliability.delayed
-      ? "text-amber-600"
+      ? "text-delay"
       : data.minutes != null && data.minutes <= 3
         ? "text-brand"
         : "text-ink";
@@ -145,8 +145,11 @@ function FavoriteArrivalInfo({
       </div>
 
       {/* 신뢰도 태그와 방향 정보는 같은 아랫줄에 둔다. 도착 시간 옆에 함께
-          두면 좁은 화면에서 한 줄에 세 덩어리가 몰려 넘친다. */}
-      <div className="mt-1 flex items-center gap-2 min-w-0">
+          두면 좁은 화면에서 한 줄에 세 덩어리가 몰려 넘친다.
+          min-h-5: 신뢰도 칩(20px)이 방향 글자(16px)보다 높다. 값이 들어와
+          칩이 나타날 때 줄이 4px 자라면 카드가 흔들리므로 처음부터 칩
+          높이를 잡아 둔다. */}
+      <div className="mt-1 flex items-center gap-2 min-w-0 min-h-5">
         {/* shrink-0이 없으면 옆 문구에 밀려 "실시간"이 두 글자씩 접힌다. */}
         {isStopRoute && data && (
           <span className="shrink-0">
@@ -369,7 +372,7 @@ export function HomeScreen({
               const isMain = categoryRoute
                 ? isMainRoute(categoryRoute.name)
                 : true;
-              const badgeBg = isMain ? "bg-blue-500" : "bg-emerald-500";
+              const badgeBg = isMain ? "bg-route-main" : "bg-route-branch";
 
               const routeNumber =
                 matchedRoute?.number ?? fav.name.replace(/번$/, "").trim();
@@ -438,7 +441,9 @@ export function HomeScreen({
                       <span className="font-bold text-base leading-none tracking-tight truncate max-w-full px-1 text-white">
                         {isStation ? fav.label : badgeNumber}
                       </span>
-                      <span className="text-[10px] leading-none mt-1 text-white/75">
+                      {/* 투명도를 주지 않는다. 새 배지 색 위에서 white/75는
+                          4.5:1이 안 나온다. */}
+                      <span className="text-[10px] leading-none mt-1 text-white">
                         {isStation ? "정류장" : isMain ? "본선" : "분선"}
                       </span>
                     </div>
