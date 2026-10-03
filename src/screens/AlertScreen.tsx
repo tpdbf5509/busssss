@@ -11,6 +11,8 @@ import {
   X,
   ChevronRight,
   ArrowLeft,
+  Bus as BusIcon,
+  AlertTriangle,
 } from "lucide-react";
 import { useApp } from "@/store/appContext";
 import { useAsync } from "@/hooks/useAsync";
@@ -144,36 +146,44 @@ export function AlertScreen() {
              divide-y는 첫 행 위와 마지막 행 아래에 선을 넣지 않으므로
              그 계산이 필요 없다. */
           <div className="bg-surface rounded-2xl border border-line overflow-hidden divide-y divide-line">
-            {records.map((r) => (
-              <div
-                key={r.id}
-                className={`flex items-start gap-3 px-4 py-3.5 ${
-                  !r.read ? "bg-brand/5" : ""
-                }`}
-              >
-                <div
-                  className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-canvas"
-                >
-                  <Bell
-                    className={`w-4 h-4 ${
-                      r.type === "dropoff"
-                        ? "text-brand"
-                        : r.type === "arrival"
-                        ? "text-emerald-600"
-                        : "text-amber-600"
-                    }`}
-                  />
-                </div>
+            {records.map((r) => {
+              /* 아이콘이 알림 종류를 말하게 한다. 예전에는 종류와 무관하게 같은
+                 종 모양이 회색 타일(흰 판 대비 1.06:1)에 담겨 보이지 않는 박스가
+                 행마다 48px씩 차지했다. 읽지 않음은 연파랑 배경(1.07:1)으로도
+                 표시했는데 연속되면 파란 덩어리로 뭉쳐 오히려 행 구분이 흐려졌다.
+                 신호는 점(5.17:1)과 제목 굵기, 둘로 충분하다. */
+              const Icon =
+                r.type === "dropoff"
+                  ? MapPin
+                  : r.type === "arrival"
+                    ? BusIcon
+                    : AlertTriangle;
+              const tone =
+                r.type === "dropoff"
+                  ? "text-brand"
+                  : r.type === "arrival"
+                    ? "text-emerald-600"
+                    : "text-amber-600";
+              return (
+              <div key={r.id} className="flex items-start gap-3 px-4 py-3.5">
+                <Icon className={`w-[18px] h-[18px] mt-0.5 shrink-0 ${tone}`} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-ink">{r.title}</p>
+                    <p
+                      className={`text-sm text-ink ${
+                        r.read ? "font-medium" : "font-semibold"
+                      }`}
+                    >
+                      {r.title}
+                    </p>
                     {!r.read && <span className="w-2 h-2 rounded-full bg-brand shrink-0" />}
                   </div>
                   <p className="text-xs text-muted mt-0.5 leading-relaxed">{r.body}</p>
                   <p className="text-[11px] text-faint mt-1">{r.time}</p>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
