@@ -4,14 +4,16 @@ import { useAsync } from "@/hooks/useAsync";
 import { fetchAllRoutes } from "@/services/routeService";
 import { showToast } from "@/lib/toastStore";
 import type { TabId } from "@/components/BottomNav";
-import { MapPin, ChevronDown, Star, Search, X, RefreshCw } from "lucide-react";
+import { MapPin, ChevronDown, Search, X, RefreshCw } from "lucide-react";
 import { useArrivalInfo } from "@/hooks/useArrivalInfo";
 import { formatArrivalText } from "@/lib/formatArrival";
 import { ReliabilityTag } from "@/components/ui";
+import { HeroArrivalCard, HeroEmptyCard } from "@/components/HeroArrivalCard";
 import { triggerArrivalRefresh } from "@/services/arrivalService";
 import type { Favorite } from "@/types";
 import type { Route } from "@/types/route";
 import { isMainRoute } from "@/lib/routeCategory";
+import { pickHeroFavorite } from "@/lib/heroArrival";
 
 /* 카드를 누를 때 쓰는 공통 클래스.
    hover는 모바일에 없고 iOS에서는 탭 후 상태가 남아 카드가 눌린 채로
@@ -195,6 +197,59 @@ export function HomeScreen({
     }
   };
 
+  /* 히어로와 목록 카드가 같은 값으로 도착 정보를 부르도록 한 곳에서 정한다. */
+  const routesLoaded = routes !== undefined;
+
+  /* 히어로(DESIGN.md 7-3)에 올라온 즐겨찾기는 아래 목록에서 뺀다. 같은 값을
+     두 번 보여 주지 않고, 같은 조회를 두 번 하지 않기 위해서다. */
+  const heroFav = pickHeroFavorite(state.favorites);
+  const listFavorites = heroFav
+    ? state.favorites.filter((f) => f.id !== heroFav.id)
+    : state.favorites;
+
+  /* 히어로의 노선과 번호는 아래 목록 카드와 같은 규칙으로 구한다.
+     번호가 다르면 조회 키가 달라져 캐시를 같이 쓰지 못한다. */
+  const heroRoute =
+    heroFav?.appRouteId ? routes?.find((r) => r.id === heroFav.appRouteId) : undefined;
+  const heroRouteNumber = heroFav ? heroFav.name.replace(/번$/, "").trim() : "";
+
+  /* 즐겨찾기 카드를 눌렀을 때 갈 곳. 목록 카드와 히어로가 같이 쓴다. */
+  const openFavorite = (fav: Favorite) => {
+    const isRoute = fav.type === "route";
+    const isStopRoute = fav.type === "stop_route";
+    const isStation = fav.type === "station";
+    const targetId = isStopRoute ? fav.appRouteId : fav.refId;
+
+    if (isStation) {
+      onNavigate("bus", undefined, {
+        id: fav.refId,
+        name: fav.name,
+        arsId:
+          fav.label !== "정류장" ? fav.label : undefined,
+      });
+      return;
+    }
+    if (isRoute || isStopRoute) {
+      // appRouteId가 없는 stop_route는 targetId가 undefined라
+      // onNavigate가 탭만 바꾸고 끝나 아무 반응이 없어 보인다.
+      // 딥링크(App.tsx)와 동일하게 정류장 화면으로라도 보낸다.
+      if (
+        !targetId &&
+        isStopRoute &&
+        fav.tagoNodeId &&
+        fav.stopName
+      ) {
+        onNavigate("bus", undefined, {
+          id: fav.tagoNodeId,
+          name: fav.stopName,
+        });
+        return;
+      }
+      onNavigate("bus", targetId);
+      return;
+    }
+  };
+
   return (
     <div className="flex flex-col bg-canvas">
       {/* 파란 헤더의 길이를 마이 탭과 같게 맞춘다. 탭을 오갈 때 파란 면이
@@ -269,81 +324,93 @@ export function HomeScreen({
         </button>
       </section>
 
-      <section className="px-4 mt-7 shrink-0">
-        {/* 섹션 제목은 항목 이름보다 작고 연하게. 제목이 내용만큼 진하면
-            화면에 같은 무게의 글자가 반복돼 위계가 사라진다. */}
-        <div className="flex items-center justify-between mb-2.5 px-0.5">
-          <h3 className="text-xs font-semibold text-muted tracking-wide">
-            즐겨찾기
-          </h3>
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              /* 아이콘 크기(15px)는 그대로 두고 상자만 44×44로. 평소에는 배경이
-                 없어 보이는 변화가 없고, 누를 때 생기는 원만 커진다.
-                 음수 마진으로 주변 배치가 밀리지 않게 상쇄한다. */
-              /* 음수 마진을 사방에 주면 오른쪽으로도 10px 당겨져 옆 버튼(편집)의
-                 터치 영역과 겹친다. 왼쪽과 위아래만 당긴다 — 오른쪽은 옆 버튼과의
-                 간격을 그대로 남겨 둬야 한다. */
-              className={`w-11 h-11 -my-2.5 -ml-2.5 flex items-center justify-center rounded-full text-faint active:bg-slate-200/60 disabled:opacity-40 ${PRESSABLE}`}
-              aria-label="새로고침"
-              aria-busy={refreshing}
-            >
-              <RefreshCw
-                className={`w-[15px] h-[15px] ${refreshing ? "animate-spin" : ""}`}
-              />
-            </button>
-
-            {state.favorites.length > 0 && (
-              <button
-                onClick={() => setEditMode((v) => !v)}
-                /* 글자는 13px. 12px일 때는 "편집" 글자폭(20.8px)보다 버튼 사이
-                   간격(30px)이 더 넓어, 오른쪽 세 개가 한 덩어리로 안 읽히고
-                   따로 떠 보였다.
-                   좌우 패딩은 8px까지만 준다. 간격이 글자폭보다 좁아지면서
-                   셋이 하나로 묶인다(글자 사이 30 -> 22px). 모자란 폭은
-                   투명한 ::before로 채워 터치 영역은 44px을 유지한다 —
-                   버튼 사이 6px을 양쪽에서 3px씩 먹으므로 맞닿기만 하고
-                   겹치지는 않는다. */
-                className={`relative min-h-11 flex items-center px-2 rounded-lg text-[13px] text-muted font-medium active:bg-slate-200/60 before:content-[''] before:absolute before:-inset-x-[3px] before:inset-y-0 ${PRESSABLE}`}
-              >
-                {editMode ? "완료" : "편집"}
-              </button>
-            )}
-            <button
-              onClick={() => onNavigate("my")}
-              className={`relative min-h-11 flex items-center px-2 rounded-lg text-[13px] text-brand font-medium active:bg-brand/10 before:content-[''] before:absolute before:-inset-x-[3px] before:inset-y-0 ${PRESSABLE}`}
-            >
-              전체보기
-            </button>
-          </div>
-        </div>
-
-        {state.favorites.length === 0 ? (
-          <button
-            onClick={() => onNavigate("bus")}
-            className={`w-full bg-surface rounded-2xl p-7 text-center ${PRESSABLE}`}
-          >
-            <Star className="w-7 h-7 text-slate-300 mx-auto mb-2.5" />
-            <p className="text-sm font-medium text-ink">
-              즐겨찾기를 추가해 보세요
-            </p>
-            <p className="text-xs text-faint mt-1">
-              자주 타는 버스의 도착 시간을 바로 볼 수 있어요
-            </p>
-          </button>
+      {/* 히어로: 내 정류장 + 내 버스 (DESIGN.md 7-3). 홈의 주인공이다.
+          좌우 여백은 DESIGN.md의 20px이다. 홈의 나머지는 2단계에서 20px로
+          맞추기 전까지 16px이라, 그동안은 히어로만 양옆이 4px 안쪽에 있다.
+          올릴 stop_route가 없으면 같은 크기의 점선 카드가 자리를 지킨다. */}
+      <section className="px-5 mt-7 shrink-0">
+        {heroFav ? (
+          <HeroArrivalCard
+            /* 다른 즐겨찾기로 바뀌면 갱신 시각 같은 카드 안 상태를 새로 시작한다. */
+            key={heroFav.id}
+            fav={heroFav}
+            route={heroRoute}
+            routeNumber={heroRouteNumber}
+            routesLoaded={routesLoaded}
+            onOpen={() => openFavorite(heroFav)}
+            onRefresh={handleRefresh}
+            refreshing={refreshing}
+          />
         ) : (
-          /* 즐겨찾기 하나하나가 "지금 버스가 언제 오는지"를 담은 살아있는
-             정보 단위다. 한 판 안에 구분선으로 나누면 설정 목록처럼 읽혀서,
-             어느 카드의 도착시간인지가 눈에 안 들어온다. 카드를 독립시키고
-             사이를 띄운다. */
+          <HeroEmptyCard onAdd={() => onNavigate("bus")} />
+        )}
+      </section>
+
+      {/* 히어로로 올라간 것을 빼고 남은 즐겨찾기가 없으면 섹션을 통째로
+          숨긴다. 즐겨찾기가 하나도 없을 때의 안내는 히어로 자리의 점선
+          카드가 맡는다 — 같은 안내가 두 번 나오지 않게 한다. 즐겨찾기
+          관리는 마이 탭에서 할 수 있다. */}
+      {listFavorites.length > 0 && (
+        <section className="px-4 mt-7 shrink-0">
+          {/* 섹션 제목은 항목 이름보다 작고 연하게. 제목이 내용만큼 진하면
+              화면에 같은 무게의 글자가 반복돼 위계가 사라진다. */}
+          <div className="flex items-center justify-between mb-2.5 px-0.5">
+            <h3 className="text-xs font-semibold text-muted tracking-wide">
+              즐겨찾기
+            </h3>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                /* 아이콘 크기(15px)는 그대로 두고 상자만 44×44로. 평소에는 배경이
+                   없어 보이는 변화가 없고, 누를 때 생기는 원만 커진다.
+                   음수 마진으로 주변 배치가 밀리지 않게 상쇄한다. */
+                /* 음수 마진을 사방에 주면 오른쪽으로도 10px 당겨져 옆 버튼(편집)의
+                   터치 영역과 겹친다. 왼쪽과 위아래만 당긴다 — 오른쪽은 옆 버튼과의
+                   간격을 그대로 남겨 둬야 한다. */
+                className={`w-11 h-11 -my-2.5 -ml-2.5 flex items-center justify-center rounded-full text-faint active:bg-slate-200/60 disabled:opacity-40 ${PRESSABLE}`}
+                aria-label="새로고침"
+                aria-busy={refreshing}
+              >
+                <RefreshCw
+                  className={`w-[15px] h-[15px] ${refreshing ? "animate-spin" : ""}`}
+                />
+              </button>
+
+              {state.favorites.length > 0 && (
+                <button
+                  onClick={() => setEditMode((v) => !v)}
+                  /* 글자는 13px. 12px일 때는 "편집" 글자폭(20.8px)보다 버튼 사이
+                     간격(30px)이 더 넓어, 오른쪽 세 개가 한 덩어리로 안 읽히고
+                     따로 떠 보였다.
+                     좌우 패딩은 8px까지만 준다. 간격이 글자폭보다 좁아지면서
+                     셋이 하나로 묶인다(글자 사이 30 -> 22px). 모자란 폭은
+                     투명한 ::before로 채워 터치 영역은 44px을 유지한다 —
+                     버튼 사이 6px을 양쪽에서 3px씩 먹으므로 맞닿기만 하고
+                     겹치지는 않는다. */
+                  className={`relative min-h-11 flex items-center px-2 rounded-lg text-[13px] text-muted font-medium active:bg-slate-200/60 before:content-[''] before:absolute before:-inset-x-[3px] before:inset-y-0 ${PRESSABLE}`}
+                >
+                  {editMode ? "완료" : "편집"}
+                </button>
+              )}
+              <button
+                onClick={() => onNavigate("my")}
+                className={`relative min-h-11 flex items-center px-2 rounded-lg text-[13px] text-brand font-medium active:bg-brand/10 before:content-[''] before:absolute before:-inset-x-[3px] before:inset-y-0 ${PRESSABLE}`}
+              >
+                전체보기
+              </button>
+            </div>
+          </div>
+
+          {/* 즐겨찾기 하나하나가 "지금 버스가 언제 오는지"를 담은 살아있는
+              정보 단위다. 한 판 안에 구분선으로 나누면 설정 목록처럼 읽혀서,
+              어느 카드의 도착시간인지가 눈에 안 들어온다. 카드를 독립시키고
+              사이를 띄운다. */}
           <div className="space-y-2.5">
-            {state.favorites.map((fav) => {
+            {listFavorites.map((fav) => {
               const isRoute = fav.type === "route";
               const isStopRoute = fav.type === "stop_route";
               const isStation = fav.type === "station";
-              const targetId = isStopRoute ? fav.appRouteId : fav.refId;
 
               const matchedRoute = isRoute
                 ? routes?.find((r) => r.id === fav.refId)
@@ -395,34 +462,7 @@ export function HomeScreen({
                   <button
                     onClick={() => {
                       if (editMode) return;
-                      if (isStation) {
-                        onNavigate("bus", undefined, {
-                          id: fav.refId,
-                          name: fav.name,
-                          arsId:
-                            fav.label !== "정류장" ? fav.label : undefined,
-                        });
-                        return;
-                      }
-                      if (isRoute || isStopRoute) {
-                        // appRouteId가 없는 stop_route는 targetId가 undefined라
-                        // onNavigate가 탭만 바꾸고 끝나 아무 반응이 없어 보인다.
-                        // 딥링크(App.tsx)와 동일하게 정류장 화면으로라도 보낸다.
-                        if (
-                          !targetId &&
-                          isStopRoute &&
-                          fav.tagoNodeId &&
-                          fav.stopName
-                        ) {
-                          onNavigate("bus", undefined, {
-                            id: fav.tagoNodeId,
-                            name: fav.stopName,
-                          });
-                          return;
-                        }
-                        onNavigate("bus", targetId);
-                        return;
-                      }
+                      openFavorite(fav);
                     }}
                     /* 카드 한 장 전체가 하나의 터치 영역이다. 이제 카드가
                        독립돼 있으므로 눌렀을 때 살짝 줄어드는 편이 자연스럽다
@@ -455,7 +495,7 @@ export function HomeScreen({
                       directionLabel={directionLabel}
                       routeInterval={stopRoute?.interval}
                       route={stopRoute}
-                      routesLoaded={routes !== undefined}
+                      routesLoaded={routesLoaded}
                     />
                   </button>
 
@@ -475,8 +515,8 @@ export function HomeScreen({
               );
             })}
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
       {/* 최근 본 노선은 과거 기록이라 즐겨찾기보다 가볍게 둔다.
           흰 판 없이 배경 위에 바로 얹고, 구분선만으로 행을 나눈다. */}

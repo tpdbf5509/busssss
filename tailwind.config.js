@@ -96,8 +96,26 @@ export default {
       animation: {
         'slide-up': 'slide-up 0.3s ease-out',
         'slide-down': 'slide-down 0.3s ease-out',
+        /* 숫자 바뀜(DESIGN.md 6장 움직임). 새 값이 150ms 동안 나타난다.
+           "동작 줄이기" 설정이면 index.css가 즉시 끝낸다. */
+        'fade-in': 'fade-in 150ms ease-out',
+        /* 곧 도착 점. 동작 줄이기에서는 한 번만 돌고 마지막 프레임
+           (불투명)에 멈춰 점은 그대로 보인다. */
+        blink: 'blink 1.2s ease-in-out infinite',
+      },
+      /* 미니 노선도 버스 마커 이동 400ms (기본 단계에 없는 값). */
+      transitionDuration: {
+        400: '400ms',
       },
       keyframes: {
+        'fade-in': {
+          from: { opacity: '0' },
+          to: { opacity: '1' },
+        },
+        blink: {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.2' },
+        },
         'slide-up': {
           from: { transform: 'translateY(100%)', opacity: '0' },
           to: { transform: 'translateY(0)', opacity: '1' },
