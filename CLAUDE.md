@@ -20,7 +20,7 @@ UI를 만들거나 고치는 작업이면 `DESIGN.md`도 반드시 읽습니다.
 | `npm run dev` | 개발 서버 |
 | `npm run typecheck` | 타입 검사 |
 | `npm run lint` | ESLint |
-| `npm run test` | Vitest (`src/lib`, `src/services`의 `*.test.ts`) |
+| `npm run test` | Vitest (`src/lib`, `src/services`, `src/store`의 `*.test.ts`) |
 | `npm run build` | 배포 빌드 |
 
 작업을 끝냈다고 말하기 전에 `typecheck`, `lint`, `test`, `build`를 모두 실행하고 결과를 확인합니다.

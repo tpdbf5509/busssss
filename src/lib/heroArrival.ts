@@ -15,11 +15,14 @@ import {
  * 히어로에 올릴 즐겨찾기를 고른다.
  *
  * 남은 분과 정거장 수가 있는 종류는 정류장+노선(stop_route)뿐이라 이것만
- * 올라올 수 있다. 사용자가 고정한 즐겨찾기를 먼저 고르는 규칙은 고정 저장
- * UI와 함께 2단계에서 붙인다. 지금은 목록에서 첫 번째 stop_route다.
+ * 올라올 수 있다. 사용자가 고정(pinned)한 stop_route가 먼저이고, 없으면
+ * 목록에서 첫 번째 stop_route다. 고정한 즐겨찾기를 지우면 고정이 사라지므로
+ * 저절로 첫 번째 stop_route로 돌아간다. 예전 저장값처럼 pinned가 없는
+ * 항목은 고정하지 않은 것으로 본다.
  */
 export function pickHeroFavorite(favorites: Favorite[]): Favorite | null {
-  return favorites.find((f) => f.type === "stop_route") ?? null;
+  const stopRoutes = favorites.filter((f) => f.type === "stop_route");
+  return stopRoutes.find((f) => f.pinned === true) ?? stopRoutes[0] ?? null;
 }
 
 /**

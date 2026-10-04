@@ -33,6 +33,30 @@ describe("pickHeroFavorite", () => {
     expect(pickHeroFavorite([fav("a", "route"), fav("b", "station")])).toBeNull();
     expect(pickHeroFavorite([])).toBeNull();
   });
+
+  it("고정한 stop_route가 첫 번째 stop_route보다 먼저", () => {
+    const list = [fav("a", "stop_route"), fav("b", "route"), { ...fav("c", "stop_route"), pinned: true }];
+    expect(pickHeroFavorite(list)?.id).toBe("c");
+  });
+
+  it("stop_route가 아닌 항목은 pinned여도 히어로에 오르지 않는다", () => {
+    const list = [{ ...fav("a", "route"), pinned: true }, fav("b", "stop_route")];
+    expect(pickHeroFavorite(list)?.id).toBe("b");
+  });
+
+  it("pinned가 없는 예전 저장값은 첫 번째 stop_route", () => {
+    // JSON으로 읽은 예전 형식 그대로: pinned 키 자체가 없다.
+    const old = JSON.parse(
+      '[{"id":"x","type":"route","name":"1번","label":"1","refId":"r"},' +
+        '{"id":"y","type":"stop_route","name":"시청","label":"5","refId":"s"}]',
+    ) as Favorite[];
+    expect(pickHeroFavorite(old)?.id).toBe("y");
+  });
+
+  it("pinned: false는 고정하지 않은 것", () => {
+    const list = [{ ...fav("a", "stop_route"), pinned: false }, fav("b", "stop_route")];
+    expect(pickHeroFavorite(list)?.id).toBe("a");
+  });
 });
 
 describe("heroArrivalView — 7-3 상태 표", () => {
