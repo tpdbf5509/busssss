@@ -1,4 +1,4 @@
-import { Loader2, AlertTriangle, Inbox, Radio, Clock3 } from "lucide-react";
+import { Loader2, AlertTriangle, Inbox, Radio, Clock3, ArrowLeft } from "lucide-react";
 import { formatArrivalText } from "@/lib/formatArrival";
 import {
   reliabilityChipKind,
@@ -150,6 +150,27 @@ export function ReliabilityTag({
   const kind = reliabilityChipKind(reliability);
   if (!kind) return null;
   return <ReliabilityChip kind={kind} onHero={onHero} />;
+}
+
+/**
+ * 화면 위쪽 뒤로 가기(알림 화면, 정류장 상세, 노선 상세).
+ *
+ * 홈 헤더의 원형 버튼(DESIGN.md 7-2)과 같은 모양이다 — 보이는 원 40px, 흰 면 +
+ * 1px line, 아이콘 20px ink. 투명한 ::before로 사방 2px씩 넓혀 누르는 영역은
+ * 44px. 예전에는 화면마다 테두리 없는 작은 화살표(누르는 영역을 따로 넓힘)를
+ * 썼는데, 3단계 알림 화면에서 원형으로 정했고 4단계에서 세 화면을 맞췄다.
+ */
+export function BackButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="뒤로 가기"
+      className="relative w-10 h-10 shrink-0 rounded-full bg-surface border border-line flex items-center justify-center text-ink active:bg-canvas before:content-[''] before:absolute before:-inset-0.5 select-none touch-manipulation transition-transform duration-100 active:scale-[0.98]"
+    >
+      <ArrowLeft className="w-5 h-5" aria-hidden="true" />
+    </button>
+  );
 }
 
 export function Spinner({ className = "" }: { className?: string }) {

@@ -7,7 +7,7 @@ import { fetchAllRoutes, fetchStopsForRoute, fetchRoutesForStop } from "@/servic
 import { fetchBisTimeInfo, type BisTimeInfo } from "@/api/jeonjuBis";
 import type { Route, BusStop } from "@/types/route";
 import type { Favorite } from "@/types";
-import { LoadingSkeleton, ErrorState, EmptyState, ReliabilityTag } from "@/components/ui";
+import { LoadingSkeleton, ErrorState, EmptyState, ReliabilityTag, BackButton } from "@/components/ui";
 import type { ReliabilityState } from "@/lib/reliability";
 import { arrivalMinutesFromSeconds } from "@/lib/formatArrival";
 import { showToast } from "@/lib/toastStore";
@@ -583,7 +583,7 @@ function StationRouteCard({
        별을 눌러도 바깥 행이 먼저 먹어 노선 상세로 넘어가 버릴 수 있다.
        홈 화면과 같은 방법으로 형제로 분리하고, 별은 행 위에 겹쳐 놓는다.
        행 오른쪽 패딩(pr-12)이 별이 앉을 자리를 미리 비워 둔다. */
-    <div className="relative bg-surface rounded-2xl border border-line">
+    <div className="relative bg-surface rounded-card border border-line">
       <button
         type="button"
         onClick={onSelect}
@@ -592,19 +592,22 @@ function StationRouteCard({
            고정폭 열에 두면 배지와 시간이 화면 양 끝으로 갈라져 한 카드가 두
            덩어리로 읽혔다. 배지 옆에 세로로 쌓으면 배지 -> 방향 -> 시간으로
            시선이 한 줄기로 내려간다(홈 즐겨찾기 카드와 같은 문법). */
-        className="w-full text-left flex items-center gap-3.5 select-none touch-manipulation transition-colors duration-75 active:bg-canvas rounded-2xl py-4 pl-4 pr-12"
+        className="w-full text-left flex items-center gap-3.5 select-none touch-manipulation transition-colors duration-75 active:bg-canvas rounded-card py-4 pl-4 pr-12"
       >
+        {/* 배지 색은 4-2(본선 brand, 분선 live 초록), 모서리는 노선 배지의 12px.
+            크기는 이 카드에서만 쓰는 56px 정사각형을 그대로 둔다. */}
         <div
-          className={`relative w-14 h-14 rounded-xl flex items-center justify-center shrink-0 ${
+          className={`relative w-14 h-14 rounded-tile flex items-center justify-center shrink-0 ${
             isMain ? "bg-route-main" : "bg-route-branch"
           }`}
         >
-          <span className="font-bold text-base text-white tracking-tight truncate max-w-full px-1">
+          <span className="text-body-strong font-bold text-white tabular-nums truncate max-w-full px-1">
             {sr.routeNo}
           </span>
+          <span className="sr-only">{sr.category}</span>
           {isFavorited && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center ring-2 ring-surface">
-              <Star className="w-2.5 h-2.5 text-white fill-white" />
+            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-star flex items-center justify-center ring-2 ring-surface">
+              <Star className="w-2.5 h-2.5 text-white fill-white" aria-hidden="true" />
             </span>
           )}
         </div>
@@ -613,30 +616,33 @@ function StationRouteCard({
           {/* 배지가 이미 노선 번호를 크게 들고 있어서, 여기에 "104번"을 또 쓰면
               가장 진한 글자가 아무 정보도 더하지 않는다. 이 버스가 어디로
               가는지를 넣는다. 방향을 못 찾은 경우에만 노선 번호로 돌아간다. */}
-          <p className="text-[13px] font-semibold text-ink truncate">
+          <p className="text-body-strong text-ink truncate">
             {directionLabel ?? `${sr.routeNo}번`}
           </p>
 
-          {/* 도착 줄. min-h로 높이를 고정해 로딩 -> 값 -> 오류 사이에
-              카드 높이가 변하지 않게 한다(20초마다 갱신된다). */}
-          <div className="mt-0.5 flex items-baseline gap-2 min-w-0 min-h-[26px]">
+          {/* 도착 줄. 높이를 고정해 로딩 -> 값 -> 오류 사이에 카드 높이가
+              변하지 않게 한다(20초마다 갱신된다). 예전 26px 숫자(px라 큰 글씨를
+              따라가지 않았다)는 5장 "목록의 도착 분" Title로 바꿨다. 높이도
+              rem(h-6 = Title 한 줄)이라 큰 글씨에서 함께 커진다. */}
+          <div className="mt-0.5 flex items-baseline gap-2 min-w-0 h-6">
             <span
-              className={`text-[26px] leading-none font-bold tracking-tight tabular-nums shrink-0 ${etaTone}`}
+              className={`text-title tabular-nums shrink-0 ${etaTone}`}
             >
               {timeLabel}
             </span>
             {stopsLabel && (
-              <span className="text-xs text-muted tabular-nums shrink-0">
+              <span className="text-caption text-muted tabular-nums shrink-0">
                 {stopsLabel}
               </span>
             )}
           </div>
 
-          {hasLiveInfo && (
-            <div className="mt-1">
-              <ReliabilityTag reliability={reliability} />
-            </div>
-          )}
+          {/* 신뢰도 칩 자리(높이 20px)를 늘 잡아 둔다. 예전에는 칩이 있을 때만
+              줄이 생겨, 불러오는 중 모양(칩 자리 12px)에서 값으로 바뀔 때 카드가
+              커졌다(1단계 리뷰에서 남은 항목). */}
+          <div className="mt-1 h-5">
+            {hasLiveInfo && <ReliabilityTag reliability={reliability} />}
+          </div>
         </div>
       </button>
 
@@ -653,7 +659,7 @@ function StationRouteCard({
         >
           <Star
             className={`w-4 h-4 transition-colors ${
-              isFavorited ? "text-amber-400 fill-amber-400" : "text-faint"
+              isFavorited ? "text-star fill-star" : "text-faint"
             }`}
           />
         </button>
@@ -912,24 +918,26 @@ const isAllRouteFavorited = (route: Route) =>
   const restRoutes = routesWithInfo.slice(HERO_COUNT);
 
   return (
-    <div className="bg-canvas">
-      <header className="bg-white px-4 pt-safe-14 pb-5 border-b border-line sticky top-0 z-30">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            /* 왼쪽은 화면 가장자리까지 10px뿐이라 8px만, 오른쪽은 4px 넓힌다. */
-            className="relative p-1.5 -ml-1.5 rounded-full active:bg-slate-100 before:content-[''] before:absolute before:-inset-y-1.5 before:-left-2 before:-right-1"
-          >
-            <ArrowLeft className="w-5 h-5 text-slate-700" />
-          </button>
+    // 맨 아래 pb-5: App 스크롤 영역이 남기는 0.5rem과 더해 하단 탭 위 28px.
+    <div className="bg-canvas pb-5">
+      {/* 얇은 헤더(8장 공통 헤더와 같은 문법): canvas 바탕, 안전영역 + 3.5rem,
+          아래 선 없음. 이 화면은 App 스크롤 영역 안에서 스크롤되므로 헤더가
+          sticky다 — canvas 바탕이 불투명해 밑으로 지나가는 카드가 비치지 않는다.
+          예전에는 흰 바탕 + 아래 선 + 최소 3.5rem 윗여백(pt-safe-14)이었다.
+          뒤로 가기는 알림 화면과 같은 원형 버튼이다(ui.tsx BackButton). 예전
+          작은 화살표는 왼쪽이 화면 가장자리까지 10px뿐이라 누르는 영역을
+          8px만 넓혔다. 원형은 버튼 자체가 40px이라 그런 조정이 필요 없다. */}
+      <header className="bg-canvas px-5 pt-safe-0 sticky top-0 z-30">
+        <div className="h-14 flex items-center gap-3">
+          <BackButton onClick={onBack} />
 
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-bold text-ink truncate">
+            <h1 className="text-title text-ink truncate">
               {station.name}
             </h1>
 
             {station.arsId && (
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-caption text-muted">
                 정류장번호 {station.arsId}
               </p>
             )}
@@ -937,15 +945,15 @@ const isAllRouteFavorited = (route: Route) =>
         </div>
       </header>
 
-      {/* 탭 */}
-      <div className="px-4 pt-3">
-        <div className="flex bg-canvas rounded-xl p-1">
+      {/* 탭. 버스 검색의 노선/정류장 전환과 같은 모양(8장): line 틀 + 흰 알약. */}
+      <div className="px-5 pt-2">
+        <div className="flex bg-line rounded-full p-1">
           <button
             onClick={() => setDetailTab("arrival")}
-            className={`relative flex-1 py-2 rounded-lg text-sm font-semibold transition-colors before:content-[''] before:absolute before:inset-x-0 before:-inset-y-[3px] ${
+            className={`relative flex-1 py-2 rounded-full text-body transition-colors select-none touch-manipulation before:content-[''] before:absolute before:inset-x-0 before:-inset-y-[3px] ${
               detailTab === "arrival"
-                ? "bg-surface text-brand border border-line"
-                : "text-muted"
+                ? "bg-surface text-brand font-semibold"
+                : "text-ink"
             }`}
           >
             실시간 도착
@@ -953,10 +961,10 @@ const isAllRouteFavorited = (route: Route) =>
 
           <button
             onClick={() => setDetailTab("all")}
-            className={`relative flex-1 py-2 rounded-lg text-sm font-semibold transition-colors before:content-[''] before:absolute before:inset-x-0 before:-inset-y-[3px] ${
+            className={`relative flex-1 py-2 rounded-full text-body transition-colors select-none touch-manipulation before:content-[''] before:absolute before:inset-x-0 before:-inset-y-[3px] ${
               detailTab === "all"
-                ? "bg-surface text-brand border border-line"
-                : "text-muted"
+                ? "bg-surface text-brand font-semibold"
+                : "text-ink"
             }`}
           >
             전체 경유노선
@@ -964,7 +972,7 @@ const isAllRouteFavorited = (route: Route) =>
         </div>
       </div>
 
-      <div className="px-4 py-4">
+      <div className="px-5 pt-4">
 
         {/* ========================= */}
         {/* 실시간 도착 탭 */}
@@ -975,17 +983,26 @@ const isAllRouteFavorited = (route: Route) =>
             {status === "loading" && (
               /* 완성된 목록과 같은 모양(한 판 + 구분선, 같은 행 높이)으로 깔아야
                  값이 들어올 때 목록이 튀지 않는다. */
+              /* 줄마다 실제 카드와 같은 높이의 자리를 잡는다: 방향 줄(Body-strong
+                 한 줄 = 1.5em), 도착 줄(h-6), 칩 줄(h-5). 예전에는 막대 높이를
+                 px로 따로 맞춰 칩 줄이 12px뿐이었고, 값이 들어오면 카드가 커졌다. */
               <div className="space-y-2.5">
                 {[1, 2, 3].map((i) => (
                   <div
                     key={i}
-                    className="bg-surface rounded-2xl border border-line py-4 pl-4 pr-12 flex items-center gap-3.5"
+                    className="bg-surface rounded-card border border-line py-4 pl-4 pr-12 flex items-center gap-3.5"
                   >
-                    <LoadingSkeleton className="w-14 h-14 shrink-0" />
+                    <LoadingSkeleton className="w-14 h-14 rounded-tile shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <LoadingSkeleton className="h-[17px] w-[120px]" />
-                      <LoadingSkeleton className="mt-1 h-[26px] w-[86px]" />
-                      <LoadingSkeleton className="mt-1.5 h-3 w-[52px]" />
+                      <div className="text-body-strong h-[1.5em] flex items-center">
+                        <LoadingSkeleton className="h-4 w-[7.5rem]" />
+                      </div>
+                      <div className="mt-0.5 h-6 flex items-center">
+                        <LoadingSkeleton className="h-5 w-[5.5rem]" />
+                      </div>
+                      <div className="mt-1 h-5">
+                        <LoadingSkeleton className="h-5 w-[3.25rem] rounded-full" />
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -993,7 +1010,7 @@ const isAllRouteFavorited = (route: Route) =>
             )}
 
             {status === "error" && (
-              <p className="text-sm text-red-500 text-center py-8">
+              <p className="text-body text-muted text-center py-8">
                 노선 정보를 불러오지 못했어요
               </p>
             )}
@@ -1061,7 +1078,7 @@ const isAllRouteFavorited = (route: Route) =>
                   <button
                     type="button"
                     onClick={() => setShowMoreRoutes((v) => !v)}
-                    className="relative w-full flex items-center justify-center gap-1 pt-1 pb-2 text-xs font-medium text-muted active:text-ink before:content-[''] before:absolute before:inset-x-0 before:-inset-y-2"
+                    className="relative w-full flex items-center justify-center gap-1 pt-1 pb-2 text-caption text-muted active:text-ink before:content-[''] before:absolute before:inset-x-0 before:-inset-y-2"
                   >
                     {showMoreRoutes ? "접기" : `다른 노선 ${restRoutes.length}개 더 보기`}
                     <ChevronDown
@@ -1083,19 +1100,19 @@ const isAllRouteFavorited = (route: Route) =>
             {allStatus === "loading" && (
               /* 완성된 목록과 같은 모양(한 판 + 구분선, 같은 행 높이)으로 깔아야
                  값이 들어올 때 목록이 튀지 않는다. */
-              <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-line">
+              <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
                 {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="px-4 py-3 flex items-center gap-3">
-                    <LoadingSkeleton className="w-11 h-11 shrink-0" />
+                  <div key={i} className="min-h-16 px-4 py-3 flex items-center gap-3">
+                    <LoadingSkeleton className="w-12 h-9 rounded-tile shrink-0" />
                     <LoadingSkeleton className="h-4 flex-1" />
-                    <LoadingSkeleton className="h-5 w-[76px] shrink-0" />
+                    <LoadingSkeleton className="h-4 w-4 rounded-full shrink-0" />
                   </div>
                 ))}
               </div>
             )}
 
             {allStatus === "error" && (
-              <p className="text-sm text-red-500 text-center py-8">
+              <p className="text-body text-muted text-center py-8">
                 경유 노선을 불러오지 못했어요
               </p>
             )}
@@ -1111,7 +1128,7 @@ const isAllRouteFavorited = (route: Route) =>
 
             {allStatus === "success" &&
               allViaRoutes.length > 0 && (
-                <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-line">
+                <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
                   {allViaRoutes.map((route) => {
                     const isMain = isMainRoute(route.name);
                     return (
@@ -1121,29 +1138,28 @@ const isAllRouteFavorited = (route: Route) =>
                       tabIndex={0}
                       onClick={() => onSelectRoute(route)}
                       onKeyDown={(e) => e.key === "Enter" && onSelectRoute(route)}
-                      className="w-full px-4 py-3 text-left flex items-center gap-3 cursor-pointer select-none touch-manipulation transition-colors duration-75 active:bg-slate-100"
+                      className="w-full min-h-16 px-4 py-3 text-left flex items-center gap-3 cursor-pointer select-none touch-manipulation transition-colors duration-75 active:bg-canvas"
                     >
                       {/* 노선 검색 결과와 같은 배지를 쓴다. 같은 것(노선)을
-                          두 화면에서 다르게 그릴 이유가 없고, 본선/분선이
-                          배지 안으로 들어가면 아래 한 줄을 지울 수 있다. */}
+                          두 화면에서 다르게 그릴 이유가 없다. 4단계부터 그 배지가
+                          7-5 배지(48×36, 번호만)가 되어 본선/분선은 화면 읽기용
+                          글자로만 남는다. 예전에는 배지 안 작은 글자로 보였다. */}
                       <div
-                        className={`min-w-[56px] py-1.5 px-2 rounded-xl flex flex-col items-center justify-center shrink-0 ${
+                        className={`min-w-12 h-9 px-1 rounded-tile flex items-center justify-center shrink-0 text-white ${
                           isMain ? "bg-route-main" : "bg-route-branch"
                         }`}
                       >
-                        <span className="font-bold text-base leading-none tracking-tight text-white truncate max-w-full">
+                        <span className="text-body-strong font-bold tabular-nums whitespace-nowrap">
                           {route.number}
                         </span>
-                        <span className="text-[10px] leading-none mt-1 text-white">
-                          {isMain ? "본선" : "분선"}
-                        </span>
+                        <span className="sr-only">{isMain ? "본선" : "분선"}</span>
                       </div>
 
                       {/* 배지에 번호가 이미 있다. 진한 글자에는 이 노선이
-                          어디로 가는지를 넣고, 본선/분선을 아래에 둔다 —
-                          노선 검색 결과와 같은 읽는 순서가 된다. */}
+                          어디로 가는지를 넣는다 — 노선 검색 결과와 같은 읽는
+                          순서가 된다. */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-ink truncate">
+                        <p className="text-body-strong text-ink truncate">
                           {route.start} → {route.end}
                         </p>
                       </div>
@@ -1164,8 +1180,8 @@ const isAllRouteFavorited = (route: Route) =>
                           <Star
                             className={`w-4 h-4 transition-colors ${
                               isAllRouteFavorited(route)
-                                ? "text-amber-400 fill-amber-400"
-                                : "text-slate-300"
+                                ? "text-star fill-star"
+                                : "text-faint"
                             }`}
                           />
                         </button>
