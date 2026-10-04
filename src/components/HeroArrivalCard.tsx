@@ -129,9 +129,11 @@ export function HeroArrivalCardView({
           <span className="text-body-strong truncate">{stopName}</span>
         </span>
 
-        {/* 2줄: 노선 칩 + 방향 */}
+        {/* 2줄: 노선 칩 + 방향.
+            칩 바탕은 흰색이 아니라 검정 20%다. white/20 위 흰 글자는 3.14~3.62:1로
+            4.5:1에 못 미친다. black/20이면 7.23:1, 광택이 가장 밝게 겹쳐도 6.21:1. */}
         <span className="mt-1 flex items-center gap-2 h-6 min-w-0">
-          <span className="inline-flex items-center h-6 px-2.5 rounded-full bg-white/20 text-body-strong font-bold tabular-nums shrink-0">
+          <span className="inline-flex items-center h-6 px-2.5 rounded-full bg-black/20 text-body-strong font-bold tabular-nums shrink-0">
             {routeNumber}
           </span>
           {direction && <span className="text-body text-white/90 truncate">{direction}</span>}
