@@ -24,6 +24,10 @@ function AppContent() {
     name: string;
     arsId?: string;
   } | null>(null);
+  /* 홈 빠른 실행 "정류장 검색"(DESIGN.md 7-7)으로 들어올 때 버스 화면을
+     정류장 검색 쪽으로 열기 위한 값. 노선·정류장 바로 열기와 같은 방식으로
+     한 번 쓰고 비운다. */
+  const [pendingSearchTab, setPendingSearchTab] = useState<"route" | "station" | null>(null);
   const [homeRefreshKey, setHomeRefreshKey] = useState(0);
   const [dropoffAlarm, setDropoffAlarm] = useState<DropoffAlarm | null>(null);
   const [quickViewBanner, setQuickViewBanner] = useState<string | null>(null);
@@ -113,8 +117,10 @@ function AppContent() {
   const handleNavigate = (
     nextTab: TabId,
     routeId?: string,
-    station?: { id: string; name: string; arsId?: string }
+    station?: { id: string; name: string; arsId?: string },
+    options?: { searchTab?: "route" | "station" }
   ) => {
+    setPendingSearchTab(options?.searchTab ?? null);
     if (routeId) {
       setPendingRouteId(routeId);
       setPendingStation(null);
@@ -206,6 +212,8 @@ function AppContent() {
             onConsumeInitialRoute={() => setPendingRouteId(null)}
             initialStation={pendingStation ?? undefined}
             onConsumeInitialStation={() => setPendingStation(null)}
+            initialSearchTab={pendingSearchTab ?? undefined}
+            onConsumeInitialSearchTab={() => setPendingSearchTab(null)}
           />
         )}
        {tab === "route" && <RouteScreen />}

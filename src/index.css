@@ -88,12 +88,18 @@
      각 배너 자신이 아니라 그 둘을 감싸는 바깥 wrapper 하나에만 준다 —
      안 그러면 두 배너가 동시에 뜰 때 사이에 안전영역만큼 빈 틈이 하나
      더 생긴다. 토스트는 항상 화면 최상단에 단독으로 뜨므로 자기 자신에
-     바로 적용한다. */
+     바로 적용했다(2단계부터는 얇은 헤더 아래 top-safe-16을 쓴다). */
   .pt-safe-0 {
     padding-top: env(safe-area-inset-top);
   }
   .top-safe-4 {
     top: calc(env(safe-area-inset-top) + 1rem);
+  }
+  /* 토스트 위치. 홈의 얇은 헤더(안전영역 + 3.5rem, DESIGN.md 7-2) 바로 아래
+     0.5rem이다. 위 top-safe-4에 두면 토스트가 헤더의 검색·알림 버튼을 덮어
+     3초 동안 누를 수 없었다. 헤더와 같이 rem이라 큰 글씨에서도 겹치지 않는다. */
+  .top-safe-16 {
+    top: calc(env(safe-area-inset-top) + 4rem);
   }
 
   /* 하단 네비게이션 안전영역.

@@ -48,11 +48,16 @@ export function BusScreen({
   onConsumeInitialRoute,
   initialStation,
   onConsumeInitialStation,
+  initialSearchTab,
+  onConsumeInitialSearchTab,
 }: {
   initialRouteId?: string;
   onConsumeInitialRoute?: () => void;
   initialStation?: { id: string; name: string; arsId?: string };
   onConsumeInitialStation?: () => void;
+  /** 홈 빠른 실행 "정류장 검색"으로 들어오면 "station" */
+  initialSearchTab?: "route" | "station";
+  onConsumeInitialSearchTab?: () => void;
 } = {}) {
   const [query, setQuery] = useState("");
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
@@ -62,7 +67,8 @@ export function BusScreen({
 
   const [stations, setStations] = useState<Station[]>([]);
   const [stationStatus, setStationStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [searchTab, setSearchTab] = useState<"route" | "station">("route");
+  /* 처음 값부터 정류장 검색으로 열어야 노선 목록이 한 번 비쳤다가 바뀌지 않는다. */
+  const [searchTab, setSearchTab] = useState<"route" | "station">(initialSearchTab ?? "route");
 
   const { data: routes, status, retry } = useAsync(() => fetchAllRoutes(), []);
 
@@ -74,6 +80,15 @@ export function BusScreen({
   onConsumeInitialRouteRef.current = onConsumeInitialRoute;
   const onConsumeInitialStationRef = useRef(onConsumeInitialStation);
   onConsumeInitialStationRef.current = onConsumeInitialStation;
+  const onConsumeInitialSearchTabRef = useRef(onConsumeInitialSearchTab);
+  onConsumeInitialSearchTabRef.current = onConsumeInitialSearchTab;
+
+  // 홈 빠른 실행 "정류장 검색" → 정류장 검색 탭으로 연다. 한 번 쓰고 비운다.
+  useEffect(() => {
+    if (!initialSearchTab) return;
+    setSearchTab(initialSearchTab);
+    onConsumeInitialSearchTabRef.current?.();
+  }, [initialSearchTab]);
 
   /* 최근 본 노선 기록.
      setSelectedRoute를 부르는 곳이 검색 결과 클릭, 정류장 상세에서 노선
