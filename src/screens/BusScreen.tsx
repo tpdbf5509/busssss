@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Search, X, Star, ArrowLeft, Bus as BusIcon, Navigation, Clock, Calendar, ChevronDown } from "lucide-react";
+import { Search, X, Star, Bus as BusIcon, Navigation, Clock, Calendar, ChevronDown } from "lucide-react";
 import { useAsync } from "@/hooks/useAsync";
 import { useBusLocations } from "@/hooks/useBusLocations";
 import { useApp } from "@/store/appContext";
@@ -1297,28 +1297,30 @@ const handleStopClick = async (stop: BusStop) => {
 
  
   return (
-    <div className="bg-canvas">
-      <header className="bg-white px-4 pt-safe-14 pb-5 border-b border-line sticky top-0 z-30">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="relative p-1.5 -ml-1.5 rounded-full active:bg-slate-100 before:content-[''] before:absolute before:-inset-y-1.5 before:-left-2 before:-right-1"
-          >
-            <ArrowLeft className="w-5 h-5 text-slate-700" />
-          </button>
+    // 맨 아래 pb-5: App 스크롤 영역이 남기는 0.5rem과 더해 하단 탭 위 28px.
+    <div className="bg-canvas pb-5">
+      {/* 얇은 헤더(정류장 상세와 같음): canvas 바탕, 제목 줄 안전영역 + 3.5rem,
+          아래 선 없음, sticky. 예전에는 흰 바탕 + 아래 선 + pt-safe-14였다.
+          운행 정보 줄과 배차시간 버튼은 예전처럼 헤더 안에 함께 붙어 있다. */}
+      <header className="bg-canvas px-5 pt-safe-0 pb-3 sticky top-0 z-30">
+        <div className="h-14 flex items-center gap-3">
+          <BackButton onClick={onBack} />
           {/* 예전에는 "본선104"처럼 분류와 번호가 붙어 한 단어로 읽혔다.
               번호를 제목으로 세우고 분류는 옆의 작은 태그로 내린다. */}
           <div className="flex-1 min-w-0">
-            <h1 className="flex items-baseline gap-1.5 text-lg font-bold text-ink">
+            <h1 className="flex items-baseline gap-1.5 text-title text-ink">
               {route.number}번
-              <span className="text-[11px] font-medium text-slate-400">
+              <span className="text-caption text-muted">
                 {getRouteCategory(route.name)}
               </span>
             </h1>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-caption text-muted truncate">
               {route.start || "기점 정보 없음"} → {route.end || "종점 정보 없음"}
             </p>
           </div>
+          {/* 노선 즐겨찾기. 뒤로 가기와 같은 원형 버튼(보이는 원 40px, 누르는
+              영역 44px)이라 헤더 양 끝이 같은 모양으로 맞는다. 예전에는 테두리
+              없는 별에 누르는 영역만 따로 넓혔다. */}
           <button
             onClick={() => {
               const existing = state.favorites.find(
@@ -1341,20 +1343,25 @@ const handleStopClick = async (stop: BusStop) => {
                 showToast("즐겨찾기에 추가했어요");
               }
             }}
-            className="relative p-2 rounded-full active:bg-slate-100 before:content-[''] before:absolute before:-inset-y-1 before:-left-1.5 before:-right-0.5"
+            aria-label={
+              state.favorites.some((f) => f.type === "route" && f.refId === route.id)
+                ? "즐겨찾기에서 빼기"
+                : "즐겨찾기에 추가"
+            }
+            className="relative w-10 h-10 shrink-0 rounded-full bg-surface border border-line flex items-center justify-center active:bg-canvas before:content-[''] before:absolute before:-inset-0.5 select-none touch-manipulation transition-transform duration-100 active:scale-[0.98]"
           >
             <Star
               className={`w-5 h-5 transition-colors ${
                 state.favorites.some((f) => f.type === "route" && f.refId === route.id)
-                  ? "text-amber-400 fill-amber-400"
-                  : "text-slate-300"
+                  ? "text-star fill-star"
+                  : "text-faint"
               }`}
             />
           </button>
         </div>
         {/* 값이 없는 항목은 라벨만 남아 "-" 하나가 줄 끝에 떠 있었다.
             있는 것만 쓴다. */}
-        <div className="flex items-center gap-4 mt-3 text-[11px] text-slate-400">
+        <div className="flex items-center gap-4 mt-1 text-caption text-muted">
           <span>첫차 {route.firstBus}</span>
           <span>막차 {route.lastBus}</span>
           <span>배차 {route.interval}</span>
@@ -1363,26 +1370,32 @@ const handleStopClick = async (stop: BusStop) => {
         <button
           onClick={() => setShowSchedule(true)}
           /* 파랑은 이 앱에서 "곧 온다"는 뜻이다. 보조 동작인 이 버튼이
-             파란 글씨를 쓰면 도착 시간과 같은 무게로 읽힌다. 회색으로 내린다. */
-          className="relative mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-sm font-semibold active:bg-slate-200 transition-colors before:content-[''] before:absolute before:inset-x-0 before:-inset-y-0.5"
+             파란 글씨를 쓰면 도착 시간과 같은 무게로 읽힌다. 예전에는 회색
+             면으로 내렸고, canvas 헤더 위인 지금은 흰 면 + 1px line + ink
+             글자로 낮춘다(검색창과 같은 full 모서리). */
+          className="relative mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 bg-surface border border-line text-ink rounded-full text-body font-semibold active:bg-canvas transition-colors select-none touch-manipulation before:content-[''] before:absolute before:inset-x-0 before:-inset-y-0.5"
         >
-          <Clock className="w-4 h-4 text-slate-400" />
+          <Clock className="w-4 h-4 text-faint" aria-hidden="true" />
           배차시간 보기
-          <ChevronDown className="w-4 h-4" />
+          <ChevronDown className="w-4 h-4 text-faint" aria-hidden="true" />
         </button>
       </header>
 
-      <div className="px-4 pt-3 flex items-center gap-1.5">
+      {/* 실시간 위치 상태. 점 색은 4-2를 따른다: 연동 중은 실시간 초록(예전
+          파랑), 실패는 danger 빨강(점에만 쓰는 색), 그 밖은 faint. 점 옆
+          글자가 상태를 말하므로 색만으로 구분하지 않는다. */}
+      <div className="px-5 pt-1 min-h-[1.125rem] flex items-center gap-1.5">
         <span
-          className={`w-1.5 h-1.5 rounded-full ${
+          aria-hidden="true"
+          className={`w-1.5 h-1.5 rounded-full shrink-0 ${
             busStatus === "success" && buses && buses.length > 0
-              ? "bg-blue-500"
+              ? "bg-live"
               : busStatus === "error"
-              ? "bg-red-400"
-              : "bg-slate-300"
+              ? "bg-danger"
+              : "bg-faint"
           }`}
         />
-        <span className="text-[11px] text-slate-400">
+        <span className="text-caption text-muted">
           {busStatus === "loading" && "실시간 위치 불러오는 중"}
           {busStatus === "error" && busError}
           {busStatus === "success" && buses && buses.length > 0 && "실시간 위치 연동 중"}
@@ -1392,20 +1405,23 @@ const handleStopClick = async (stop: BusStop) => {
           <button
             onClick={() => retryBuses()}
             /* 화면에서 가장 작은 표적(16.5px)이었다. 글자 크기는 그대로 두고
-               위아래로 14px씩 넓힌다 — 위 33px, 아래 16px의 여유 안에 들어간다. */
-            className="relative text-[11px] font-semibold text-blue-600 ml-auto active:underline before:content-[''] before:absolute before:-inset-x-2 before:-inset-y-[14px]"
+               위아래로 넓혀 44px를 만든다. 4단계에서 글자가 Caption(18px 줄)이
+               되어 위아래 13px씩 넓힌다. */
+            className="relative text-caption font-semibold text-brand ml-auto active:underline before:content-[''] before:absolute before:-inset-x-2 before:-inset-y-[13px]"
           >
             다시 시도
           </button>
         )}
         {busStatus !== "error" && lastUpdated && (
-          <span className="text-[10px] text-slate-300 ml-auto">
+          /* 갱신 시각은 정보라 faint가 아니라 muted다(4-1). 크기는 히어로의
+             갱신 시각과 같은 Micro. 예전 10px은 px라 큰 글씨를 따라가지 않았다. */
+          <span className="text-micro font-medium text-muted tabular-nums ml-auto">
             {lastUpdated.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })} 갱신
           </span>
         )}
       </div>
 
-      <div className="px-4 py-4">
+      <div className="px-5 pt-3">
         {status === "loading" && (
           <div className="space-y-2">
             {[1, 2, 3, 4, 5].map((i) => (
@@ -1419,7 +1435,10 @@ const handleStopClick = async (stop: BusStop) => {
         )}
         {status === "success" && stops && stops.length > 0 && (
           <div className="relative">
-            <div className="absolute left-[19px] top-2 bottom-2 w-0.5 bg-slate-200" />
+            {/* 세로선은 정류장 점의 가운데(점 16px의 절반 = 0.5rem)를 지난다.
+                예전에는 left 19px라 점 가운데(8px)에서 11px 비껴 지나갔다.
+                위아래는 첫 점과 마지막 점의 가운데쯤(1.25rem)에서 끝낸다. */}
+            <div className="absolute left-[calc(0.5rem-1px)] top-5 bottom-5 w-0.5 bg-line" aria-hidden="true" />
             <div className="space-y-1">
             {stops.map((stop, stopIndex) => {
                 const stopBuses = busesByStopIndex.get(stopIndex) ?? [];
@@ -1427,14 +1446,16 @@ const handleStopClick = async (stop: BusStop) => {
 
                 return (
                   <div key={`${stop.order}-${stop.id}`} className="relative flex items-start gap-3">
+                    {/* 정류장 점: 버스가 있으면 brand로 채우고(예전 밝은 파랑은
+                        흰 글자 대비 3.7:1), 없으면 흰 면 + faint 테두리. */}
                     <div
                       className={`relative z-10 mt-3 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-500 ease-out ${
-                        hasBus ? "bg-blue-500 border-blue-500 scale-125" : "bg-white border-slate-300 scale-100"
+                        hasBus ? "bg-brand border-brand scale-125" : "bg-surface border-faint scale-100"
                       }`}
                     >
                       {/* B2. 버스가 지금 이 정류장에 있다는 걸 은은한 펄스로 전달 — 장식이 아니라 실시간 상태 신호입니다 */}
                       {hasBus && (
-                        <span className="absolute inset-0 rounded-full bg-blue-400 animate-ping opacity-60" />
+                        <span className="absolute inset-0 rounded-full bg-brand animate-ping opacity-60" />
                       )}
                       <span className="sr-only">{stop.order}</span>
                     </div>
@@ -1443,32 +1464,34 @@ const handleStopClick = async (stop: BusStop) => {
                       disabled={addingStopId === stop.id}
                       /* 행 사이 간격이 4px뿐이라 위아래 2px씩만 넓힌다. 이웃 행과
                          맞닿기는 해도 겹치지는 않는다(간격 4 -> 0). */
-                      className="relative flex-1 flex items-center justify-between py-2.5 px-3 rounded-xl active:bg-white transition-colors text-left before:content-[''] before:absolute before:inset-x-0 before:-inset-y-0.5"
+                      className="relative flex-1 flex items-center justify-between py-2.5 px-3 rounded-tile active:bg-surface transition-colors text-left select-none touch-manipulation before:content-[''] before:absolute before:inset-x-0 before:-inset-y-0.5"
                     >
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[11px] text-slate-400 font-medium w-5 shrink-0">
+                        <span className="text-micro font-medium text-muted tabular-nums w-5 shrink-0">
                           {stop.order}
                         </span>
-                        <span className="text-sm font-medium text-slate-700">{stop.name}</span>
+                        <span className="text-body text-ink">{stop.name}</span>
+                        {/* 버스 표시: brand 알약 + 흰 글자(5.2:1). 예전 밝은 파랑
+                            위 10px 흰 글자는 3.7:1이었다. 글자는 Micro(rem). */}
                         {hasBus && (
                           <span
                             key={stopBuses[0].vehicleNo}
-                            className="flex items-center gap-1 bg-blue-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full animate-stop-badge-in"
+                            className="flex items-center gap-1 bg-brand text-white text-micro px-1.5 rounded-full animate-stop-badge-in"
                           >
-                            <Navigation className="w-2.5 h-2.5" />
+                            <Navigation className="w-2.5 h-2.5" aria-hidden="true" />
                             {stopBuses[0].vehicleNo || "버스"}
                             {stopBuses.length > 1 && ` +${stopBuses.length - 1}`}
                           </span>
                         )}
                       </div>
                       {addingStopId === stop.id ? (
-                        <span className="w-4 h-4 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin shrink-0" />
+                        <span className="w-4 h-4 border-2 border-line border-t-brand rounded-full animate-spin shrink-0" />
                       ) : (
                         <Star
                           className={`w-4 h-4 shrink-0 transition-colors ${
                             isArrivalFavorited(stop)
-                              ? "text-amber-400 fill-amber-400"
-                              : "text-slate-300"
+                              ? "text-star fill-star"
+                              : "text-faint"
                           }`}
                         />
                       )}
@@ -1595,55 +1618,56 @@ function DispatchScheduleModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl animate-slide-up">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+      <div className="relative bg-surface rounded-t-hero sm:rounded-hero w-full max-w-md max-h-[80vh] flex flex-col shadow-sheet animate-slide-up">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-line">
           <div className="flex items-center gap-2">
-            <Clock className="w-5 h-5 text-blue-600" />
-            <h2 className="text-lg font-bold text-slate-900">배차시간</h2>
+            <Clock className="w-5 h-5 text-brand" aria-hidden="true" />
+            <h2 className="text-title text-ink">배차시간</h2>
           </div>
           <button
             onClick={onClose}
-            className="relative p-1.5 rounded-full active:bg-slate-100 before:content-[''] before:absolute before:-inset-1.5"
+            aria-label="닫기"
+            className="relative p-1.5 rounded-full active:bg-canvas before:content-[''] before:absolute before:-inset-1.5"
           >
-            <X className="w-5 h-5 text-slate-500" />
+            <X className="w-5 h-5 text-muted" />
           </button>
         </div>
 
-        <div className="px-5 py-4 border-b border-slate-100">
+        <div className="px-5 py-4 border-b border-line">
           <div className="flex items-center gap-2 mb-3">
             {/* route.name은 "본선104"라 그대로 쓰면 번호가 두 번 나오고
                 분류와 번호가 한 단어로 붙는다. 노선 상세 제목과 같은 표기로
                 맞춘다 — 같은 노선이 화면마다 다르게 보이면 안 된다. */}
-            <span className="font-bold text-ink text-lg">{route.number}번</span>
-            <span className="text-xs text-slate-400">
+            <span className="text-body-strong font-bold text-ink">{route.number}번</span>
+            <span className="text-caption text-muted">
               {getRouteCategory(route.name)}
             </span>
           </div>
           <div className="grid grid-cols-3 gap-2">
-            <div className="bg-slate-50 rounded-xl p-3 text-center">
+            <div className="bg-canvas rounded-tile p-3 text-center">
               <div className="flex items-center justify-center mb-1">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                <Calendar className="w-3.5 h-3.5 text-faint" aria-hidden="true" />
               </div>
-              <p className="text-[10px] text-slate-400 mb-0.5">첫차</p>
-              <p className="text-sm font-bold text-slate-700">{route.firstBus}</p>
+              <p className="text-micro font-medium text-muted mb-0.5">첫차</p>
+              <p className="text-body font-bold text-ink tabular-nums">{route.firstBus}</p>
             </div>
-            <div className="bg-slate-50 rounded-xl p-3 text-center">
+            <div className="bg-canvas rounded-tile p-3 text-center">
               <div className="flex items-center justify-center mb-1">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                <Calendar className="w-3.5 h-3.5 text-faint" aria-hidden="true" />
               </div>
-              <p className="text-[10px] text-slate-400 mb-0.5">막차</p>
-              <p className="text-sm font-bold text-slate-700">{route.lastBus}</p>
+              <p className="text-micro font-medium text-muted mb-0.5">막차</p>
+              <p className="text-body font-bold text-ink tabular-nums">{route.lastBus}</p>
             </div>
-            <div className="bg-slate-50 rounded-xl p-3 text-center">
+            <div className="bg-canvas rounded-tile p-3 text-center">
               <div className="flex items-center justify-center mb-1">
-                <Clock className="w-3.5 h-3.5 text-blue-500" />
+                <Clock className="w-3.5 h-3.5 text-brand" aria-hidden="true" />
               </div>
-              <p className="text-[10px] text-slate-400 mb-0.5">배차간격</p>
-              <p className="text-sm font-bold text-blue-700">{route.interval}</p>
+              <p className="text-micro font-medium text-muted mb-0.5">배차간격</p>
+              <p className="text-body font-bold text-brand tabular-nums">{route.interval}</p>
             </div>
           </div>
           {intervalInfo && (
-            <p className="text-[11px] text-slate-400 mt-3 text-center">
+            <p className="text-caption text-muted mt-3 text-center">
               {intervalInfo.min}분 ~ {intervalInfo.max}분 간격으로 운행합니다
             </p>
           )}
@@ -1660,10 +1684,10 @@ function DispatchScheduleModal({
 
           {realStatus === "success" && realSchedule && (
             <>
-              <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-1.5">
-                <Navigation className="w-4 h-4 text-blue-500" />
+              <h3 className="text-body-strong text-ink mb-3 flex items-center gap-1.5">
+                <Navigation className="w-4 h-4 text-brand" aria-hidden="true" />
                 실제 배차시간표
-                <span className="text-[10px] font-normal text-blue-500 bg-slate-100 px-1.5 py-0.5 rounded-full ml-1">
+                <span className="inline-flex items-center h-5 px-2 rounded-full bg-brand-soft text-brand text-micro ml-1">
                   공식 데이터
                 </span>
               </h3>
@@ -1671,14 +1695,14 @@ function DispatchScheduleModal({
                 {markSchedule(realSchedule.times, intervalInfo?.min ?? 15).map(
                   ({ time, isPast, isNext }, i) => {
                   const cls = isNext
-                    ? "bg-blue-600 text-white font-bold"
+                    ? "bg-brand text-white font-bold"
                     : isPast
-                    ? "bg-slate-50 text-slate-300"
-                    : "bg-slate-50 text-slate-600";
+                    ? "bg-canvas text-faint"
+                    : "bg-canvas text-ink";
                   return (
                     <div
                       key={time + "-" + i}
-                      className={"py-2 rounded-lg text-center text-sm font-medium transition-colors " + cls}
+                      className={"py-2 rounded-tile text-center text-body tabular-nums transition-colors " + cls}
                     >
                       {time}
                     </div>
@@ -1686,21 +1710,21 @@ function DispatchScheduleModal({
                 })}
               </div>
               {realSchedule.note && (
-                <p className="text-[11px] text-slate-400 mt-4 whitespace-pre-line">{realSchedule.note}</p>
+                <p className="text-caption text-muted mt-4 whitespace-pre-line">{realSchedule.note}</p>
               )}
               {realSchedule.satSkip && (
-                <p className="text-[11px] text-slate-400 mt-2">토요일 미운행: {realSchedule.satSkip}</p>
+                <p className="text-caption text-muted mt-2">토요일 미운행: {realSchedule.satSkip}</p>
               )}
               {realSchedule.holidaySkip && (
-                <p className="text-[11px] text-slate-400 mt-1">일요일(공휴일) 미운행: {realSchedule.holidaySkip}</p>
+                <p className="text-caption text-muted mt-1">일요일(공휴일) 미운행: {realSchedule.holidaySkip}</p>
               )}
             </>
           )}
 
           {realStatus === "unavailable" && (
             <>
-              <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-1.5">
-                <Navigation className="w-4 h-4 text-blue-500" />
+              <h3 className="text-body-strong text-ink mb-3 flex items-center gap-1.5">
+                <Navigation className="w-4 h-4 text-brand" aria-hidden="true" />
                 예상 출발 시간표
               </h3>
               {timetable.length > 0 ? (
@@ -1708,14 +1732,14 @@ function DispatchScheduleModal({
                   {markSchedule(timetable, intervalInfo?.min ?? 15).map(
                     ({ time, isPast, isNext }, i) => {
                     const cls = isNext
-                      ? "bg-blue-600 text-white font-bold"
+                      ? "bg-brand text-white font-bold"
                       : isPast
-                      ? "bg-slate-50 text-slate-300"
-                      : "bg-slate-50 text-slate-600";
+                      ? "bg-canvas text-faint"
+                      : "bg-canvas text-ink";
                     return (
                       <div
                         key={time + "-" + i}
-                        className={"py-2 rounded-lg text-center text-sm font-medium transition-colors " + cls}
+                        className={"py-2 rounded-tile text-center text-body tabular-nums transition-colors " + cls}
                       >
                         {time}
                       </div>
@@ -1724,13 +1748,13 @@ function DispatchScheduleModal({
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-8">
-                  <Clock className="w-8 h-8 text-slate-300 mb-2" />
-                  <p className="text-sm text-slate-400">배차간격 정보가 없어</p>
-                  <p className="text-sm text-slate-400">시간표를 생성할 수 없어요</p>
+                  <Clock className="w-8 h-8 text-faint mb-2" aria-hidden="true" />
+                  <p className="text-body text-muted">배차간격 정보가 없어</p>
+                  <p className="text-body text-muted">시간표를 생성할 수 없어요</p>
                 </div>
               )}
               {timetable.length > 0 && (
-                <p className="text-[11px] text-slate-400 mt-4 text-center">
+                <p className="text-caption text-muted mt-4 text-center">
                   배차간격을 기준으로 한 예상 시간표로, 실제와 다를 수 있어요
                 </p>
               )}
