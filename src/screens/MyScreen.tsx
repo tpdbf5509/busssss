@@ -292,7 +292,11 @@ export function MyScreen() {
                     ) : (
                       <>
                         <div className="flex-1 min-w-0">
-                          <p className="text-body-strong text-ink truncate">
+                          {/* 이름은 두 줄까지 보인다. 오른쪽 버튼 셋(각 44px)이 자리를
+                              차지해서, 큰 글씨 375px에서는 한 줄 말줄임이면
+                              "104번 전북…"처럼 정류장 이름이 거의 다 잘렸다(5단계).
+                              이 행은 높이를 고정하지 않아 두 줄이 돼도 흔들릴 값이 없다. */}
+                          <p className="text-body-strong text-ink line-clamp-2 break-keep">
                             {fav.name}
                           </p>
                           {/* 같은 번호의 반대 방향을 둘 다 즐겨찾기하면 여기가

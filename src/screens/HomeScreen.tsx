@@ -649,7 +649,12 @@ export function HomeScreen({
               onClick={() =>
                 onNavigate(tab, undefined, undefined, searchTab ? { searchTab } : undefined)
               }
-              className={`aspect-square bg-surface border border-line rounded-card flex flex-col items-center justify-center ${PRESSABLE}`}
+              /* py-1: 큰 글씨에서는 아이콘 타일과 라벨이 rem이라 함께 커지는데
+                 칸 폭은 오히려 좁아진다(사이 간격도 rem). 375px에서 아이콘이 칸
+                 테두리에 붙었다(위아래 여백 1px). 위아래 4px을 지켜 두면 aspect-square는
+                 내용이 넘칠 때 그만큼 세로로 늘어난다. 보통 글씨에서는 내용이
+                 칸보다 작아 정사각형 그대로다(5단계 실측). */
+              className={`aspect-square py-1 bg-surface border border-line rounded-card flex flex-col items-center justify-center ${PRESSABLE}`}
             >
               <span className="w-10 h-10 rounded-tile bg-brand-soft flex items-center justify-center">
                 <Icon className="w-5 h-5 text-brand" aria-hidden="true" />
