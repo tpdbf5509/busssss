@@ -252,10 +252,13 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                     setSearchTab("route");
                     setQuery("");
                   }}
-                  /* 흰 알약의 크기는 그대로 두고 세로로만 3px씩 투명하게
-                     넓혀 38 -> 44px를 만든다. 알약을 키우면 세그먼트 전체와
-                     아래 검색 입력이 함께 내려간다. */
-                  className={`relative flex-1 py-2 rounded-full text-body transition-colors select-none touch-manipulation before:content-[''] before:absolute before:inset-x-0 before:-inset-y-[3px] ${
+                  /* 흰 알약의 크기는 그대로 두고 세로로만 투명하게 넓혀 누르는
+                     영역을 44px 이상으로 만든다. 알약을 키우면 세그먼트 전체와
+                     아래 검색 입력이 함께 내려간다. 예전에는 알약을 38px로 보고
+                     3px씩 넓혔는데, 실제 알약은 37px(py-2 + 글자 21px)이라 43px에
+                     그쳤다(5단계 실측). 4px씩 넓혀 45px(큰 글씨 48px)이다. 바깥 틀
+                     안쪽 여백(p-1)과 같은 값이라 틀 밖으로는 나가지 않는다. */
+                  className={`relative flex-1 py-2 rounded-full text-body transition-colors select-none touch-manipulation before:content-[''] before:absolute before:inset-x-0 before:-inset-y-1 ${
                     searchTab === "route"
                       ? "bg-surface text-brand font-semibold"
                       : "text-ink"
@@ -268,10 +271,13 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                     setSearchTab("station");
                     setQuery("");
                   }}
-                  /* 흰 알약의 크기는 그대로 두고 세로로만 3px씩 투명하게
-                     넓혀 38 -> 44px를 만든다. 알약을 키우면 세그먼트 전체와
-                     아래 검색 입력이 함께 내려간다. */
-                  className={`relative flex-1 py-2 rounded-full text-body transition-colors select-none touch-manipulation before:content-[''] before:absolute before:inset-x-0 before:-inset-y-[3px] ${
+                  /* 흰 알약의 크기는 그대로 두고 세로로만 투명하게 넓혀 누르는
+                     영역을 44px 이상으로 만든다. 알약을 키우면 세그먼트 전체와
+                     아래 검색 입력이 함께 내려간다. 예전에는 알약을 38px로 보고
+                     3px씩 넓혔는데, 실제 알약은 37px(py-2 + 글자 21px)이라 43px에
+                     그쳤다(5단계 실측). 4px씩 넓혀 45px(큰 글씨 48px)이다. 바깥 틀
+                     안쪽 여백(p-1)과 같은 값이라 틀 밖으로는 나가지 않는다. */
+                  className={`relative flex-1 py-2 rounded-full text-body transition-colors select-none touch-manipulation before:content-[''] before:absolute before:inset-x-0 before:-inset-y-1 ${
                     searchTab === "station"
                       ? "bg-surface text-brand font-semibold"
                       : "text-ink"
@@ -945,12 +951,13 @@ const isAllRouteFavorited = (route: Route) =>
         </div>
       </header>
 
-      {/* 탭. 버스 검색의 노선/정류장 전환과 같은 모양(8장): line 틀 + 흰 알약. */}
+      {/* 탭. 버스 검색의 노선/정류장 전환과 같은 모양(8장): line 틀 + 흰 알약.
+          누르는 영역도 같다: 알약 37px을 위아래 4px씩 넓혀 45px(5단계에서 3px → 4px). */}
       <div className="px-5 pt-2">
         <div className="flex bg-line rounded-full p-1">
           <button
             onClick={() => setDetailTab("arrival")}
-            className={`relative flex-1 py-2 rounded-full text-body transition-colors select-none touch-manipulation before:content-[''] before:absolute before:inset-x-0 before:-inset-y-[3px] ${
+            className={`relative flex-1 py-2 rounded-full text-body transition-colors select-none touch-manipulation before:content-[''] before:absolute before:inset-x-0 before:-inset-y-1 ${
               detailTab === "arrival"
                 ? "bg-surface text-brand font-semibold"
                 : "text-ink"
@@ -961,7 +968,7 @@ const isAllRouteFavorited = (route: Route) =>
 
           <button
             onClick={() => setDetailTab("all")}
-            className={`relative flex-1 py-2 rounded-full text-body transition-colors select-none touch-manipulation before:content-[''] before:absolute before:inset-x-0 before:-inset-y-[3px] ${
+            className={`relative flex-1 py-2 rounded-full text-body transition-colors select-none touch-manipulation before:content-[''] before:absolute before:inset-x-0 before:-inset-y-1 ${
               detailTab === "all"
                 ? "bg-surface text-brand font-semibold"
                 : "text-ink"
