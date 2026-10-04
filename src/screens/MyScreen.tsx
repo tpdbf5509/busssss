@@ -606,7 +606,7 @@ function SettingToggle({
       </span>
       {note && <span className="text-caption text-muted">{note}</span>}
       <div className={disabled ? "opacity-40 pointer-events-none" : undefined}>
-        <Toggle checked={checked} onChange={onChange} />
+        <Toggle checked={checked} onChange={onChange} label={label} />
       </div>
     </div>
   );

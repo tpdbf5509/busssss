@@ -57,15 +57,20 @@ export function EmptyState({
 export function Toggle({
   checked,
   onChange,
+  label,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
+  /** 화면 읽기 프로그램이 읽을 이름. 옆에 보이는 글자는 스위치와 묶여 있지 않아,
+   *  이게 없으면 "스위치, 꺼짐"만 읽혀 무엇을 켜는지 알 수 없었다(5단계). */
+  label?: string;
 }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={label}
       /* 꺼짐 색: 예전 연회색은 맞는 토큰이 없어 0단계에서 남겨 뒀다.
          4단계에서 faint로 바꾼다. 흰 카드 위 대비가 1.5:1에서 2.6:1로 올라
          꺼진 스위치의 테두리가 더 잘 보인다(line은 너무 옅어 흰 손잡이가 묻힌다).

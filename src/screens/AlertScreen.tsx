@@ -286,7 +286,11 @@ function AlertCard({
             <span className="shrink-0">하차</span>
           </div>
         </div>
-        <Toggle checked={alert.active} onChange={onToggle} />
+        <Toggle
+          checked={alert.active}
+          onChange={onToggle}
+          label={`${alert.routeNumber}번 ${alert.targetStation} 하차 알림`}
+        />
       </div>
 
       <div className="flex items-center gap-3 mt-3 pt-3 border-t border-line">
@@ -582,14 +586,14 @@ function AddAlertModal({
                   <Volume2 className="w-4 h-4 text-muted" aria-hidden="true" />
                   소리 알림
                 </span>
-                <Toggle checked={sound} onChange={setSound} />
+                <Toggle checked={sound} onChange={setSound} label="소리 알림" />
               </div>
               <div className="flex items-center justify-between py-2">
                 <span className="flex items-center gap-2 text-body text-ink">
                   <Vibrate className="w-4 h-4 text-muted" aria-hidden="true" />
                   진동 알림
                 </span>
-                <Toggle checked={vibrate} onChange={setVibrate} />
+                <Toggle checked={vibrate} onChange={setVibrate} label="진동 알림" />
               </div>
             </div>
 
