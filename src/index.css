@@ -69,17 +69,12 @@
 }
 
 @layer utilities {
-  /* iPhone notch / Dynamic Island / status bar 안전영역. 값 없는 기기에서는
-     기존 pt-16/pt-14와 동일하게 보이도록 max()의 두 번째 인자를 기존 고정값으로
-     둔다 — 안전영역이 있는 기기에서만 그만큼 더 내려간다. */
-  .pt-safe-16 {
-    padding-top: max(calc(env(safe-area-inset-top) + 1rem), 4rem);
-  }
-  .pt-safe-14 {
-    padding-top: max(calc(env(safe-area-inset-top) + 0.75rem), 3.5rem);
-  }
+  /* 예전에는 여기에 pt-safe-16 / pt-safe-14가 있었다(파란 머리글의 윗여백,
+     max(calc(env(safe-area-inset-top) + 1rem), 4rem) 같은 모양). 4단계에서 모든
+     머리글이 얇은 헤더(pt-safe-0 + h-14)로 바뀌어 쓰는 곳이 0건이 됐고, env()를
+     max() 안에 넣는 모양이라 5단계 정리에서 지웠다(CLAUDE.md 8장). */
 
-  /* 화면 최상단에 바로 붙는 배너 묶음/토스트용. 위 pt-safe-16/14와 달리
+  /* 화면 최상단에 바로 붙는 배너 묶음/토스트용. 예전 pt-safe-16/14와 달리
      max()로 최소 높이를 강제하지 않는다 — 헤더가 아니라 얇은 안내 줄이라,
      안전영역이 없는 환경(브라우저 탭)에서는 이 패딩이 그냥 0이면 된다.
      standalone PWA에서 상태바 아이콘과 겹쳐 닫기 버튼을 못 누르던 문제
@@ -191,35 +186,9 @@
   }
 }
 
-@keyframes slide-up {
-  from {
-    transform: translateY(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-@keyframes slide-down {
-  from {
-    transform: translateY(-100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.animate-slide-up {
-  animation: slide-up 0.3s ease-out;
-}
-
-.animate-slide-down {
-  animation: slide-down 0.3s ease-out;
-}
+/* slide-up / slide-down 키프레임과 .animate-slide-* 클래스는 tailwind.config.js의
+   animation·keyframes와 값이 같은 중복이라 5단계 정리에서 여기서 지웠다.
+   tailwind가 같은 이름으로 만든다. */
 
 /* B2. 정류장 타임라인에 버스 배지가 나타날 때 쓰는 상태 전달용 전환(장식용 아님) */
 @keyframes stop-badge-in {

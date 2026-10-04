@@ -1,5 +1,4 @@
 import { Loader2, AlertTriangle, Inbox, Radio, Clock3, ArrowLeft } from "lucide-react";
-import { formatArrivalText } from "@/lib/formatArrival";
 import {
   reliabilityChipKind,
   type ReliabilityChipKind,
@@ -90,27 +89,10 @@ export function Toggle({
   );
 }
 
-export function ArrivalBadge({
-  minutes,
-  stopsAway,
-}: {
-  minutes: number;
-  stopsAway?: number | null;
-}) {
-  const color =
-    minutes <= 3
-      ? "bg-canvas text-danger"
-      : minutes <= 10
-      ? "bg-canvas text-brand"
-      : "bg-canvas text-muted";
-  return (
-    <span
-      className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${color}`}
-    >
-      {formatArrivalText(minutes, stopsAway)}
-    </span>
-  );
-}
+/* ArrivalBadge(도착 분 배지)는 0단계에서 "쓰이지 않지만 지우지 않고 색만 토큰으로
+   바꾼다"로 두었다. 5단계 정리에서 사용처가 0건인 것을 다시 확인하고 지웠다.
+   도착 표시는 히어로(HeroArrivalCard)와 목록 칸(HomeScreen FavoriteArrivalInfo),
+   정류장 상세 카드가 각자 맡는다. */
 
 const CHIP_CONTENT: Record<
   ReliabilityChipKind,
@@ -186,8 +168,4 @@ export function BackButton({ onClick }: { onClick: () => void }) {
       <ArrowLeft className="w-5 h-5" aria-hidden="true" />
     </button>
   );
-}
-
-export function Spinner({ className = "" }: { className?: string }) {
-  return <Loader2 className={`w-5 h-5 animate-spin text-brand ${className}`} />;
 }
