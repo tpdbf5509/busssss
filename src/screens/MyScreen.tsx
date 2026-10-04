@@ -21,7 +21,7 @@ import { useAsync } from "@/hooks/useAsync";
 import { fetchAllRoutes } from "@/services/routeService";
 import type { Route } from "@/types/route";
 import { AddShortcutSheet } from "@/components/AddShortcutSheet";
-import { Toggle } from "@/components/ui";
+import { Toggle, TAB_TITLE_CLASS } from "@/components/ui";
 import { showToast } from "@/lib/toastStore";
 import { requestNotificationPermission } from "@/services/alertMonitorService";
 import { supabase } from "@/lib/supabaseClient";
@@ -159,7 +159,9 @@ export function MyScreen() {
           아래 흰 카드로 옮겼다. */}
       <header className="bg-canvas px-5 pt-safe-0 shrink-0">
         <div className="h-14 flex items-center justify-between gap-3">
-          <h1 className="text-title text-ink">마이</h1>
+          {/* 제목 높이는 홈 "BUS STOP"과 같다(ui.tsx TAB_TITLE_CLASS). 설정 메뉴
+              버튼은 홈의 원형 버튼처럼 제목 줄 가운데에 그대로 둔다. */}
+          <h1 className={TAB_TITLE_CLASS}>마이</h1>
           {/* 설정 메뉴. 홈 헤더와 같은 원형 버튼(보이는 원 40px, 누르는 영역
               44px). 예전에는 파란 머리 위에 떠 있어서 Dynamic Island(59px
               안전영역)를 피하려고 top을 안전영역 기준으로 따로 계산했다

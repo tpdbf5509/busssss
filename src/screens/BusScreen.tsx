@@ -7,7 +7,7 @@ import { fetchAllRoutes, fetchStopsForRoute, fetchRoutesForStop } from "@/servic
 import { fetchBisTimeInfo, type BisTimeInfo } from "@/api/jeonjuBis";
 import type { Route, BusStop } from "@/types/route";
 import type { Favorite } from "@/types";
-import { LoadingSkeleton, ErrorState, EmptyState, ReliabilityTag, BackButton } from "@/components/ui";
+import { LoadingSkeleton, ErrorState, EmptyState, ReliabilityTag, BackButton, TAB_TITLE_CLASS } from "@/components/ui";
 import type { ReliabilityState } from "@/lib/reliability";
 import { arrivalMinutesFromSeconds } from "@/lib/formatArrival";
 import { showToast } from "@/lib/toastStore";
@@ -239,14 +239,18 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                 목록은 아래 별도 스크롤 상자라 헤더 밑으로 비쳐 들어오지 않는다. */}
             <header className="bg-canvas px-5 pt-safe-0 pb-4 shrink-0">
               <div className="h-14 flex items-center">
-                <h1 className="text-title text-ink">버스 검색</h1>
+                {/* 제목 높이는 홈 "BUS STOP"과 같다(ui.tsx TAB_TITLE_CLASS). */}
+                <h1 className={TAB_TITLE_CLASS}>버스 검색</h1>
               </div>
 
               {/* 노선/정류장 전환(8장): 바깥 틀과 선택 알약 모두 full 모서리,
                   선택은 흰 알약 + brand 글자. 바깥 틀이 canvas면 헤더 바탕과
                   같아져 보이지 않아 line 회색으로 깐다. 고르지 않은 쪽 글자는
-                  ink다 — muted는 line 위 3.4:1이라 글자 대비가 모자라다. */}
-              <div className="flex bg-line rounded-full p-1 mb-3">
+                  ink다 — muted는 line 위 3.4:1이라 글자 대비가 모자라다.
+                  위 mt-2: 제목을 홈 높이로 내리면서(TAB_TITLE_CLASS) 제목과 이 알약
+                  사이가 7px로 좁아졌다. 홈 히어로·마이 프로필 카드처럼 제목 줄 아래
+                  8px을 띄워 제목 아래 간격을 15px로 맞춘다(5단계). */}
+              <div className="flex bg-line rounded-full p-1 mt-2 mb-3">
                 <button
                   onClick={() => {
                     setSearchTab("route");

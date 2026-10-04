@@ -5,6 +5,18 @@ import {
   type ReliabilityState,
 } from "@/lib/reliability";
 
+/**
+ * 탭 화면(버스, 마이) 머리글 제목. 홈 "BUS STOP"과 같은 높이에 둔다.
+ *
+ * 홈 제목은 제목 줄(3.5rem) 안에서 작은 글씨("전주시 ▾", Caption 줄 1.125rem)
+ * 아래에 있는 두 줄 묶음(2.625rem)의 아랫줄이라, 제목 줄 가운데에 둔 다른
+ * 화면 제목보다 7px 아래에 있었다. 실기기에서 탭을 오가면 검은 제목이 위아래로
+ * 움직여 보였다(5단계 사용자 확인). 제목만 있는 화면은 제목 줄 아래쪽에 붙이고
+ * 홈 묶음의 아래 여백((3.5 - 2.625) / 2 = 0.4375rem)만큼 띄운다. 모두 rem이라
+ * 큰 글씨에서도 같이 맞는다. 길찾기는 홈처럼 부제를 제목 위에 둬서 맞춘다.
+ */
+export const TAB_TITLE_CLASS = "self-end mb-[0.4375rem] text-title text-ink";
+
 export function LoadingSkeleton({ className = "" }: { className?: string }) {
   return (
     <div className={`animate-pulse bg-line rounded-xl ${className}`} />

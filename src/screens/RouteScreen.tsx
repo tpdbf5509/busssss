@@ -133,17 +133,24 @@ export function RouteScreen() {
       {/* 버스/알림과 같은 공통 얇은 헤더(DESIGN.md 8장). 예전에는 흰 바탕 +
           아래 선 + 최소 4rem 윗여백이었다. 이제 canvas 바탕, 제목 줄은
           안전영역 + 3.5rem, 아래 선 없음. 부제는 제목 줄 안에 작게 둔다.
-          결과 목록은 아래 별도 스크롤 상자라 헤더 밑으로 비치지 않는다. */}
+          결과 목록은 아래 별도 스크롤 상자라 헤더 밑으로 비치지 않는다.
+          예전에는 부제가 제목 아래였다. 그러면 제목이 홈 "BUS STOP"보다 14px
+          위에 있어, 탭을 오갈 때 검은 제목이 위아래로 움직였다(5단계 사용자
+          확인). 홈의 "전주시 ▾"처럼 부제를 제목 위 작은 글씨로 옮겨, 같은 두 줄
+          묶음(Caption + Title)이 되게 했다. 제목 줄 높이는 그대로라 아래 검색창
+          위치는 바뀌지 않는다. */}
       <header className="bg-canvas px-5 pt-safe-0 pb-4 shrink-0">
         <div className="h-14 flex flex-col justify-center">
-          <h1 className="text-title text-ink">길찾기</h1>
           <p className="text-caption text-muted">
             목적지까지 버스 타는 방법
           </p>
+          <h1 className="text-title text-ink">길찾기</h1>
         </div>
 
-        {/* 검색창과 버튼은 버스 검색과 같은 모양(흰 면 + 1px line, full 모서리). */}
-        <div className="relative mt-1">
+        {/* 검색창과 버튼은 버스 검색과 같은 모양(흰 면 + 1px line, full 모서리).
+            제목 아래 간격은 홈·버스·마이와 같은 15px(제목 줄 아래 mt-2)이다.
+            예전에는 mt-1(11px)이었다(5단계). */}
+        <div className="relative mt-2">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-faint pointer-events-none" aria-hidden="true" />
           <input
             type="text"
