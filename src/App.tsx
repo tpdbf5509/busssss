@@ -96,9 +96,9 @@ function AppContent() {
 
   // iOS 홈 화면 앱 아래 빈 띠 메우기(lib/standaloneGap.ts 설명 참고).
   // 앱 틀이 실제로 받는 세로 길이와 상태바 높이를 재서, 모자란 길이가
-  // 상태바 높이와 같을 때만 --standalone-gap에 넣는다. index.css가 전체 화면
-  // 층(fixed inset-0)의 아래쪽을 이 값만큼 늘린다. Safari 탭과 문제없는
-  // 기기에서는 0이라 아무것도 바뀌지 않는다.
+  // 상태바 높이와 같을 때만 --standalone-gap에 넣는다. index.css가 페이지
+  // (html·body)와 전체 화면 층(fixed inset-0)의 아래쪽을 이 값만큼 늘린다.
+  // Safari 탭과 문제없는 기기에서는 0이라 아무것도 바뀌지 않는다.
   useEffect(() => {
     const nav = window.navigator as Navigator & { standalone?: boolean };
     if (nav.standalone !== true) return;
