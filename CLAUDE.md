@@ -36,7 +36,7 @@ src/
   hooks/               useArrivalInfo(20초 폴링), useBusLocations(15초), useDropoffAlertMonitor
   services/            arrivalService(캐시·검증), routeService, stationService, alertMonitorService
   api/                 tago.ts, jeonju.ts, jeonjuBis.ts → 모두 Supabase 프록시 경유
-  lib/                 formatArrival, reliability, stopPosition, arrivalPlausibility, heroArrival(히어로 상태) 등 순수 로직
+  lib/                 formatArrival, reliability, stopPosition, arrivalPlausibility, heroArrival(히어로 상태), appSettings(큰 글씨·색약) 등 순수 로직
   store/               AppContext + appReducer(즐겨찾기 고정 포함) + localStorage 저장
 scripts/contrast-check.mjs   DESIGN.md 4장 색 대비 계산 (node scripts/contrast-check.mjs --md)
 supabase/functions/    tago-proxy, jeonju-proxy, bis-proxy, sync-bus-data
@@ -79,7 +79,8 @@ public/                manifest.json, sw.js, icons/
 - 홈: 얇은 헤더 → 히어로(내 정류장 + 내 버스, 7가지 상태) → 다른 즐겨찾기 → 점선 추가 행 → 빠른 실행 → 최근 본 노선 (`DESIGN.md` 7장).
 - 히어로 "기점 대기" 상태: 시간이 없고 가장 가까운 버스가 기점에 서 있으면 "출발 전"(`ArrivalInfo.atOrigin`, 4장).
 - 알림(토스트)은 얇은 헤더 바로 아래(`top-safe-16`)에 뜹니다. 3초 동안 히어로 첫 줄을 덮습니다(사용자 결정).
-- 큰 글씨·색약 모드: 마이 → 메뉴(≡) → 더보기. 설정은 마이 화면에 들어갈 때 `html`에 붙습니다(앱을 열자마자 적용되지 않는 것은 알려진 보류).
+- 큰 글씨·색약 모드: 마이 → 메뉴(≡) → 더보기. 설정(`lib/appSettings.ts`)은 앱을 열 때 `main.tsx`가 `html`에 붙이고, 마이에서 바꾸면 다시 붙입니다.
+- 탭 화면(홈·버스·길찾기·마이) 머리글의 검은 제목은 같은 높이입니다. 홈은 "전주시 ▾" 아래, 길찾기는 부제 아래, 버스·마이는 `TAB_TITLE_CLASS`(ui.tsx)로 맞춥니다. 새 탭 화면도 이 규칙을 따릅니다.
 
 ## 6. 현재 상태 (일부러 꺼 둔 것)
 
