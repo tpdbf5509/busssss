@@ -29,6 +29,9 @@ function AppContent() {
      한 번 쓰고 비운다. */
   const [pendingSearchTab, setPendingSearchTab] = useState<"route" | "station" | null>(null);
   const [homeRefreshKey, setHomeRefreshKey] = useState(0);
+  /* 알림 화면은 하단 탭에 없다(DESIGN.md 7-9). 홈 헤더의 벨이나 빠른 실행으로
+     들어가므로, 화면 위쪽 뒤로 가기는 들어오기 직전의 탭으로 돌려보낸다. */
+  const [alertReturnTab, setAlertReturnTab] = useState<TabId>("home");
   const [dropoffAlarm, setDropoffAlarm] = useState<DropoffAlarm | null>(null);
   const [quickViewBanner, setQuickViewBanner] = useState<string | null>(null);
   const mainRef = useRef<HTMLElement>(null);
@@ -110,6 +113,9 @@ function AppContent() {
     // 도착 정보와 홈 화면 데이터를 새로 불러오도록 합니다.
     if (nextTab === "home" && tab !== "home") {
       setHomeRefreshKey((key) => key + 1);
+    }
+    if (nextTab === "alert" && tab !== "alert") {
+      setAlertReturnTab(tab);
     }
     setTab(nextTab);
   };
@@ -204,7 +210,11 @@ function AppContent() {
         </div>
       )}
 
-      <main ref={mainRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-none">
+      {/* 하단 탭은 이 영역 위에 떠 있다(BottomNav 참고). 탭이 덮는 높이만큼
+          아래를 비워(pb-nav-clear) 어느 화면이든 마지막 항목이 탭에 가려지지
+          않게 한다. 높이를 꽉 채우는 화면(버스, 길찾기, 마이)은 이 여백만큼
+          짧아져 탭 위에서 끝난다. */}
+      <main ref={mainRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-none pb-nav-clear">
         {tab === "home" && <HomeScreen key={homeRefreshKey} onNavigate={handleNavigate} />}
         {tab === "bus" && (
           <BusScreen
@@ -217,7 +227,7 @@ function AppContent() {
           />
         )}
        {tab === "route" && <RouteScreen />}
-        {tab === "alert" && <AlertScreen />}
+        {tab === "alert" && <AlertScreen onBack={() => handleTabChange(alertReturnTab)} />}
         {tab === "my" && <MyScreen />}
       </main>
       <BottomNav active={tab} onChange={handleTabChange} />

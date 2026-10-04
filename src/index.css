@@ -88,18 +88,13 @@
      각 배너 자신이 아니라 그 둘을 감싸는 바깥 wrapper 하나에만 준다 —
      안 그러면 두 배너가 동시에 뜰 때 사이에 안전영역만큼 빈 틈이 하나
      더 생긴다. 토스트는 항상 화면 최상단에 단독으로 뜨므로 자기 자신에
-     바로 적용했다(2단계부터는 얇은 헤더 아래 top-safe-16을 쓴다). */
+     바로 적용했다(2단계에서는 얇은 헤더 아래로, 3단계부터는 하단 탭 위
+     bottom-toast로 옮겼다). */
   .pt-safe-0 {
     padding-top: env(safe-area-inset-top);
   }
   .top-safe-4 {
     top: calc(env(safe-area-inset-top) + 1rem);
-  }
-  /* 토스트 위치. 홈의 얇은 헤더(안전영역 + 3.5rem, DESIGN.md 7-2) 바로 아래
-     0.5rem이다. 위 top-safe-4에 두면 토스트가 헤더의 검색·알림 버튼을 덮어
-     3초 동안 누를 수 없었다. 헤더와 같이 rem이라 큰 글씨에서도 겹치지 않는다. */
-  .top-safe-16 {
-    top: calc(env(safe-area-inset-top) + 4rem);
   }
 
   /* 하단 네비게이션 안전영역.
@@ -123,6 +118,32 @@
   @media (display-mode: standalone) {
     .pb-nav-safe {
       padding-bottom: 20px;
+    }
+  }
+
+  /* 떠 있는 하단 탭(DESIGN.md 7-9)이 덮는 높이를 스크롤 영역 끝에 비워 둔다.
+     탭이 차지하는 높이 = pb-nav-safe(8px / 홈 화면 앱 20px) + 탭 아래 틈
+     8px + 탭 4rem. 여기에 0.5rem을 더 둬 마지막 항목이 탭에 딱 붙지 않게
+     한다. 위 pb-nav-safe와 같은 이유로 env()를 쓰지 않고 display-mode로
+     나눈 고정값을 쓴다 — calc 안에 env()를 넣지 않는다.
+     값을 바꿀 때는 BottomNav의 mb-[8px]·h-16과 함께 바꾼다. */
+  .pb-nav-clear {
+    padding-bottom: calc(8px + 8px + 4rem + 0.5rem);
+  }
+  /* 토스트 위치. 하단 탭 바로 위 0.5rem이다.
+     2단계에서는 얇은 헤더 아래(안전영역 + 4rem)에 띄웠는데, 헤더 버튼은
+     피했지만 3초 동안 히어로 첫 줄(정류장 이름, 새로고침 버튼)을 덮었다.
+     그보다 처음에는 화면 맨 위(top-safe-4)라 헤더의 검색·알림 버튼을 덮었다.
+     탭 위로 내리면 홈의 핵심 정보와 헤더를 모두 피한다. */
+  .bottom-toast {
+    bottom: calc(8px + 8px + 4rem + 0.5rem);
+  }
+  @media (display-mode: standalone) {
+    .pb-nav-clear {
+      padding-bottom: calc(20px + 8px + 4rem + 0.5rem);
+    }
+    .bottom-toast {
+      bottom: calc(20px + 8px + 4rem + 0.5rem);
     }
   }
   /* 스크롤 영역: 스크롤바를 감추고 iOS 관성 스크롤을 켠다.

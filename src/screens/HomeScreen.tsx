@@ -698,14 +698,14 @@ export function HomeScreen({
       )}
 
       {/* 목록 끝과 하단 탭 사이 숨 쉴 틈.
-          홈 인디케이터 높이를 여기서 더하지 않는다. 하단 탭은 fixed가 아니라
-          이 스크롤 영역 "아래"에 자기 자리를 차지하고(App.tsx의 flex 열),
-          안전영역은 탭 자신이 pb-nav-safe로 처리한다. 여기서 또 더하면 노치
-          기기에서만 빈 공간이 두 번 생긴다. (1단계 이전 화면 실측: 12개 목록을
-          끝까지 내려도 마지막 행과 탭 사이가 57.7px 남았다.)
-          높이는 섹션 사이와 같은 28px이다(예전 24px). 하단 탭이 떠 있는 모양으로
-          바뀌는 3단계에서는 탭 높이만큼 더 비워야 한다(7-9). */}
-      <div className="h-7 shrink-0" />
+          홈 인디케이터 높이와 탭 높이를 여기서 더하지 않는다. 3단계부터 하단
+          탭은 화면 위에 떠 있고, 탭이 덮는 높이(안전영역 포함)는 App의 스크롤
+          영역이 pb-nav-clear로 이미 비운다. 여기서 또 더하면 빈 공간이 두 번
+          생긴다. (1단계 이전 화면 실측: 12개 목록을 끝까지 내려도 마지막 행과
+          탭 사이가 57.7px 남았다.)
+          탭 위 틈은 섹션 사이와 같은 28px이다. pb-nav-clear가 탭 위로 0.5rem을
+          이미 남기므로 여기는 1.25rem(20px)만 둔다. */}
+      <div className="h-5 shrink-0" />
 
       {regionUnderDevOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">

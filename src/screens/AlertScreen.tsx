@@ -29,7 +29,7 @@ import {
   requestNotificationPermission,
 } from "@/services/alertMonitorService";
 
-export function AlertScreen() {
+export function AlertScreen({ onBack }: { onBack?: () => void }) {
   const { state, dispatch } = useApp();
   const [showAdd, setShowAdd] = useState(false);
   const [records, setRecords] = useState<AlertRecord[]>(() => loadAlertRecords());
@@ -61,12 +61,30 @@ export function AlertScreen() {
   };
 
   return (
-    <div className="bg-canvas">
+    // 맨 아래 pb-5(20px): App의 스크롤 영역(pb-nav-clear)이 하단 탭 위로 남기는
+    // 0.5rem과 더해 마지막 카드와 탭 사이가 홈과 같은 28px이 된다.
+    <div className="bg-canvas pb-5">
       <header className="bg-surface px-5 pt-safe-16 pb-5 border-b border-line sticky top-0 z-30 shrink-0">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-ink">알림</h1>
-            <p className="text-xs text-faint mt-0.5">하차 알림 · 알림 센터</p>
+          <div className="flex items-center gap-3 min-w-0">
+            {/* 알림은 하단 탭에서 빠졌다(DESIGN.md 7-9). 하단 탭에 이 화면의
+                자리가 없으니, 들어온 곳(홈 헤더의 벨, 빠른 실행)으로 돌아가는
+                버튼을 위쪽에 둔다. 모양은 홈 헤더의 원형 버튼과 같다 — 보이는
+                원 40px, 투명한 ::before로 사방 2px씩 넓혀 누르는 영역 44px. */}
+            {onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                aria-label="뒤로 가기"
+                className="relative w-10 h-10 shrink-0 rounded-full bg-surface border border-line flex items-center justify-center text-ink active:bg-canvas before:content-[''] before:absolute before:-inset-0.5 select-none touch-manipulation transition-transform duration-100 active:scale-[0.98]"
+              >
+                <ArrowLeft className="w-5 h-5" aria-hidden="true" />
+              </button>
+            )}
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold text-ink">알림</h1>
+              <p className="text-xs text-faint mt-0.5">하차 알림 · 알림 센터</p>
+            </div>
           </div>
           <button
             onClick={markAllRead}
