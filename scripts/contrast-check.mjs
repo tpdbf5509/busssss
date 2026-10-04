@@ -1,11 +1,14 @@
 // DESIGN.md 4장 색 조합의 대비를 한꺼번에 계산한다(WCAG 2.x 상대 휘도 공식).
 // 실행: node scripts/contrast-check.mjs [--muted=#64748B]
 // 5단계 마감 점검에서 만들었다. 색을 바꾸면 다시 돌려 12장 표를 고친다.
+// muted는 tailwind.config.js에서 읽는다. muted 색 변경 커밋을 되돌려도 이 스크립트를
+// 따로 고칠 필요가 없게 하기 위해서다. --muted=#xxxxxx로 다른 값을 시험할 수 있다.
+import tailwindConfig from '../tailwind.config.js';
 const arg = process.argv.find((a) => a.startsWith('--muted='));
 const C = {
   brand: '#2563EB', 'brand-deep': '#1D4ED8', 'brand-soft': '#EFF4FE',
   canvas: '#F7F8FA', surface: '#FFFFFF', line: '#E8ECF2',
-  ink: '#172033', muted: arg ? arg.split('=')[1] : '#718096', faint: '#94A3B8', pending: '#64748B',
+  ink: '#172033', muted: arg ? arg.split('=')[1] : tailwindConfig.theme.extend.colors.muted, faint: '#94A3B8', pending: '#64748B',
   live: '#047857', 'live-soft': '#ECFDF5', delay: '#B45309', 'delay-soft': '#FFFBEB',
   danger: '#EF4444', star: '#FBBF24', white: '#FFFFFF', black: '#000000',
   // 색약 모드 대체 색(index.css)
