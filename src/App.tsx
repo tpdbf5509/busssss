@@ -11,7 +11,6 @@ import { AlertScreen } from "@/screens/AlertScreen";
 import { MyScreen } from "@/screens/MyScreen";
 import { useDropoffAlertMonitor } from "@/hooks/useDropoffAlertMonitor";
 import { stopDropoffAlarm } from "@/services/alertMonitorService";
-import { standaloneBottomGap } from "@/lib/standaloneGap";
 import { BellRing, Info, X } from "lucide-react";
 
 type DropoffAlarm = { title: string; body: string };
@@ -93,51 +92,6 @@ function AppContent() {
     url.searchParams.delete("favorite");
     window.history.replaceState(null, "", url.toString());
   };
-
-  // iOS 홈 화면 앱 아래 빈 띠 메우기(lib/standaloneGap.ts 설명 참고).
-  // 앱 틀이 실제로 받는 세로 길이와 상태바 높이를 재서, 모자란 길이가
-  // 상태바 높이와 같을 때만 --standalone-gap에 넣는다. index.css가 페이지
-  // (html·body)와 전체 화면 층(fixed inset-0)의 아래쪽을 이 값만큼 늘린다.
-  // Safari 탭과 문제없는 기기에서는 0이라 아무것도 바뀌지 않는다.
-  useEffect(() => {
-    const nav = window.navigator as Navigator & { standalone?: boolean };
-    if (nav.standalone !== true) return;
-
-    const root = document.documentElement;
-    // 앱 틀과 같은 방식(fixed top:0 bottom:0)으로 놓은 보이지 않는 상자로
-    // 세로 길이를, 그 안쪽 여백으로 상태바 높이를 잰다. 클래스가 아니라
-    // 인라인 스타일이라 아래에서 늘린 값의 영향을 받지 않는다.
-    const probe = document.createElement("div");
-    probe.setAttribute("aria-hidden", "true");
-    probe.style.cssText =
-      "position:fixed;top:0;bottom:0;left:0;width:0;padding-top:env(safe-area-inset-top);visibility:hidden;pointer-events:none;";
-    document.body.appendChild(probe);
-
-    const update = () => {
-      const gap = standaloneBottomGap({
-        iosStandalone: true,
-        portrait: window.matchMedia("(orientation: portrait)").matches,
-        screenWidth: window.screen.width,
-        screenHeight: window.screen.height,
-        viewportHeight: probe.getBoundingClientRect().height,
-        safeAreaTop: parseFloat(getComputedStyle(probe).paddingTop) || 0,
-      });
-      root.style.setProperty("--standalone-gap", `${gap}px`);
-    };
-
-    update();
-    // 돌리기, 앱으로 돌아오기처럼 세로 길이가 다시 잡힐 때마다 다시 잰다.
-    window.addEventListener("resize", update);
-    window.addEventListener("orientationchange", update);
-    document.addEventListener("visibilitychange", update);
-    return () => {
-      window.removeEventListener("resize", update);
-      window.removeEventListener("orientationchange", update);
-      document.removeEventListener("visibilitychange", update);
-      probe.remove();
-      root.style.removeProperty("--standalone-gap");
-    };
-  }, []);
 
   useEffect(() => {
     const onAlarm = (event: Event) => {

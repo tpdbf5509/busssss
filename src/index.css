@@ -18,13 +18,7 @@
        남겨 핀치줌 자체를 막는다 — 뷰포트 meta의 user-scalable=no와 달리
        OS 접근성 확대(트리플탭 확대 등)에는 영향을 주지 않는다. */
     touch-action: pan-x pan-y;
-    /* 높이는 화면 높이 + --standalone-gap. 값은 iOS 홈 화면 앱에서 세로
-       길이가 상태바만큼 짧게 잡힌 게 확인될 때만 0보다 크다(App.tsx,
-       lib/standaloneGap.ts). 처음에는 앱 틀만 늘렸는데, 실기기에서 하단 탭이
-       내려오기는 했지만 페이지 자체가 짧은 높이(797pt)에서 끝나 그 아래가
-       흰색으로 잘렸다. 페이지(html·body)도 같은 길이만큼 늘려야 그 아래까지
-       그려진다. 값이 없으면 예전과 같은 100%다. */
-    height: calc(100% + var(--standalone-gap, 0px));
+    height: 100%;
     overflow: hidden;
     overscroll-behavior: none;
   }
@@ -45,8 +39,7 @@
     -webkit-text-size-adjust: 100%;
 
     touch-action: pan-x pan-y;
-    /* html과 같은 이유로 --standalone-gap만큼 늘린다(위 html 주석 참고). */
-    height: calc(100% + var(--standalone-gap, 0px));
+    height: 100%;
     overflow: hidden;
     overscroll-behavior: none;
     position: fixed;
@@ -95,7 +88,10 @@
      각 배너 자신이 아니라 그 둘을 감싸는 바깥 wrapper 하나에만 준다 —
      안 그러면 두 배너가 동시에 뜰 때 사이에 안전영역만큼 빈 틈이 하나
      더 생긴다. 토스트는 항상 화면 최상단에 단독으로 뜨므로 자기 자신에
-     바로 적용했다(2단계부터는 얇은 헤더 아래 top-safe-16을 쓴다). */
+     바로 적용했다(2단계부터는 얇은 헤더 아래 top-safe-16을 쓴다).
+     4단계부터 홈 화면 앱은 상태바 아래부터 그려져(index.html 상태바 주석)
+     위쪽 안전영역이 0이다. 그래서 이 유틸리티들은 홈 화면 앱에서 상태바
+     높이를 더하지 않는다. 헤더 위치는 예전과 같다(상태바 바로 아래). */
   .pt-safe-0 {
     padding-top: env(safe-area-inset-top);
   }
@@ -125,6 +121,16 @@
    * - standalone: 홈 인디케이터가 화면 하단 8~13pt 구간이라 20px면 7pt 여유를
    *   두고 완전히 비켜가고, iOS 홈 스와이프 제스처 구간(하단 ~20pt) 밖에 탭
    *   버튼이 놓여 탭이 제스처에 먹히지도 않는다.
+   *
+   * standalone 20px은 앱 아래끝이 화면 맨 아래와 같다는 전제다. 4단계 전에는
+   * 상태바 방식(black-translucent) 때문에 iOS 26에서 앱이 화면 맨 아래보다
+   * 47pt 위에서 끝나, 탭 아래에 흰 띠가 생기고 탭이 그만큼 더 떠 있었다
+   * (index.html 상태바 주석).
+   *
+   * iOS 홈 화면 앱은 html.ios-standalone(main.tsx, navigator.standalone)으로도
+   * 가린다. 4단계 실기기 캡처에서 홈 화면 앱인데 display-mode가 맞지 않아
+   * 브라우저 값 8px이 잡혔다(탭 717~781pt, 앱 아래끝 797pt — 탭 아래 16pt =
+   * 8 + 8). 상태바 방식을 바꾼 지금 8px이면 탭이 홈 인디케이터에 거의 붙는다.
    */
   .pb-nav-safe {
     padding-bottom: 8px;
@@ -133,6 +139,9 @@
     .pb-nav-safe {
       padding-bottom: 20px;
     }
+  }
+  html.ios-standalone .pb-nav-safe {
+    padding-bottom: 20px;
   }
 
   /* 떠 있는 하단 탭(DESIGN.md 7-9)이 덮는 높이를 스크롤 영역 끝에 비워 둔다.
@@ -148,6 +157,10 @@
     .pb-nav-clear {
       padding-bottom: calc(20px + 8px + 4rem + 0.5rem);
     }
+  }
+  /* 위 pb-nav-safe와 같은 이유로 iOS 홈 화면 앱은 클래스로도 가린다. */
+  html.ios-standalone .pb-nav-clear {
+    padding-bottom: calc(20px + 8px + 4rem + 0.5rem);
   }
 
   /* 스크롤 영역: 스크롤바를 감추고 iOS 관성 스크롤을 켠다.
@@ -222,21 +235,6 @@
 
 .animate-stop-badge-in {
   animation: stop-badge-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* iOS 홈 화면 앱 아래 빈 띠 없애기. 홈 화면 앱에서 iOS가 세로 길이를
-   상태바 높이만큼 짧게 잡으면, 앱 틀과 창들(fixed inset-0)이 화면 맨 아래에
-   닿지 못해 그 아래 흰 바탕이 띠로 보이고 하단 탭도 그만큼 위로 떠 있었다.
-   App.tsx가 그 모자란 길이를 재서 --standalone-gap에 넣고, 여기서 전체 화면
-   층의 아래쪽을 그만큼 늘린다. 페이지(html·body)도 같은 길이만큼 늘린다(위
-   base의 html 주석 참고 — 이것만으로는 실기기에서 페이지 끝에서 잘렸다).
-   색으로 덮는 게 아니라 앱이 화면 끝까지 내려가게 한다. 값이 없으면(Safari 탭,
-   문제없는 기기) 0이라 예전과 같다.
-   .fixed.inset-0(클래스 두 개)이라 inset-0보다 우선한다. env()는 쓰지 않는다.
-   tailwind 레이어 밖에 둔다 — 레이어 안이면 fixed·inset-0 유틸리티와 섞여
-   처리될 수 있다. */
-.fixed.inset-0 {
-  bottom: calc(var(--standalone-gap, 0px) * -1);
 }
 
 /* 큰 글씨 */
