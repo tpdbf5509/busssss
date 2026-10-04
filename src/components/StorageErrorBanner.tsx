@@ -21,23 +21,28 @@ export function StorageErrorBanner() {
     .join(" · ");
 
   return (
-    <div className="shrink-0 bg-amber-50 border-b border-amber-200 px-4 py-3">
+    /* 4단계: 원색 주황 계열을 4-2 "지연 의심" 토큰으로 바꿨다(연한 바탕
+       delay-soft, 아이콘 delay). 글자는 바탕 위 대비를 위해 ink로 쓴다.
+       아이콘 타일은 6장 아이콘 타일(40px, 12px)에 흰 면. 색약 모드에서는
+       delay-soft가 4-2 대체 색(연한 노랑)으로 바뀐다. */
+    <div className="shrink-0 bg-delay-soft border-b border-line px-5 py-3">
       <div className="max-w-md mx-auto flex items-start gap-3">
-        <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-          <AlertTriangle className="w-4 h-4 text-amber-600" />
+        <div className="w-10 h-10 rounded-tile bg-surface flex items-center justify-center shrink-0">
+          <AlertTriangle className="w-5 h-5 text-delay" aria-hidden="true" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-amber-900">
+          <p className="text-body-strong text-ink">
             저장된 {failed}을 불러오지 못했어요
           </p>
-          <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+          <p className="text-caption text-ink mt-1">
             지금 보이는 목록은 예시 데이터예요. 여기서 항목을 추가하거나 지우면 기존에
             저장된 내용이 이 목록으로 덮어써집니다. 원래 데이터를 지키려면 앱을 다시
             열어보시고, 계속 이 안내가 뜨면 저장된 값이 손상된 것일 수 있어요.
           </p>
           <button
             onClick={() => dispatch({ type: "DISMISS_STORAGE_ERROR" })}
-            className="mt-2 text-xs font-semibold text-amber-900 bg-amber-100 active:bg-amber-200 rounded-lg px-3 py-1.5 transition-colors"
+            /* 높이 32px 알약 + 위아래 6px로 누르는 영역 44px. */
+            className="relative mt-2 h-8 px-3 rounded-full bg-surface border border-line text-caption font-semibold text-ink active:bg-canvas transition-colors before:content-[''] before:absolute before:inset-x-0 before:-inset-y-1.5"
           >
             확인했어요
           </button>

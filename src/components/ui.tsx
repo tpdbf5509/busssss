@@ -16,15 +16,18 @@ export function ErrorState({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
       <div className="w-14 h-14 rounded-full bg-canvas flex items-center justify-center mb-4">
-        <AlertTriangle className="w-7 h-7 text-danger" />
+        <AlertTriangle className="w-7 h-7 text-danger" aria-hidden="true" />
       </div>
-      <p className="text-ink font-medium mb-1">정보를 불러오지 못했어요</p>
-      <p className="text-muted text-sm mb-4">잠시 후 다시 시도해 주세요</p>
+      {/* 글자 크기는 5장 토큰(제목 Body-strong, 안내 Body). 4단계에서 기본
+          크기·text-sm을 토큰으로 바꿨다. 버튼은 다른 화면 버튼과 같은 full
+          모서리, 높이 44px. */}
+      <p className="text-body-strong text-ink mb-1">정보를 불러오지 못했어요</p>
+      <p className="text-body text-muted mb-4">잠시 후 다시 시도해 주세요</p>
       <button
         onClick={onRetry}
-        className="px-5 py-2.5 bg-ink text-white rounded-xl text-sm font-medium active:bg-ink/90 transition-colors flex items-center gap-2"
+        className="h-11 px-5 bg-ink text-white rounded-full text-body active:bg-ink/90 transition-colors flex items-center gap-2"
       >
-        <Loader2 className="w-4 h-4" />
+        <Loader2 className="w-4 h-4" aria-hidden="true" />
         다시 시도
       </button>
     </div>
@@ -45,8 +48,8 @@ export function EmptyState({
       <div className="w-14 h-14 rounded-full bg-canvas flex items-center justify-center mb-4">
         <Icon className="w-7 h-7 text-faint" />
       </div>
-      <p className="text-ink font-medium mb-1">{title}</p>
-      {subtitle && <p className="text-muted text-sm">{subtitle}</p>}
+      <p className="text-body-strong text-ink mb-1">{title}</p>
+      {subtitle && <p className="text-body text-muted">{subtitle}</p>}
     </div>
   );
 }

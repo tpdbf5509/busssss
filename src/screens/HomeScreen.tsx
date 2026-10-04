@@ -714,23 +714,24 @@ export function HomeScreen({
             onClick={() => setRegionUnderDevOpen(false)}
           />
           <div
-            className="relative bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl p-6 animate-slide-up"
+            className="relative bg-surface rounded-t-hero sm:rounded-hero w-full max-w-md shadow-sheet p-6 animate-slide-up"
             style={{
               paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)",
             }}
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-ink">지역 설정</h2>
+              <h2 className="text-title text-ink">지역 설정</h2>
               <button
                 type="button"
                 onClick={() => setRegionUnderDevOpen(false)}
                 aria-label="닫기"
-                className={`p-2 rounded-full text-muted active:bg-slate-100 ${PRESSABLE}`}
+                /* 보이는 크기 36px, ::before로 사방 4px 더해 누르는 영역 44px. */
+                className={`relative p-2 rounded-full text-muted active:bg-canvas before:content-[''] before:absolute before:-inset-1 ${PRESSABLE}`}
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-sm text-muted leading-relaxed">
+            <p className="text-body text-muted">
               이 기능은 현재 개발 중입니다.
               <br />
               향후 업데이트에서 이용하실 수 있습니다.
@@ -738,7 +739,7 @@ export function HomeScreen({
             <button
               type="button"
               onClick={() => setRegionUnderDevOpen(false)}
-              className={`mt-6 w-full rounded-2xl bg-brand py-3.5 text-sm font-semibold text-white ${PRESSABLE}`}
+              className={`mt-6 w-full rounded-full bg-brand py-3.5 text-body font-semibold text-white ${PRESSABLE}`}
             >
               확인
             </button>

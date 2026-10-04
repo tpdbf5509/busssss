@@ -11,7 +11,7 @@ import { AlertScreen } from "@/screens/AlertScreen";
 import { MyScreen } from "@/screens/MyScreen";
 import { useDropoffAlertMonitor } from "@/hooks/useDropoffAlertMonitor";
 import { stopDropoffAlarm } from "@/services/alertMonitorService";
-import { Info, X } from "lucide-react";
+import { BellRing, Info, X } from "lucide-react";
 
 type DropoffAlarm = { title: string; body: string };
 
@@ -153,12 +153,21 @@ function AppContent() {
           {/* animate-pulse는 로딩 스켈레톤용 무한 opacity 깜빡임이다. 사용자가
               급하게 읽고 눌러야 하는 실제 알람 내용에 걸려 있으면 계속 흐려졌다
               밝아지길 반복해 방해가 된다 — 알람 카드에는 붙이지 않는다. */}
-          <div className="w-full max-w-sm rounded-3xl bg-white shadow-2xl p-7 text-center">
-            <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-red-100 flex items-center justify-center text-3xl">
-              🔔
+          {/* 4단계(DESIGN.md 8장): 🔔 이모지 대신 BellRing 아이콘. 이모지는 기기마다
+              모양이 달라지고 색을 맞출 수 없었다. 빨강은 아이콘에만 쓴다(4-2) —
+              예전 연분홍 원 바탕은 canvas로, 빨간 "알람 끄기" 면(흰 글자 3.8:1)은
+              brand로 바꿨다. 카드는 바텀시트와 같은 28px 모서리와 sheet 그림자. */}
+          <div
+            role="alertdialog"
+            aria-labelledby="dropoff-alarm-title"
+            className="w-full max-w-sm rounded-hero bg-surface shadow-sheet p-7 text-center"
+          >
+            <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-canvas flex items-center justify-center">
+              <BellRing className="w-8 h-8 text-danger" aria-hidden="true" />
             </div>
-            <div className="text-2xl font-bold text-slate-900">{dropoffAlarm.title}</div>
-            <div className="mt-3 whitespace-pre-line text-base leading-6 text-slate-600">
+            <div id="dropoff-alarm-title" className="text-headline font-bold text-ink">{dropoffAlarm.title}</div>
+            {/* 급하게 읽어야 하는 내용이라 보조 회색이 아니라 ink로 쓴다. */}
+            <div className="mt-3 whitespace-pre-line text-body-strong text-ink">
               {dropoffAlarm.body}
             </div>
             <button
@@ -167,7 +176,7 @@ function AppContent() {
                 stopDropoffAlarm();
                 setDropoffAlarm(null);
               }}
-              className="mt-7 w-full rounded-2xl bg-red-500 px-5 py-4 text-lg font-bold text-white active:scale-[0.98]"
+              className="mt-7 w-full rounded-full bg-brand px-5 py-4 text-body-strong font-bold text-white active:scale-[0.98] transition-transform duration-100"
             >
               알람 끄기
             </button>
@@ -189,9 +198,10 @@ function AppContent() {
           위에 떠야지 레이아웃을 밀어내면 안 된다. */}
       {quickViewBanner && (
         <div className="fixed top-safe-4 left-4 right-4 z-30">
-          <div className="flex items-center gap-3 bg-white rounded-2xl shadow-lg border border-slate-100 px-4 py-3">
-            <Info className="w-5 h-5 text-blue-500 shrink-0" />
-            <span className="flex-1 text-sm text-slate-700">
+          {/* 토스트와 같은 모양(흰 카드 + 1px line, 20px 모서리, float 그림자). */}
+          <div className="flex items-center gap-3 bg-surface rounded-card shadow-float border border-line px-4 py-3">
+            <Info className="w-5 h-5 text-brand shrink-0" aria-hidden="true" />
+            <span className="flex-1 text-body text-ink">
               지금 화면을 <strong className="font-semibold">Safari 공유 → 홈 화면에 추가</strong>로 저장하면,
               다음부터 앱을 열지 않고 "{quickViewBanner}" 도착정보를 바로 볼 수 있어요.
             </span>
@@ -201,10 +211,11 @@ function AppContent() {
                 setQuickViewBanner(null);
                 clearDeepLinkParam();
               }}
-              className="text-slate-300 active:text-slate-500 shrink-0"
+              /* 아이콘 16px, ::before로 사방 14px 넓혀 누르는 영역 44px. */
+              className="relative text-faint active:text-muted shrink-0 before:content-[''] before:absolute before:-inset-3.5"
               aria-label="닫기"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
         </div>
