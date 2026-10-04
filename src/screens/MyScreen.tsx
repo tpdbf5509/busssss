@@ -26,41 +26,15 @@ import { showToast } from "@/lib/toastStore";
 import { requestNotificationPermission } from "@/services/alertMonitorService";
 import { supabase } from "@/lib/supabaseClient";
 import type { Favorite } from "@/types";
+import {
+  SETTINGS_KEY,
+  applySettings,
+  loadSettings,
+  type AppSettings,
+} from "@/lib/appSettings";
 
-const SETTINGS_KEY = "busssss_settings_v1";
-
-interface AppSettings {
-  darkMode: boolean;
-  largeText: boolean;
-  colorBlind: boolean;
-  voiceGuide: boolean;
-}
-
-const defaultSettings: AppSettings = {
-  darkMode: false,
-  largeText: false,
-  colorBlind: false,
-  voiceGuide: false,
-};
-
-function loadSettings(): AppSettings {
-  try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
-    // darkMode는 토글을 숨긴 동안 강제로 꺼둔다. 예전에 켜둔 사용자가
-    // 끄는 방법 없이 반쪽짜리 다크 화면에 갇히는 걸 막는다.
-    if (raw) return { ...defaultSettings, ...JSON.parse(raw), darkMode: false };
-  } catch (err) {
-    console.warn("[MyScreen] 설정 로드 실패:", err);
-  }
-  return { ...defaultSettings };
-}
-
-function applySettings(s: AppSettings) {
-  const root = document.documentElement;
-  root.classList.toggle("dark", s.darkMode);
-  root.classList.toggle("large-text", s.largeText);
-  root.classList.toggle("color-blind", s.colorBlind);
-}
+/* 설정 읽기·붙이기는 lib/appSettings로 옮겼다. 앱을 열 때(main.tsx)도 같은
+   함수로 붙여, 마이 화면에 들어가지 않아도 큰 글씨·색약 모드가 적용된다. */
 
 /** 노선 즐겨찾기의 기점 → 종점. 알 수 없으면 null을 돌려 부르는 쪽이 종류를 쓴다. */
 function favoriteDirection(fav: Favorite, routes: Route[] | null | undefined): string | null {
@@ -116,7 +90,7 @@ export function MyScreen() {
   }, []);
 
   useEffect(() => {
-    applySettings(settings);
+    applySettings(document.documentElement, settings);
     try {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     } catch (err) {

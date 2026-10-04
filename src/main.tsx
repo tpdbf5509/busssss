@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import { applySettings, loadSettings } from '@/lib/appSettings';
 
 // iOS 홈 화면 앱이면 html에 ios-standalone을 붙인다. index.css의 하단 탭
 // 여백(pb-nav-safe, pb-nav-clear)이 이걸 보고 홈 화면 앱 값을 쓴다.
@@ -11,6 +12,10 @@ import './index.css';
 if ((window.navigator as Navigator & { standalone?: boolean }).standalone === true) {
   document.documentElement.classList.add('ios-standalone');
 }
+
+// 큰 글씨·색약 모드를 첫 화면을 그리기 전에 붙인다. 예전에는 마이 화면에
+// 들어가야 붙어서, 앱을 열면 한동안 보통 글씨로 보였다(lib/appSettings 참고).
+applySettings(document.documentElement, loadSettings());
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
