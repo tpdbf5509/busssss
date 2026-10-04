@@ -31,9 +31,11 @@ export function pickHeroFavorite(favorites: Favorite[]): Favorite | null {
  * - normal: 보통. 지연 의심도 화면 모양은 보통과 같고 칩만 다르다
  * - arriving: 곧 도착
  * - stopsOnly: 시간 불확실 (시간은 못 믿고 정거장 수만 있음)
+ * - atOrigin: 기점 대기. 시간이 없고, 가장 가까운 버스가 노선 첫 정류장(기점)에
+ *   서 있다. 정거장 수로는 곧 올 것처럼 보이지만 출발 전이다.
  * - error: 정보 없음
  */
-export type HeroState = "loading" | "normal" | "arriving" | "stopsOnly" | "error";
+export type HeroState = "loading" | "normal" | "arriving" | "stopsOnly" | "atOrigin" | "error";
 
 export interface HeroArrivalView {
   state: HeroState;
@@ -50,6 +52,8 @@ type FetchStatus = "idle" | "loading" | "success" | "error";
  *
  * 판단 순서가 중요하다. 곧 도착을 시간 불확실보다 먼저 본다 — 시간을 못
  * 믿어도 GPS로 확인한 정거장 수가 0이면 버스는 코앞이다.
+ * 기점 대기는 시간이 없을 때만 본다. TAGO가 쓸 만한 시간을 주면 그 시간이
+ * 출발 전 대기까지 담은 값이라 보통으로 보여 준다.
  */
 export function heroArrivalView(
   data: ArrivalInfo | null,
@@ -80,17 +84,23 @@ export function heroArrivalView(
     (minutes != null && minutes <= 0) || (stopsAway != null && stopsAway <= 0)
       ? "arriving"
       : minutes == null
-        ? "stopsOnly"
+        ? data.atOrigin
+          ? "atOrigin"
+          : "stopsOnly"
         : "normal";
 
   // 지연 의심이 가장 먼저다. 그다음, 시간을 못 믿는 값(minutes === null)은
   // 신뢰도 추적 결과와 상관없이 "확인 중"이다. 처음 받은 값부터 시간이
   // 없으면 추적기는 unknown을 돌려줘 칩이 사라지기 때문이다.
+  // 기점 대기는 "확인 중"을 붙이지 않는다. 확인할 시간이 아직 없는 것이라,
+  // 기다리면 풀리는 상태처럼 읽히면 안 된다.
   const chip: ReliabilityChipKind | null = reliability.delayed
     ? "delay"
-    : minutes == null
-      ? "pending"
-      : reliabilityChipKind(reliability);
+    : state === "atOrigin"
+      ? null
+      : minutes == null
+        ? "pending"
+        : reliabilityChipKind(reliability);
 
   return { state, minutes, stopsAway, chip };
 }

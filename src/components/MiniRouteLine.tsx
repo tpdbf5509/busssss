@@ -31,7 +31,15 @@ const DOT_GAP = "0.375rem";
 
 const centerAt = (x: string): CSSProperties => ({ left: x, top: "50%", transform: "translate(-50%, -50%)" });
 
-export function MiniRouteLine({ stopsAway }: { stopsAway: number | null }) {
+export function MiniRouteLine({
+  stopsAway,
+  atOrigin = false,
+}: {
+  stopsAway: number | null;
+  /** 버스가 노선 첫 정류장(기점)에 서 있다. 지나온 구간이 없으므로 버스
+   *  왼쪽의 실선과 점을 그리지 않는다 — 그리면 이미 달려오는 버스로 읽힌다. */
+  atOrigin?: boolean;
+}) {
   const { bus, overflow } = miniRouteLayout(stopsAway);
 
   const busIndex = bus == null ? null : bus.kind === "atPin" ? MINI_ROUTE_CELLS : bus.index;
@@ -40,7 +48,9 @@ export function MiniRouteLine({ stopsAway }: { stopsAway: number | null }) {
   const label =
     bus == null
       ? "버스의 정거장 정보가 없어요"
-      : bus.kind === "atPin"
+      : atOrigin && bus.kind === "cell"
+        ? `버스가 기점에서 출발을 기다려요. 내 정류장까지 ${Math.round(stopsAway ?? 0)}정거장`
+        : bus.kind === "atPin"
         ? "버스가 곧 내 정류장에 도착해요"
         : `버스가 내 정류장 ${Math.round(stopsAway ?? 0)}정거장 전에 있어요`;
 
@@ -57,7 +67,7 @@ export function MiniRouteLine({ stopsAway }: { stopsAway: number | null }) {
         <>
           {/* 남은 구간: 칸마다 점선. 양 끝을 점 둘레만큼 비워 빈 점(○) 안으로
               선이 지나가지 않게 한다. 지나온 칸의 점선은 아래 실선이 덮는다. */}
-          {Array.from({ length: MINI_ROUTE_CELLS }, (_, i) => (
+          {Array.from({ length: MINI_ROUTE_CELLS }, (_, i) => i).filter((i) => !atOrigin || busIndex == null || i >= busIndex).map((i) => (
             <span
               key={i}
               aria-hidden="true"
@@ -70,8 +80,9 @@ export function MiniRouteLine({ stopsAway }: { stopsAway: number | null }) {
             />
           ))}
 
-          {/* 지나온 구간: 버스 왼쪽 흰 실선. "+N"이 있으면 그 자리는 비운다. */}
-          {overflow === 0 && busX && (
+          {/* 지나온 구간: 버스 왼쪽 흰 실선. "+N"이 있으면 그 자리는 비운다.
+              기점 대기면 지나온 구간이 없어 그리지 않는다. */}
+          {overflow === 0 && !atOrigin && busX && (
             <span
               aria-hidden="true"
               className="absolute left-0 h-0.5 bg-white -translate-y-1/2 transition-[width] duration-400 ease-out"
@@ -83,7 +94,7 @@ export function MiniRouteLine({ stopsAway }: { stopsAway: number | null }) {
 
       {/* 정류장 점 8px. 지나온 점은 채우고, 남은 점은 테두리만. */}
       {busIndex != null &&
-        Array.from({ length: MINI_ROUTE_CELLS }, (_, i) => (
+        Array.from({ length: MINI_ROUTE_CELLS }, (_, i) => i).filter((i) => !atOrigin || i > busIndex).map((i) => (
           <span
             key={i}
             aria-hidden="true"

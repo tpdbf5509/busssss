@@ -118,6 +118,24 @@ describe("heroArrivalView — 7-3 상태 표", () => {
     expect(heroArrivalView({ minutes: null, stopsAway: null }, "success", UNKNOWN).state).toBe("error");
   });
 
+  it("기점 대기: 시간이 없고 버스가 기점에 있으면 출발 전", () => {
+    const v = heroArrivalView({ minutes: null, stopsAway: 3, atOrigin: true }, "success", UNKNOWN);
+    expect(v).toMatchObject({ state: "atOrigin", stopsAway: 3, chip: null });
+  });
+
+  it("기점 대기여도 지연 의심이면 지연 칩", () => {
+    expect(heroArrivalView({ minutes: null, stopsAway: 3, atOrigin: true }, "success", DELAYED_ESTIMATED).chip).toBe("delay");
+  });
+
+  it("기점에 있어도 TAGO 시간이 있으면 보통으로 보여 준다", () => {
+    const v = heroArrivalView({ minutes: 5, stopsAway: 3, atOrigin: true }, "success", LIVE);
+    expect(v).toMatchObject({ state: "normal", minutes: 5, chip: "live" });
+  });
+
+  it("내 정류장이 기점이라 정거장 수가 0이면 곧 도착이 먼저", () => {
+    expect(heroArrivalView({ minutes: null, stopsAway: 0, atOrigin: true }, "success", UNKNOWN).state).toBe("arriving");
+  });
+
   it("갱신 중 실패해 데이터가 사라지면 예전 값을 남기지 않고 정보 없음", () => {
     expect(heroArrivalView(null, "error", LIVE).state).toBe("error");
   });

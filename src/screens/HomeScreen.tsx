@@ -138,6 +138,12 @@ function FavoriteArrivalInfo({
         <span className="text-title text-ink tabular-nums">{stops}</span>
         <span className="text-caption text-ink">정거장</span>
       </span>
+    ) : state === "atOrigin" ? (
+      /* 기점 대기(7-3 표): 가장 가까운 버스가 노선 첫 정류장에 서 있다.
+         "6정거장"을 위에 크게 쓰면 곧 오는 것처럼 읽혀서 출발 전임을 먼저 쓴다. */
+      <span key="atOrigin" className="text-title text-ink whitespace-nowrap animate-fade-in">
+        출발 전
+      </span>
     ) : (
       <span key="error" className="text-body text-muted whitespace-nowrap">
         정보 없음
@@ -147,9 +153,11 @@ function FavoriteArrivalInfo({
   const bottom =
     state === "stopsOnly"
       ? "시간 확인 중"
-      : (state === "normal" || state === "arriving") && stops != null && stops > 0
-        ? `${stops}정거장`
-        : "";
+      : state === "atOrigin"
+        ? "기점 대기"
+        : (state === "normal" || state === "arriving") && stops != null && stops > 0
+          ? `${stops}정거장`
+          : "";
 
   return (
     <>

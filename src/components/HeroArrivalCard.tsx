@@ -69,6 +69,7 @@ export function HeroArrivalCard({
       stopName={fav.stopName ?? fav.name}
       routeNumber={fav.routeNumber ?? route?.number ?? routeNumber}
       direction={route?.end ? `${route.end} 방면` : undefined}
+      origin={route?.start || undefined}
       view={heroArrivalView(data, status, reliability)}
       updatedText={updatedLabel(receivedAt, now, isRefreshing)}
       onOpen={onOpen}
@@ -99,6 +100,7 @@ export function HeroArrivalCardView({
   stopName,
   routeNumber,
   direction,
+  origin,
   view,
   updatedText,
   onOpen,
@@ -108,6 +110,8 @@ export function HeroArrivalCardView({
   stopName: string;
   routeNumber: string;
   direction?: string;
+  /** 노선의 기점 이름("평화동종점"). 기점 대기 문구에 쓴다. */
+  origin?: string;
   view: HeroArrivalView;
   updatedText: string;
   onOpen: () => void;
@@ -115,7 +119,8 @@ export function HeroArrivalCardView({
   refreshing: boolean;
 }) {
   const { state, stopsAway } = view;
-  const hasData = state === "normal" || state === "arriving" || state === "stopsOnly";
+  const hasData =
+    state === "normal" || state === "arriving" || state === "stopsOnly" || state === "atOrigin";
 
   return (
     <div className={`relative rounded-hero bg-hero shadow-hero text-white ${PRESS_WRAP}`}>
@@ -152,10 +157,10 @@ export function HeroArrivalCardView({
             <span className="block h-5 w-28 rounded-full bg-white/20 animate-pulse" />
           ) : (
             <span
-              key={subText(view)}
+              key={subText(view, origin)}
               className="text-headline text-white/90 tabular-nums truncate animate-fade-in"
             >
-              {subText(view)}
+              {subText(view, origin)}
             </span>
           )}
         </span>
@@ -165,7 +170,7 @@ export function HeroArrivalCardView({
           {state === "loading" && (
             <span className="block h-2 w-full rounded-full bg-white/20 animate-pulse" />
           )}
-          {hasData && <MiniRouteLine stopsAway={stopsAway} />}
+          {hasData && <MiniRouteLine stopsAway={stopsAway} atOrigin={state === "atOrigin"} />}
         </span>
 
         {/* 6줄: 신뢰도 칩 + 갱신 시각 */}
@@ -204,7 +209,7 @@ export function HeroArrivalCardView({
 }
 
 /** 4줄 문구 (DESIGN.md 7-3 표, 12장 결정 기록) */
-function subText({ state, stopsAway }: HeroArrivalView): string {
+function subText({ state, stopsAway }: HeroArrivalView, origin?: string): string {
   switch (state) {
     case "normal":
       return stopsAway != null ? `${Math.round(stopsAway)}정거장 전` : "정거장 정보 없음";
@@ -212,6 +217,9 @@ function subText({ state, stopsAway }: HeroArrivalView): string {
       return "잠시 후 정류장에 와요";
     case "stopsOnly":
       return "시간 확인 중";
+    case "atOrigin":
+      // 기점 이름을 아직 못 구했으면(노선 목록 전) 일반 이름으로 쓴다.
+      return `${origin ?? "기점"}에서 기다려요`;
     case "error":
       return "잠시 후 다시 확인해요";
     default:
@@ -239,6 +247,16 @@ function HeroBigRow({ view }: { view: HeroArrivalView }) {
     return (
       <span key="arriving" className="text-display whitespace-nowrap animate-fade-in">
         곧 도착
+      </span>
+    );
+  }
+
+  /* 기점 대기: 가장 가까운 버스가 노선 첫 정류장에 서 있다. "N정거장 전"을
+     크게 쓰면 곧 오는 것처럼 읽혀서, 출발 전이라는 사실을 크게 쓴다. */
+  if (state === "atOrigin") {
+    return (
+      <span key="atOrigin" className="text-display whitespace-nowrap animate-fade-in">
+        출발 전
       </span>
     );
   }

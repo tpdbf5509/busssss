@@ -152,3 +152,46 @@ describe("fetchArrivalInfo — TAGO에 없는 버스 (회귀)", () => {
     expect(info?.stopsAway).toBe(1);
   });
 });
+
+describe("fetchArrivalInfo — 기점에 서 있는 버스", () => {
+  /* 실측(2026-10-04 13:30, 101번 평화동종점→전북대종점): 가장 가까운 버스가
+     기점(노선 1번 정류장)에 서 있으면 TAGO 도착 목록에 그 버스가 없다. 위치로는
+     "3정거장 전"이라 곧 올 것처럼 보이지만 실제로는 출발 전이다. */
+  it("TAGO에 없고 GPS 버스가 기점에 있으면 기점 대기로 알린다", async () => {
+    getSttnAcctoArvlPrearngeInfoList.mockResolvedValue([]);
+    findNearestApproachingBus.mockResolvedValue({
+      hasLiveData: true,
+      bus: { stopsAway: 3, vehicleNo: "전주1309", atOrigin: true },
+    });
+
+    const info = await fetchArrivalInfo(NODE, ROUTE_ID, "75", undefined, route75);
+
+    expect(info).toEqual({ minutes: null, stopsAway: 3, atOrigin: true });
+  });
+
+  it("기점이 아니면 예전과 같은 모양이다 (atOrigin을 붙이지 않는다)", async () => {
+    getSttnAcctoArvlPrearngeInfoList.mockResolvedValue([]);
+    findNearestApproachingBus.mockResolvedValue({
+      hasLiveData: true,
+      bus: { stopsAway: 3, vehicleNo: "전주1309", atOrigin: false },
+    });
+
+    const info = await fetchArrivalInfo(NODE, ROUTE_ID, "75", undefined, route75);
+
+    expect(info).toEqual({ minutes: null, stopsAway: 3 });
+  });
+
+  it("기점에 있어도 TAGO가 쓸 만한 시간을 주면 시간도 함께 넘긴다", async () => {
+    getSttnAcctoArvlPrearngeInfoList.mockResolvedValue([
+      { routeid: ROUTE_ID, arrtime: "300", arrprevstationcnt: "3" }, // 5분
+    ]);
+    findNearestApproachingBus.mockResolvedValue({
+      hasLiveData: true,
+      bus: { stopsAway: 3, vehicleNo: "전주1309", atOrigin: true },
+    });
+
+    const info = await fetchArrivalInfo(NODE, ROUTE_ID, "75", undefined, route75);
+
+    expect(info).toEqual({ minutes: 5, stopsAway: 3, atOrigin: true });
+  });
+});
