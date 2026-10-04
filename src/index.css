@@ -142,6 +142,7 @@
       padding-bottom: calc(20px + 8px + 4rem + 0.5rem);
     }
   }
+
   /* 스크롤 영역: 스크롤바를 감추고 iOS 관성 스크롤을 켠다.
      .app-scroll은 같은 뜻의 다른 이름이라 규칙을 따로 만들지 않고 함께 묶는다. */
   .scrollbar-hide,
@@ -214,6 +215,19 @@
 
 .animate-stop-badge-in {
   animation: stop-badge-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* iOS 홈 화면 앱 아래 빈 띠 없애기. 홈 화면 앱에서 iOS가 세로 길이를
+   상태바 높이만큼 짧게 잡으면, 앱 틀과 창들(fixed inset-0)이 화면 맨 아래에
+   닿지 못해 그 아래 흰 바탕이 띠로 보이고 하단 탭도 그만큼 위로 떠 있었다.
+   App.tsx가 그 모자란 길이를 재서 --standalone-gap에 넣고, 여기서 전체 화면
+   층의 아래쪽을 그만큼 늘린다. 색으로 덮는 게 아니라 앱이 화면 끝까지 내려가게
+   한다. 값이 없으면(Safari 탭, 문제없는 기기) 0이라 예전과 같다.
+   .fixed.inset-0(클래스 두 개)이라 inset-0보다 우선한다. env()는 쓰지 않는다.
+   tailwind 레이어 밖에 둔다 — 레이어 안이면 fixed·inset-0 유틸리티와 섞여
+   처리될 수 있다. */
+.fixed.inset-0 {
+  bottom: calc(var(--standalone-gap, 0px) * -1);
 }
 
 /* 큰 글씨 */

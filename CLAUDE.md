@@ -96,6 +96,7 @@ public/                manifest.json, sw.js, icons/
 
 - 안전영역은 `index.css`의 유틸리티를 씁니다(`pt-safe-16`, `pt-safe-0`, `top-safe-4`, `pb-nav-safe`).
 - **`env(safe-area-inset-bottom)`을 `min()`/`max()` 안에 넣지 않습니다.** iOS standalone에서 값이 비정상적으로 커집니다. 하단은 `pb-nav-safe`(display-mode로 분기한 고정값)를 씁니다.
+- 홈 화면 앱에서 iOS가 세로 길이를 상태바 높이만큼 짧게 잡으면 화면 아래에 빈 띠가 생깁니다. `App.tsx`가 모자란 길이를 재서(`lib/standaloneGap.ts`, 모자란 길이가 상태바 높이와 같을 때만) `--standalone-gap`에 넣고, `index.css`가 전체 화면 층(`fixed inset-0`)의 아래쪽을 그만큼 늘립니다. 화면 전체를 덮는 층은 `fixed inset-0`으로 만듭니다.
 - 핀치 확대는 `touch-action`으로 막혀 있습니다. 앱 셸이 `position: fixed`라 확대하면 화면이 깨지기 때문입니다.
 - 레이아웃을 바꾸면 Safari 탭과 홈 화면 앱 두 가지에서 모두 확인해야 합니다. 직접 확인할 수 없으면 사용자에게 확인을 요청합니다.
 
