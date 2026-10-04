@@ -60,14 +60,21 @@ export function Toggle({
 }) {
   return (
     <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      /* 꺼짐 색: 예전 연회색은 맞는 토큰이 없어 0단계에서 남겨 뒀다.
+         4단계에서 faint로 바꾼다. 흰 카드 위 대비가 1.5:1에서 2.6:1로 올라
+         꺼진 스위치의 테두리가 더 잘 보인다(line은 너무 옅어 흰 손잡이가 묻힌다).
+         켜짐은 brand(8장). 스위치는 높이 24px라 ::before로 위아래 10px씩
+         넓혀 누르는 영역 44px. */
       onClick={() => onChange(!checked)}
-      /* 꺼짐 색(slate-300)은 맞는 토큰이 아직 없다. 4단계에서 토큰으로 바꾼다. */
-      className={`relative w-11 h-6 rounded-full transition-colors ${
-        checked ? "bg-brand" : "bg-slate-300"
+      className={`relative w-11 h-6 shrink-0 rounded-full transition-colors before:content-[''] before:absolute before:inset-x-0 before:-inset-y-2.5 ${
+        checked ? "bg-brand" : "bg-faint"
       }`}
     >
       <span
-        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${
+        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-surface rounded-full shadow-sm transition-transform ${
           checked ? "translate-x-5" : "translate-x-0"
         }`}
       />
