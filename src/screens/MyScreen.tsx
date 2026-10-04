@@ -354,8 +354,12 @@ export function MyScreen() {
         />
       )}
 
+      {/* 로그아웃 확인과 도움말은 설정 서랍(z-50) 안에서 연다. 예전에는 둘 다
+          서랍과 같은 z-50이고 서랍보다 먼저 그려져서, 열려도 서랍 뒤에 깔려
+          보이지 않았다(4단계 확인 중 발견). 서랍보다 한 층 위(z-[55])에 둔다.
+          토스트(z-[60])와 하차 알람(z-[100])보다는 아래다. */}
       {logoutConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+        <div className="fixed inset-0 z-[55] flex items-end sm:items-center justify-center">
           <div
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setLogoutConfirmOpen(false)}
@@ -385,7 +389,7 @@ export function MyScreen() {
       )}
 
       {helpOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+        <div className="fixed inset-0 z-[55] flex items-end sm:items-center justify-center">
           <div
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setHelpOpen(false)}
@@ -393,10 +397,12 @@ export function MyScreen() {
           <div className="relative bg-surface rounded-t-hero sm:rounded-hero w-full max-w-md p-5 shadow-sheet">
             <h2 className="text-title text-ink mb-3">도움말</h2>
             <ul className="space-y-2 text-body text-muted">
+              {/* 3단계에서 알림이 하단 탭에서 빠져 홈의 종 버튼과 "하차 알림"
+                  바로가기로 옮겨 갔고, 카드 탭은 숨겨져 있다. 예전 문구("알림 탭",
+                  "카드 탭")는 없는 탭을 가리켜서 고쳤다(카드 줄은 뺐다). */}
               <li>· 홈에서 즐겨찾기를 관리하고 도착 정보를 확인해요.</li>
               <li>· 버스 탭에서 노선을 검색하고 실시간 위치를 볼 수 있어요.</li>
-              <li>· 알림 탭에서 하차 알림을 설정하면 정거장 전에 알려줘요.</li>
-              <li>· 카드 탭은 미리보기용이며 실제 결제는 지원하지 않아요.</li>
+              <li>· 홈의 종 버튼이나 "하차 알림"에서 하차 알림을 설정하면 정거장 전에 알려줘요.</li>
               <li>· 큰 글씨·색약 모드는 이 기기에서만 적용돼요.</li>
             </ul>
             <button
