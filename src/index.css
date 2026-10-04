@@ -283,6 +283,12 @@ html.color-blind .bg-route-branch {
 html.color-blind .text-live {
   color: #1d4ed8 !important;
 }
+/* 4단계: 노선 상세의 "실시간 위치 연동 중" 점이 live 바탕(bg-live)을 쓴다.
+   실시간 글자와 같은 파랑으로 맞춘다 — 안 그러면 색약 모드에서 실시간 칩은
+   파랑인데 이 점만 초록으로 남는다. */
+html.color-blind .bg-live {
+  background-color: #1d4ed8 !important;
+}
 html.color-blind .bg-live-soft {
   background-color: #dbeafe !important;
 }
