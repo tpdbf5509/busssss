@@ -32,8 +32,9 @@ export function HeroArrivalCard({
   route?: Route;
   /** 목록 카드와 같은 규칙으로 만든 노선 번호(조회 키가 같아야 캐시를 같이 쓴다) */
   routeNumber: string;
-  /** allRoutes 조회가 끝났는지. FavoriteArrivalInfo와 같은 이유로 그 전에는
-   *  조회를 시작하지 않는다(GPS 검증 없는 값이 잠깐 찍히는 깜빡임 방지). */
+  /** allRoutes 조회가 끝났는지(성공 또는 실패). FavoriteArrivalInfo와 같은
+   *  이유로 그 전에는 조회를 시작하지 않는다(GPS 검증 없는 값이 잠깐 찍히는
+   *  깜빡임 방지). 실패로 끝나면 route 없이 조회한다 — 그래야 로딩에 갇히지 않는다. */
   routesLoaded: boolean;
   onOpen: () => void;
   onRefresh: () => void;

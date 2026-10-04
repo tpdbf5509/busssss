@@ -27,6 +27,7 @@ import type { Route } from "@/types/route";
 import { isMainRoute } from "@/lib/routeCategory";
 import { heroArrivalView, pickHeroFavorite } from "@/lib/heroArrival";
 import { favoriteSubtitle, favoriteTitle } from "@/lib/favoriteDisplay";
+import { isSettled } from "@/lib/asyncStatus";
 
 /* 카드를 누를 때 쓰는 공통 클래스.
    hover는 모바일에 없고 iOS에서는 탭 후 상태가 남아 카드가 눌린 채로
@@ -87,7 +88,8 @@ function FavoriteArrivalInfo({
   /** allRoutes 조회가 끝났는지. 끝나기 전엔 route가 "아직 못 찾음"과
    *  "이 노선은 없음"을 구분할 수 없어, 조회를 시작하지 않고 기다린다 —
    *  안 그러면 route 없이 한 번 조회해 GPS 검증 없는 값이 화면에 잠깐
-   *  찍혔다가 바뀌는 깜빡임이 생긴다. */
+   *  찍혔다가 바뀌는 깜빡임이 생긴다. 조회가 실패로 끝나도 "끝난 것"이라
+   *  그때는 route 없이 조회를 시작한다(HomeScreen의 routesLoaded 참고). */
   routesLoaded: boolean;
 }) {
   const canFetch = routesLoaded;
@@ -280,7 +282,7 @@ export function HomeScreen({
   const [regionUnderDevOpen, setRegionUnderDevOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const { data: routes } = useAsync(() => fetchAllRoutes(), []);
+  const { data: routes, status: routesStatus } = useAsync(() => fetchAllRoutes(), []);
 
   const handleRefresh = async () => {
     if (refreshing) return;
@@ -295,8 +297,15 @@ export function HomeScreen({
     }
   };
 
-  /* 히어로와 목록 카드가 같은 값으로 도착 정보를 부르도록 한 곳에서 정한다. */
-  const routesLoaded = routes !== undefined;
+  /* 히어로와 목록 카드가 같은 값으로 도착 정보를 부르도록 한 곳에서 정한다.
+     노선 목록 조회가 성공이든 실패든 "끝났는지"로 판단한다.
+     예전에는 routes !== undefined로 판단했는데, useAsync의 data는 처음부터
+     null이라 늘 참이었다. 그래서 노선 정보 없이 먼저 조회하고, 노선이 도착하면
+     한 번 더 조회해 히어로가 "값 → 스켈레톤 → 값"으로 깜빡였다.
+     실패도 끝난 것으로 보는 이유: 안 그러면 노선 조회가 실패했을 때 도착 조회가
+     시작되지 않아 히어로가 영원히 로딩 상태에 남는다. 실패하면 노선 없이
+     (GPS 검증 없이) 조회한다. */
+  const routesLoaded = isSettled(routesStatus);
 
   /* 히어로(DESIGN.md 7-3)에 올라온 즐겨찾기는 아래 목록에서 뺀다. 같은 값을
      두 번 보여 주지 않고, 같은 조회를 두 번 하지 않기 위해서다.
