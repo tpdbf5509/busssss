@@ -17,6 +17,15 @@ export interface ArrivalInfo {
   minutes: number | null;
   /** API가 제공하지 않으면 null — UI에서 정거장 문구를 숨김 */
   stopsAway: number | null;
+  /**
+   * GPS로 확인한 가장 가까운 버스가 노선의 첫 정류장(기점)에 있으면 true.
+   * 출발 전인 버스는 TAGO 도착 목록에 없어서 시간이 null로 남는데, 정거장
+   * 수만 보면 곧 올 것처럼 읽힌다(실측 2026-10-04 13:30, 101번 평화동종점:
+   * 기점에 선 버스가 "3정거장 전"으로 보였고, 출발 후 1정거장 앞에서야 TAGO에
+   * 잡혔다). 화면이 "출발 전"으로 따로 보여 줄 수 있게 넘긴다.
+   * 기점이 아니거나 GPS 검증을 못 했으면 이 키를 두지 않는다.
+   */
+  atOrigin?: boolean;
 }
 
 const ARRIVAL_CACHE_TTL_MS = 15_000;
@@ -322,6 +331,8 @@ export async function fetchArrivalInfo(
       if (!gps.bus) return null; // GPS로 확인되는 모든 버스가 이미 지나감
 
       const stopsAway = gps.bus.stopsAway;
+      // 기점에 서 있는 버스는 출발 전이다(ArrivalInfo.atOrigin 참고).
+      const origin = gps.bus.atOrigin ? { atOrigin: true as const } : {};
 
       // 1순위 — TAGO의 도착 예정 시간.
       //
@@ -343,7 +354,7 @@ export async function fetchArrivalInfo(
       // 조합이 나온다(실측 도착은 2분). 앞뒤가 맞을 때만 쓴다
       // — arrivalPlausibility 참고.
       if (tagoInfo?.minutes != null && isArrivalTimePlausible(tagoInfo.minutes, stopsAway)) {
-        return { minutes: tagoInfo.minutes, stopsAway };
+        return { minutes: tagoInfo.minutes, stopsAway, ...origin };
       }
 
       // 2순위 — TAGO에 이 버스의 시간이 없거나 정거장 수와 앞뒤가 안 맞으면,
@@ -363,7 +374,7 @@ export async function fetchArrivalInfo(
       // 늦게 나가 버스를 놓친다. 지어낸 시간보다 "정거장 수만" 보여주는 편이
       // 안전하고, 그 정거장 수는 GPS 실측이라 신뢰할 수 있다(실제로 위 사례
       // 에서도 정거장 수는 네이버지도와 정확히 일치했다).
-      return { minutes: null, stopsAway };
+      return { minutes: null, stopsAway, ...origin };
     } catch (error) {
       console.warn("[BUS STOP] Arrival request failed; keeping previous value", {
         nodeId,

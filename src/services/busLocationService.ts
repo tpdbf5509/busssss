@@ -207,7 +207,13 @@ export interface NearestBusResult {
   hasLiveData: boolean;
   /** 목표 정류장에 아직 도착하지 않은 버스 중 가장 가까운 것. 실시간 데이터는
    *  있는데 이 값이 null이면, 보고된 모든 버스가 이미 그 정류장을 지났다는 뜻. */
-  bus: { stopsAway: number; vehicleNo: string } | null;
+  bus: {
+    stopsAway: number;
+    vehicleNo: string;
+    /** 이 버스가 노선의 첫 정류장(기점)에 있는지. 출발 전일 가능성이 높다.
+     *  위치를 정류장 ID나 이름으로 확인한 경우만 true다(아래 루프 주석 참고). */
+    atOrigin?: boolean;
+  } | null;
   /**
    * hasLiveData가 false인 이유. **진단 기록용이며 동작 분기에는 쓰지 않는다.**
    *
@@ -259,9 +265,9 @@ export async function findNearestApproachingBus(
     // 피드는 정상 응답했는데 이 노선에 차량이 0대. "조회 실패"와 구분해 남긴다.
     if (locations.length === 0) return noData("empty");
 
-    let best: { stopsAway: number; vehicleNo: string } | null = null;
+    let best: { stopsAway: number; vehicleNo: string; atOrigin: boolean } | null = null;
     for (const location of locations) {
-      const { index } = resolveBusStopIndex(
+      const { index, resolvedBy } = resolveBusStopIndex(
         stops,
         location.nodeId,
         location.nodeOrder,
@@ -273,7 +279,20 @@ export async function findNearestApproachingBus(
 
       const stopsAway = targetIndex - index;
       if (!best || stopsAway < best.stopsAway) {
-        best = { stopsAway, vehicleNo: location.vehicleNo };
+        // index 0 = 노선의 첫 정류장(기점). 기점에 선 버스는 TAGO 도착
+        // 목록에 없어 시간이 비는데, 그걸 "곧 온다"로 읽지 않게 표시해 둔다.
+        // 예전에는 index 0이면 무조건 기점으로 봤다. 이제는 정류장 ID·이름으로
+        // 위치를 확인한 경우만 믿는다. 순번 폴백("order")은 "GW 순번을 넘지
+        // 않는 마지막 정류장"으로 내려 잡기 때문에, 두 순번 체계가 어긋나면
+        // 막 출발한 버스도 index 0이 되어 "출발 전"으로 잘못 보일 수 있다.
+        // 이때 stopsAway는 그대로 쓰고 기점 표시만 하지 않는다.
+        const originConfirmed =
+          resolvedBy === "nodeId" || resolvedBy === "name" || resolvedBy === "name+order";
+        best = {
+          stopsAway,
+          vehicleNo: location.vehicleNo,
+          atOrigin: index === 0 && originConfirmed,
+        };
       }
     }
 

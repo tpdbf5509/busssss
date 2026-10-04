@@ -8,17 +8,13 @@ import { resolveNodeIdForRoute } from "@/services/arrivalService";
 import {
   AppContext,
   type AppState,
-  type Action,
   type RecentRoute,
-  type StorageLoadError,
 } from "@/store/appContext";
+import { reducer, RECENT_ROUTES_LIMIT } from "@/store/appReducer";
 
 const FAVORITES_STORAGE_KEY = "busssss_favorites_v1";
 const ALERTS_STORAGE_KEY = "busssss_alerts_v1";
 const RECENT_ROUTES_STORAGE_KEY = "busssss_recent_routes_v1";
-
-/** 홈에 몇 줄만 보여줄 목록이라 이 이상 쌓아둘 이유가 없다. */
-const RECENT_ROUTES_LIMIT = 5;
 
 /**
  * 저장값을 읽지 못하면 예시 데이터로 대체하되, "실패했다"는 사실을 함께
@@ -57,113 +53,8 @@ const initialState: AppState = {
       : null,
 };
 
-/**
- * 사용자가 직접 목록을 바꿨다면 "저장값을 못 읽었다"는 경고는 역할을 다한 것이다.
- * 플래그를 내려서 저장이 재개되게 한다.
- *
- * SYNC_FAVORITE_* 같은 자동 보정에는 적용하지 않는다. 그건 사용자의 의사가
- * 아니라 백그라운드 동작이라, 그걸로 저장을 재개하면 예시 데이터가 원래
- * 저장값을 덮어쓰는 걸 막지 못한다.
- */
-function clearStorageError(
-  current: StorageLoadError | null,
-  slice: "favorites" | "alerts",
-): StorageLoadError | null {
-  if (!current?.[slice]) return current;
-  const next = { ...current, [slice]: false };
-  return next.favorites || next.alerts ? next : null;
-}
-
-function reducer(state: AppState, action: Action): AppState {
-  switch (action.type) {
-    case "SET_REGION":
-      return { ...state, region: { sido: action.sido, sigungu: action.sigungu } };
-    case "ADD_FAVORITE":
-      if (
-        state.favorites.some(
-          (f) => f.refId === action.favorite.refId && f.type === action.favorite.type
-        )
-      )
-        return state;
-      return {
-        ...state,
-        favorites: [...state.favorites, action.favorite],
-        storageError: clearStorageError(state.storageError, "favorites"),
-      };
-    case "REMOVE_FAVORITE":
-      return {
-        ...state,
-        favorites: state.favorites.filter((f) => f.id !== action.id),
-        storageError: clearStorageError(state.storageError, "favorites"),
-      };
-    case "RENAME_FAVORITE":
-      return {
-        ...state,
-        favorites: state.favorites.map((f) =>
-          f.id === action.id ? { ...f, label: action.label } : f
-        ),
-        storageError: clearStorageError(state.storageError, "favorites"),
-      };
-    case "ADD_RECENT_ROUTE": {
-      /* 같은 노선을 다시 열면 새 항목을 쌓지 않고 맨 앞으로 끌어올린다.
-         그러지 않으면 자주 타는 노선 하나가 목록을 전부 차지한다. */
-      const rest = state.recentRoutes.filter((r) => r.id !== action.route.id);
-      return {
-        ...state,
-        recentRoutes: [
-          { ...action.route, viewedAt: Date.now() },
-          ...rest,
-        ].slice(0, RECENT_ROUTES_LIMIT),
-      };
-    }
-    case "SYNC_FAVORITE_ROUTE_ID":
-      return {
-        ...state,
-        favorites: state.favorites.map((f) =>
-          f.id === action.id ? { ...f, tagoRouteId: action.tagoRouteId } : f
-        ),
-      };
-    case "SYNC_FAVORITE_NODE_ID":
-      return {
-        ...state,
-        favorites: state.favorites.map((f) =>
-          f.id === action.id ? { ...f, tagoNodeId: action.tagoNodeId } : f
-        ),
-      };
-    case "CHARGE_CARD":
-      return { ...state, cardBalance: state.cardBalance + action.amount };
-    case "PAY_CARD":
-      return { ...state, cardBalance: Math.max(0, state.cardBalance - action.amount) };
-    case "ADD_ALERT":
-      return {
-        ...state,
-        alerts: [...state.alerts, action.alert],
-        storageError: clearStorageError(state.storageError, "alerts"),
-      };
-    case "TOGGLE_ALERT":
-      return {
-        ...state,
-        alerts: state.alerts.map((a) =>
-          a.id === action.id ? { ...a, active: !a.active } : a
-        ),
-        storageError: clearStorageError(state.storageError, "alerts"),
-      };
-    case "REMOVE_ALERT":
-      return {
-        ...state,
-        alerts: state.alerts.filter((a) => a.id !== action.id),
-        storageError: clearStorageError(state.storageError, "alerts"),
-      };
-    case "DISMISS_STORAGE_ERROR":
-      // 배너만 숨긴다. 저장 잠금(favorites/alerts 플래그)은 그대로 둔다 —
-      // 여기서 같이 풀면 직후에 도는 SYNC_FAVORITE_* 자동 보정만으로
-      // 예시 데이터가 원래 저장값을 덮어쓴다.
-      if (!state.storageError) return state;
-      return { ...state, storageError: { ...state.storageError, dismissed: true } };
-    default:
-      return state;
-  }
-}
+/* reducer와 clearStorageError는 appReducer.ts로 옮겼다. 이 파일은 불러오는
+   순간 localStorage를 읽어서, 여기 두면 reducer만 따로 시험할 수 없었다. */
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);

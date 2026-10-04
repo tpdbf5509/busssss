@@ -11,14 +11,24 @@
     />
 
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta
-      name="apple-mobile-web-app-status-bar-style"
-      content="black-translucent"
-    />
+    <!-- 상태바 방식. 예전에는 black-translucent(앱을 상태바 밑까지 그림)였다.
+         iOS 26 홈 화면 앱은 세로 길이를 상태바 높이만큼 짧게 잡는다(실측: 844pt
+         화면에서 797pt). black-translucent면 앱이 화면 맨 위부터 그려져, 모자란
+         47pt가 화면 맨 아래에 앱이 그릴 수 없는 흰 띠로 남았다. 높이·위치·넘침을
+         어떻게 바꿔도 그 띠에는 아무것도 그려지지 않았고(2026-09 PR #23 실기기
+         조사, 4단계에서 두 번 더 확인), 하단 탭도 그만큼 떠 있었다.
+         이번에 default로 바꿨다. 앱이 상태바 아래부터 그려져 앱 아래끝이 화면
+         맨 아래와 맞는다. 대신 상태바 줄은 앱이 그릴 수 없고 iOS가 아래
+         theme-color로 칠한다. iOS는 이 값을 홈 화면에 추가할 때 읽는다 — 바꾸면
+         홈 화면 앱을 다시 추가해야 반영된다. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="BUS STOP" />
 
-    <!-- 앱 테마 색상 -->
-    <meta name="theme-color" content="#2563eb" />
+    <!-- 앱 테마 색상. 홈 화면 앱에서는 상태바 줄의 바탕색이 된다(위 default).
+         예전에는 브랜드 파랑(#2563eb)이었다. 이번에 머리글 바탕(canvas)과 같은
+         값으로 바꿔 상태바와 머리글이 한 면으로 이어져 보이게 한다.
+         manifest.json의 theme_color(첫 실행 화면용)는 그대로 둔다. -->
+    <meta name="theme-color" content="#F7F8FA" />
 
     <meta charset="UTF-8" />
 

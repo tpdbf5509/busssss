@@ -58,6 +58,8 @@ export type Action =
   | { type: "REMOVE_FAVORITE"; id: string }
   | { type: "ADD_RECENT_ROUTE"; route: Omit<RecentRoute, "viewedAt"> }
   | { type: "RENAME_FAVORITE"; id: string; label: string }
+  /** "내 정류장" 고정/해제. 고정은 하나만 남고, stop_route만 고정된다. */
+  | { type: "SET_FAVORITE_PIN"; id: string; pinned: boolean }
   | { type: "SYNC_FAVORITE_ROUTE_ID"; id: string; tagoRouteId: string }
   | { type: "SYNC_FAVORITE_NODE_ID"; id: string; tagoNodeId: string }
   | { type: "CHARGE_CARD"; amount: number }

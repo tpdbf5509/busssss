@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Search, X, Star, ArrowLeft, Bus as BusIcon, Navigation, Clock, Calendar, ChevronDown } from "lucide-react";
+import { Search, X, Star, Bus as BusIcon, Navigation, Clock, Calendar, ChevronDown } from "lucide-react";
 import { useAsync } from "@/hooks/useAsync";
 import { useBusLocations } from "@/hooks/useBusLocations";
 import { useApp } from "@/store/appContext";
@@ -7,7 +7,7 @@ import { fetchAllRoutes, fetchStopsForRoute, fetchRoutesForStop } from "@/servic
 import { fetchBisTimeInfo, type BisTimeInfo } from "@/api/jeonjuBis";
 import type { Route, BusStop } from "@/types/route";
 import type { Favorite } from "@/types";
-import { LoadingSkeleton, ErrorState, EmptyState, ReliabilityTag } from "@/components/ui";
+import { LoadingSkeleton, ErrorState, EmptyState, ReliabilityTag, BackButton, TAB_TITLE_CLASS } from "@/components/ui";
 import type { ReliabilityState } from "@/lib/reliability";
 import { arrivalMinutesFromSeconds } from "@/lib/formatArrival";
 import { showToast } from "@/lib/toastStore";
@@ -48,11 +48,16 @@ export function BusScreen({
   onConsumeInitialRoute,
   initialStation,
   onConsumeInitialStation,
+  initialSearchTab,
+  onConsumeInitialSearchTab,
 }: {
   initialRouteId?: string;
   onConsumeInitialRoute?: () => void;
   initialStation?: { id: string; name: string; arsId?: string };
   onConsumeInitialStation?: () => void;
+  /** 홈 빠른 실행 "정류장 검색"으로 들어오면 "station" */
+  initialSearchTab?: "route" | "station";
+  onConsumeInitialSearchTab?: () => void;
 } = {}) {
   const [query, setQuery] = useState("");
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
@@ -62,7 +67,8 @@ export function BusScreen({
 
   const [stations, setStations] = useState<Station[]>([]);
   const [stationStatus, setStationStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [searchTab, setSearchTab] = useState<"route" | "station">("route");
+  /* 처음 값부터 정류장 검색으로 열어야 노선 목록이 한 번 비쳤다가 바뀌지 않는다. */
+  const [searchTab, setSearchTab] = useState<"route" | "station">(initialSearchTab ?? "route");
 
   const { data: routes, status, retry } = useAsync(() => fetchAllRoutes(), []);
 
@@ -74,6 +80,15 @@ export function BusScreen({
   onConsumeInitialRouteRef.current = onConsumeInitialRoute;
   const onConsumeInitialStationRef = useRef(onConsumeInitialStation);
   onConsumeInitialStationRef.current = onConsumeInitialStation;
+  const onConsumeInitialSearchTabRef = useRef(onConsumeInitialSearchTab);
+  onConsumeInitialSearchTabRef.current = onConsumeInitialSearchTab;
+
+  // 홈 빠른 실행 "정류장 검색" → 정류장 검색 탭으로 연다. 한 번 쓰고 비운다.
+  useEffect(() => {
+    if (!initialSearchTab) return;
+    setSearchTab(initialSearchTab);
+    onConsumeInitialSearchTabRef.current?.();
+  }, [initialSearchTab]);
 
   /* 최근 본 노선 기록.
      setSelectedRoute를 부르는 곳이 검색 결과 클릭, 정류장 상세에서 노선
@@ -217,22 +232,40 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
   }
   return (
     <div className="h-full flex flex-col overflow-hidden bg-canvas">
-            <header className="bg-white px-5 pt-safe-16 pb-5 border-b border-line sticky top-0 z-30 shrink-0">
-              <h1 className="text-xl font-bold text-ink mb-3">버스 검색</h1>
+            {/* 공통 얇은 헤더(DESIGN.md 8장): canvas 바탕, 제목 줄은 안전영역 +
+                3.5rem(홈 헤더와 같은 높이), 제목은 Title, 아래 1px 선 없음.
+                예전에는 흰 바탕 + 아래 선 + 최소 4rem 윗여백(pt-safe-16)이었다.
+                전환 알약과 검색창은 제목 줄 아래, 같은 canvas 판 안에 둔다.
+                목록은 아래 별도 스크롤 상자라 헤더 밑으로 비쳐 들어오지 않는다. */}
+            <header className="bg-canvas px-5 pt-safe-0 pb-4 shrink-0">
+              <div className="h-14 flex items-center">
+                {/* 제목 높이는 홈 "BUS STOP"과 같다(ui.tsx TAB_TITLE_CLASS). */}
+                <h1 className={TAB_TITLE_CLASS}>버스 검색</h1>
+              </div>
 
-              <div className="flex bg-canvas rounded-xl p-1 mb-3">
+              {/* 노선/정류장 전환(8장): 바깥 틀과 선택 알약 모두 full 모서리,
+                  선택은 흰 알약 + brand 글자. 바깥 틀이 canvas면 헤더 바탕과
+                  같아져 보이지 않아 line 회색으로 깐다. 고르지 않은 쪽 글자는
+                  ink다 — muted는 line 위 3.4:1이라 글자 대비가 모자라다.
+                  위 mt-2: 제목을 홈 높이로 내리면서(TAB_TITLE_CLASS) 제목과 이 알약
+                  사이가 7px로 좁아졌다. 홈 히어로·마이 프로필 카드처럼 제목 줄 아래
+                  8px을 띄워 제목 아래 간격을 15px로 맞춘다(5단계). */}
+              <div className="flex bg-line rounded-full p-1 mt-2 mb-3">
                 <button
                   onClick={() => {
                     setSearchTab("route");
                     setQuery("");
                   }}
-                  /* 흰 알약의 크기는 그대로 두고 세로로만 3px씩 투명하게
-                     넓혀 38 -> 44px를 만든다. 알약을 키우면 세그먼트 전체와
-                     아래 검색 입력이 함께 내려간다. */
-                  className={`relative flex-1 py-2 rounded-lg text-sm font-semibold transition-colors before:content-[''] before:absolute before:inset-x-0 before:-inset-y-[3px] ${
+                  /* 흰 알약의 크기는 그대로 두고 세로로만 투명하게 넓혀 누르는
+                     영역을 44px 이상으로 만든다. 알약을 키우면 세그먼트 전체와
+                     아래 검색 입력이 함께 내려간다. 예전에는 알약을 38px로 보고
+                     3px씩 넓혔는데, 실제 알약은 37px(py-2 + 글자 21px)이라 43px에
+                     그쳤다(5단계 실측). 4px씩 넓혀 45px(큰 글씨 48px)이다. 바깥 틀
+                     안쪽 여백(p-1)과 같은 값이라 틀 밖으로는 나가지 않는다. */
+                  className={`relative flex-1 py-2 rounded-full text-body transition-colors select-none touch-manipulation before:content-[''] before:absolute before:inset-x-0 before:-inset-y-1 ${
                     searchTab === "route"
-                      ? "bg-surface text-brand border border-line"
-                      : "text-muted"
+                      ? "bg-surface text-brand font-semibold"
+                      : "text-ink"
                   }`}
                 >
                   노선
@@ -242,21 +275,27 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                     setSearchTab("station");
                     setQuery("");
                   }}
-                  /* 흰 알약의 크기는 그대로 두고 세로로만 3px씩 투명하게
-                     넓혀 38 -> 44px를 만든다. 알약을 키우면 세그먼트 전체와
-                     아래 검색 입력이 함께 내려간다. */
-                  className={`relative flex-1 py-2 rounded-lg text-sm font-semibold transition-colors before:content-[''] before:absolute before:inset-x-0 before:-inset-y-[3px] ${
+                  /* 흰 알약의 크기는 그대로 두고 세로로만 투명하게 넓혀 누르는
+                     영역을 44px 이상으로 만든다. 알약을 키우면 세그먼트 전체와
+                     아래 검색 입력이 함께 내려간다. 예전에는 알약을 38px로 보고
+                     3px씩 넓혔는데, 실제 알약은 37px(py-2 + 글자 21px)이라 43px에
+                     그쳤다(5단계 실측). 4px씩 넓혀 45px(큰 글씨 48px)이다. 바깥 틀
+                     안쪽 여백(p-1)과 같은 값이라 틀 밖으로는 나가지 않는다. */
+                  className={`relative flex-1 py-2 rounded-full text-body transition-colors select-none touch-manipulation before:content-[''] before:absolute before:inset-x-0 before:-inset-y-1 ${
                     searchTab === "station"
-                      ? "bg-surface text-brand border border-line"
-                      : "text-muted"
+                      ? "bg-surface text-brand font-semibold"
+                      : "text-ink"
                   }`}
                 >
                   정류장
                 </button>
               </div>
 
+              {/* 검색창: canvas 헤더 위라 흰 면 + 1px line 테두리로 띄운다
+                  (예전 연회색 면은 흰 헤더 위에서만 보였다). 바로 위 전환
+                  알약과 같은 full 모서리다. */}
               <div className="relative">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-faint" aria-hidden="true" />
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -265,36 +304,39 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                       ? "노선번호 또는 기점·종점명"
                       : "정류장명 (예: 전주역, 시청)"
                   }
-                  className="w-full pl-10 pr-10 py-3 bg-slate-100 rounded-2xl text-base text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                  className="w-full pl-10 pr-10 py-3 bg-surface border border-line rounded-full text-base text-ink placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-brand transition-shadow"
                 />
                 {query && (
                   <button
                     onClick={() => setQuery("")}
+                    aria-label="검색어 지우기"
                     /* 아이콘은 16px 그대로. 이미 absolute라 ::before가 이
                        버튼을 기준으로 잡힌다(relative를 더하면 위치가 깨진다). */
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 before:content-[''] before:absolute before:-inset-3.5"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 before:content-[''] before:absolute before:-inset-3.5"
                   >
-                    <X className="w-4 h-4 text-slate-400" />
+                    <X className="w-4 h-4 text-faint" />
                   </button>
                 )}
               </div>
               {searchTab === "route" && status === "loading" && (
-                <p className="text-[11px] text-slate-400 mt-2">
+                <p className="text-caption text-muted mt-2">
                   전주시 노선 데이터를 불러오는 중이에요. 노선이 많아 시간이 걸릴 수 있어요.
                 </p>
               )}
             </header>
 
-            <div className="flex-1 overflow-y-auto overscroll-none px-4 py-4">
+            {/* 좌우 20px(6장 화면 여백). 아래 pb-5 + App 스크롤 영역이 남기는
+                0.5rem = 마지막 카드와 하단 탭 사이 28px(3단계와 같은 값). */}
+            <div className="flex-1 overflow-y-auto overscroll-none px-5 pb-5">
         {searchTab === "route" && (
           <>
             {status === "loading" && (
               /* 결과 목록과 같은 모양(한 판 + 구분선, 같은 행 높이)으로 깔아야
                  값이 들어올 때 목록이 튀지 않는다. */
-              <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-line">
+              <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
                 {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="px-4 py-3 flex items-center gap-3">
-                    <LoadingSkeleton className="w-[56px] h-[42px] shrink-0" />
+                  <div key={i} className="min-h-16 px-4 py-3 flex items-center gap-3">
+                    <LoadingSkeleton className="w-12 h-9 rounded-tile shrink-0" />
                     <LoadingSkeleton className="h-4 flex-1" />
                   </div>
                 ))}
@@ -314,7 +356,7 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                  줄고 문서처럼 보인다. 정류장 상세와 같은 문법(한 판 + 구분선)
                  으로 맞춘다 — 홈의 독립 카드는 개수가 적고 각각이 목적지라서
                  다른 문법을 쓴다. */
-              <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-line">
+              <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
                 {filtered.map((route) => (
                   <div
                     key={`${route.id}-${route.number}`}
@@ -322,41 +364,45 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                     tabIndex={0}
                     onClick={() => setSelectedRoute(route)}
                     onKeyDown={(e) => e.key === "Enter" && setSelectedRoute(route)}
-                    className="w-full px-4 py-3 text-left active:bg-canvas transition-colors cursor-pointer flex items-center gap-3"
+                    className="w-full min-h-16 px-4 py-3 text-left cursor-pointer flex items-center gap-3 select-none touch-manipulation transition-colors duration-75 active:bg-canvas"
                   >
                     {/* 검색 결과는 여러 노선을 스크롤하며 비교하는 화면이라
                         한 항목이 차지하는 높이가 중요하다. 배지를 왼쪽으로
-                        빼고 번호를 배지 안에 넣어 3단 스택을 2단으로 줄였다. */}
+                        빼고 번호를 배지 안에 넣어 3단 스택을 2단으로 줄였다.
+                        4단계부터 배지는 홈 다른 즐겨찾기(7-5)와 같은 48×36,
+                        모서리 12px, 번호만 넣는다. 예전에는 번호 아래에 본선/분선을
+                        작게 적었는데, 7-5 배지와 같이 화면 읽기 프로그램용 글자로만
+                        남긴다(12장 2단계 리뷰). 둘째 줄 앞에 붙여 보니 배차 정보가
+                        잘려서 그렇게 하지 않았다. 번호가 길면 배지가 옆으로
+                        늘어난다(번호를 "…"로 자르지 않는다). */}
                     {(() => {
                       const label = getRouteCategory(route.name);
                       const isMain = label === "본선";
                       return (
                         <div
-                          className={`min-w-[56px] py-1.5 px-2 rounded-xl flex flex-col items-center justify-center shrink-0 ${
-                            isMain ? "bg-blue-500" : "bg-emerald-500"
+                          className={`min-w-12 h-9 px-1 rounded-tile flex items-center justify-center shrink-0 text-white ${
+                            isMain ? "bg-route-main" : "bg-route-branch"
                           }`}
                         >
-                          <span className="font-bold text-base leading-none tracking-tight text-white truncate max-w-full">
+                          <span className="text-body-strong font-bold tabular-nums whitespace-nowrap">
                             {route.number}
                           </span>
-                          <span className="text-[10px] leading-none mt-1 text-white opacity-80">
-                            {label}
-                          </span>
+                          <span className="sr-only">{label}</span>
                         </div>
                       );
                     })()}
 
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 text-sm min-w-0">
-                        <span className="font-semibold text-ink truncate">
+                      <div className="flex items-center gap-1.5 text-body-strong min-w-0">
+                        <span className="text-ink truncate">
                           {route.start || "기점 정보 없음"}
                         </span>
-                        <span className="text-faint shrink-0">→</span>
-                        <span className="font-semibold text-ink truncate">
+                        <span className="text-faint shrink-0" aria-hidden="true">→</span>
+                        <span className="text-ink truncate">
                           {route.end || "종점 정보 없음"}
                         </span>
                       </div>
-                      <p className="mt-1 text-[11px] text-muted truncate">
+                      <p className="mt-0.5 text-caption text-muted truncate">
                         첫차 {route.firstBus} · 막차 {route.lastBus} · 배차{" "}
                         {route.interval}
                       </p>
@@ -364,17 +410,18 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
 
                     <button
                       onClick={(e) => toggleFavorite(route, e)}
+                      aria-label={isFavorited(route.id) ? "즐겨찾기에서 빼기" : "즐겨찾기에 추가"}
                       /* 별은 행(노선 이동) 안에 있는 다른 동작이라 눌리는 영역이
                          행보다 우선해야 한다. 오른쪽은 판이 overflow-hidden이라
                          12px 밖에 여유가 없어(실측) 8px만 넓히고 모자란 만큼을
                          행 안쪽(왼쪽 12px)으로 가져온다. */
-                      className="relative p-1 -m-1 rounded-full active:bg-amber-50 shrink-0 before:content-[''] before:absolute before:-inset-y-2.5 before:-left-3 before:-right-2"
+                      className="relative p-1 -m-1 rounded-full active:bg-canvas shrink-0 before:content-[''] before:absolute before:-inset-y-2.5 before:-left-3 before:-right-2"
                     >
                       <Star
                         className={`w-4 h-4 transition-colors ${
                           isFavorited(route.id)
-                            ? "text-amber-400 fill-amber-400"
-                            : "text-faint active:text-amber-400"
+                            ? "text-star fill-star"
+                            : "text-faint active:text-star"
                         }`}
                       />
                     </button>
@@ -388,17 +435,19 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
         {searchTab === "station" && (
           <>
             {(stationStatus === "idle" || stationStatus === "loading") && (
-              <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-line">
+              <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
                 {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="px-4 py-3 flex items-center gap-3">
-                    <LoadingSkeleton className="w-11 h-11 shrink-0" />
+                  <div key={i} className="min-h-16 px-4 py-3 flex items-center gap-3">
+                    <LoadingSkeleton className="w-9 h-9 rounded-tile shrink-0" />
                     <LoadingSkeleton className="h-4 flex-1" />
                   </div>
                 ))}
               </div>
             )}
+            {/* 오류 안내 글은 muted다(0단계 ui.tsx와 같음). 예전 빨간 글자는
+                4-2에서 빨강을 점과 아이콘에만 쓰기로 해서 바꿨다. */}
             {stationStatus === "error" && (
-              <p className="text-sm text-red-500 text-center py-8">
+              <p className="text-body text-muted text-center py-8">
                 정류장 목록을 불러오지 못했어요
               </p>
             )}
@@ -410,7 +459,7 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
               />
             )}
             {stationStatus === "success" && stations.length > 0 && (
-              <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-line">
+              <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
                 {stations.map((station) => (
                   <div
                     key={station.id}
@@ -418,31 +467,35 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
                     tabIndex={0}
                     onClick={() => setSelectedStation(station)}
                     onKeyDown={(e) => e.key === "Enter" && setSelectedStation(station)}
-                    className="w-full px-4 py-3 flex items-center gap-3 cursor-pointer active:bg-canvas transition-colors"
+                    className="w-full min-h-16 px-4 py-3 flex items-center gap-3 cursor-pointer select-none touch-manipulation transition-colors duration-75 active:bg-canvas"
                   >
-                    <div className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
-                      <MapPin className="w-5 h-5 text-emerald-600" />
-                    </div>
+                    {/* 정류장 결과는 홈 최근 본 노선(7-8)과 같은 36px 아이콘 타일
+                        (brand-soft + brand 아이콘 18px). 예전에는 회색 타일에
+                        초록 핀이었다. */}
+                    <span className="w-9 h-9 rounded-tile bg-brand-soft flex items-center justify-center shrink-0">
+                      <MapPin className="w-4.5 h-4.5 text-brand" aria-hidden="true" />
+                    </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-800 truncate">
+                      <p className="text-body-strong text-ink truncate">
                         {station.name}
                       </p>
                       {station.arsId && (
-                        <p className="text-xs text-slate-400 mt-0.5">
+                        <p className="text-caption text-muted mt-0.5">
                           정류장번호 {station.arsId}
                         </p>
                       )}
                     </div>
                     <button
                       onClick={(e) => toggleStationFavorite(station, e)}
+                      aria-label={isStationFavorited(station.id) ? "즐겨찾기에서 빼기" : "즐겨찾기에 추가"}
                       /* 위와 같은 이유로 오른쪽은 6px만, 왼쪽은 10px 넓힌다. */
-                      className="relative p-1.5 rounded-full active:bg-amber-50 before:content-[''] before:absolute before:-inset-y-2 before:-left-2.5 before:-right-1.5"
+                      className="relative p-1.5 rounded-full active:bg-canvas before:content-[''] before:absolute before:-inset-y-2 before:-left-2.5 before:-right-1.5"
                     >
                       <Star
                         className={`w-4 h-4 transition-colors ${
                           isStationFavorited(station.id)
-                            ? "text-amber-400 fill-amber-400"
-                            : "text-slate-300 active:text-amber-400"
+                            ? "text-star fill-star"
+                            : "text-faint active:text-star"
                         }`}
                       />
                     </button>
@@ -540,7 +593,7 @@ function StationRouteCard({
        별을 눌러도 바깥 행이 먼저 먹어 노선 상세로 넘어가 버릴 수 있다.
        홈 화면과 같은 방법으로 형제로 분리하고, 별은 행 위에 겹쳐 놓는다.
        행 오른쪽 패딩(pr-12)이 별이 앉을 자리를 미리 비워 둔다. */
-    <div className="relative bg-surface rounded-2xl border border-line">
+    <div className="relative bg-surface rounded-card border border-line">
       <button
         type="button"
         onClick={onSelect}
@@ -549,19 +602,22 @@ function StationRouteCard({
            고정폭 열에 두면 배지와 시간이 화면 양 끝으로 갈라져 한 카드가 두
            덩어리로 읽혔다. 배지 옆에 세로로 쌓으면 배지 -> 방향 -> 시간으로
            시선이 한 줄기로 내려간다(홈 즐겨찾기 카드와 같은 문법). */
-        className="w-full text-left flex items-center gap-3.5 select-none touch-manipulation transition-colors duration-75 active:bg-canvas rounded-2xl py-4 pl-4 pr-12"
+        className="w-full text-left flex items-center gap-3.5 select-none touch-manipulation transition-colors duration-75 active:bg-canvas rounded-card py-4 pl-4 pr-12"
       >
+        {/* 배지 색은 4-2(본선 brand, 분선 live 초록), 모서리는 노선 배지의 12px.
+            크기는 이 카드에서만 쓰는 56px 정사각형을 그대로 둔다. */}
         <div
-          className={`relative w-14 h-14 rounded-xl flex items-center justify-center shrink-0 ${
-            isMain ? "bg-blue-500" : "bg-emerald-500"
+          className={`relative w-14 h-14 rounded-tile flex items-center justify-center shrink-0 ${
+            isMain ? "bg-route-main" : "bg-route-branch"
           }`}
         >
-          <span className="font-bold text-base text-white tracking-tight truncate max-w-full px-1">
+          <span className="text-body-strong font-bold text-white tabular-nums truncate max-w-full px-1">
             {sr.routeNo}
           </span>
+          <span className="sr-only">{sr.category}</span>
           {isFavorited && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center ring-2 ring-surface">
-              <Star className="w-2.5 h-2.5 text-white fill-white" />
+            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-star flex items-center justify-center ring-2 ring-surface">
+              <Star className="w-2.5 h-2.5 text-white fill-white" aria-hidden="true" />
             </span>
           )}
         </div>
@@ -570,30 +626,33 @@ function StationRouteCard({
           {/* 배지가 이미 노선 번호를 크게 들고 있어서, 여기에 "104번"을 또 쓰면
               가장 진한 글자가 아무 정보도 더하지 않는다. 이 버스가 어디로
               가는지를 넣는다. 방향을 못 찾은 경우에만 노선 번호로 돌아간다. */}
-          <p className="text-[13px] font-semibold text-ink truncate">
+          <p className="text-body-strong text-ink truncate">
             {directionLabel ?? `${sr.routeNo}번`}
           </p>
 
-          {/* 도착 줄. min-h로 높이를 고정해 로딩 -> 값 -> 오류 사이에
-              카드 높이가 변하지 않게 한다(20초마다 갱신된다). */}
-          <div className="mt-0.5 flex items-baseline gap-2 min-w-0 min-h-[26px]">
+          {/* 도착 줄. 높이를 고정해 로딩 -> 값 -> 오류 사이에 카드 높이가
+              변하지 않게 한다(20초마다 갱신된다). 예전 26px 숫자(px라 큰 글씨를
+              따라가지 않았다)는 5장 "목록의 도착 분" Title로 바꿨다. 높이도
+              rem(h-6 = Title 한 줄)이라 큰 글씨에서 함께 커진다. */}
+          <div className="mt-0.5 flex items-baseline gap-2 min-w-0 h-6">
             <span
-              className={`text-[26px] leading-none font-bold tracking-tight tabular-nums shrink-0 ${etaTone}`}
+              className={`text-title tabular-nums shrink-0 ${etaTone}`}
             >
               {timeLabel}
             </span>
             {stopsLabel && (
-              <span className="text-xs text-muted tabular-nums shrink-0">
+              <span className="text-caption text-muted tabular-nums shrink-0">
                 {stopsLabel}
               </span>
             )}
           </div>
 
-          {hasLiveInfo && (
-            <div className="mt-1">
-              <ReliabilityTag reliability={reliability} />
-            </div>
-          )}
+          {/* 신뢰도 칩 자리(높이 20px)를 늘 잡아 둔다. 예전에는 칩이 있을 때만
+              줄이 생겨, 불러오는 중 모양(칩 자리 12px)에서 값으로 바뀔 때 카드가
+              커졌다(1단계 리뷰에서 남은 항목). */}
+          <div className="mt-1 h-5">
+            {hasLiveInfo && <ReliabilityTag reliability={reliability} />}
+          </div>
         </div>
       </button>
 
@@ -610,7 +669,7 @@ function StationRouteCard({
         >
           <Star
             className={`w-4 h-4 transition-colors ${
-              isFavorited ? "text-amber-400 fill-amber-400" : "text-faint"
+              isFavorited ? "text-star fill-star" : "text-faint"
             }`}
           />
         </button>
@@ -869,24 +928,26 @@ const isAllRouteFavorited = (route: Route) =>
   const restRoutes = routesWithInfo.slice(HERO_COUNT);
 
   return (
-    <div className="bg-canvas">
-      <header className="bg-white px-4 pt-safe-14 pb-5 border-b border-line sticky top-0 z-30">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            /* 왼쪽은 화면 가장자리까지 10px뿐이라 8px만, 오른쪽은 4px 넓힌다. */
-            className="relative p-1.5 -ml-1.5 rounded-full active:bg-slate-100 before:content-[''] before:absolute before:-inset-y-1.5 before:-left-2 before:-right-1"
-          >
-            <ArrowLeft className="w-5 h-5 text-slate-700" />
-          </button>
+    // 맨 아래 pb-5: App 스크롤 영역이 남기는 0.5rem과 더해 하단 탭 위 28px.
+    <div className="bg-canvas pb-5">
+      {/* 얇은 헤더(8장 공통 헤더와 같은 문법): canvas 바탕, 안전영역 + 3.5rem,
+          아래 선 없음. 이 화면은 App 스크롤 영역 안에서 스크롤되므로 헤더가
+          sticky다 — canvas 바탕이 불투명해 밑으로 지나가는 카드가 비치지 않는다.
+          예전에는 흰 바탕 + 아래 선 + 최소 3.5rem 윗여백(pt-safe-14)이었다.
+          뒤로 가기는 알림 화면과 같은 원형 버튼이다(ui.tsx BackButton). 예전
+          작은 화살표는 왼쪽이 화면 가장자리까지 10px뿐이라 누르는 영역을
+          8px만 넓혔다. 원형은 버튼 자체가 40px이라 그런 조정이 필요 없다. */}
+      <header className="bg-canvas px-5 pt-safe-0 sticky top-0 z-30">
+        <div className="h-14 flex items-center gap-3">
+          <BackButton onClick={onBack} />
 
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-bold text-ink truncate">
+            <h1 className="text-title text-ink truncate">
               {station.name}
             </h1>
 
             {station.arsId && (
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-caption text-muted">
                 정류장번호 {station.arsId}
               </p>
             )}
@@ -894,15 +955,16 @@ const isAllRouteFavorited = (route: Route) =>
         </div>
       </header>
 
-      {/* 탭 */}
-      <div className="px-4 pt-3">
-        <div className="flex bg-canvas rounded-xl p-1">
+      {/* 탭. 버스 검색의 노선/정류장 전환과 같은 모양(8장): line 틀 + 흰 알약.
+          누르는 영역도 같다: 알약 37px을 위아래 4px씩 넓혀 45px(5단계에서 3px → 4px). */}
+      <div className="px-5 pt-2">
+        <div className="flex bg-line rounded-full p-1">
           <button
             onClick={() => setDetailTab("arrival")}
-            className={`relative flex-1 py-2 rounded-lg text-sm font-semibold transition-colors before:content-[''] before:absolute before:inset-x-0 before:-inset-y-[3px] ${
+            className={`relative flex-1 py-2 rounded-full text-body transition-colors select-none touch-manipulation before:content-[''] before:absolute before:inset-x-0 before:-inset-y-1 ${
               detailTab === "arrival"
-                ? "bg-surface text-brand border border-line"
-                : "text-muted"
+                ? "bg-surface text-brand font-semibold"
+                : "text-ink"
             }`}
           >
             실시간 도착
@@ -910,10 +972,10 @@ const isAllRouteFavorited = (route: Route) =>
 
           <button
             onClick={() => setDetailTab("all")}
-            className={`relative flex-1 py-2 rounded-lg text-sm font-semibold transition-colors before:content-[''] before:absolute before:inset-x-0 before:-inset-y-[3px] ${
+            className={`relative flex-1 py-2 rounded-full text-body transition-colors select-none touch-manipulation before:content-[''] before:absolute before:inset-x-0 before:-inset-y-1 ${
               detailTab === "all"
-                ? "bg-surface text-brand border border-line"
-                : "text-muted"
+                ? "bg-surface text-brand font-semibold"
+                : "text-ink"
             }`}
           >
             전체 경유노선
@@ -921,7 +983,7 @@ const isAllRouteFavorited = (route: Route) =>
         </div>
       </div>
 
-      <div className="px-4 py-4">
+      <div className="px-5 pt-4">
 
         {/* ========================= */}
         {/* 실시간 도착 탭 */}
@@ -932,17 +994,26 @@ const isAllRouteFavorited = (route: Route) =>
             {status === "loading" && (
               /* 완성된 목록과 같은 모양(한 판 + 구분선, 같은 행 높이)으로 깔아야
                  값이 들어올 때 목록이 튀지 않는다. */
+              /* 줄마다 실제 카드와 같은 높이의 자리를 잡는다: 방향 줄(Body-strong
+                 한 줄 = 1.5em), 도착 줄(h-6), 칩 줄(h-5). 예전에는 막대 높이를
+                 px로 따로 맞춰 칩 줄이 12px뿐이었고, 값이 들어오면 카드가 커졌다. */
               <div className="space-y-2.5">
                 {[1, 2, 3].map((i) => (
                   <div
                     key={i}
-                    className="bg-surface rounded-2xl border border-line py-4 pl-4 pr-12 flex items-center gap-3.5"
+                    className="bg-surface rounded-card border border-line py-4 pl-4 pr-12 flex items-center gap-3.5"
                   >
-                    <LoadingSkeleton className="w-14 h-14 shrink-0" />
+                    <LoadingSkeleton className="w-14 h-14 rounded-tile shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <LoadingSkeleton className="h-[17px] w-[120px]" />
-                      <LoadingSkeleton className="mt-1 h-[26px] w-[86px]" />
-                      <LoadingSkeleton className="mt-1.5 h-3 w-[52px]" />
+                      <div className="text-body-strong h-[1.5em] flex items-center">
+                        <LoadingSkeleton className="h-4 w-[7.5rem]" />
+                      </div>
+                      <div className="mt-0.5 h-6 flex items-center">
+                        <LoadingSkeleton className="h-5 w-[5.5rem]" />
+                      </div>
+                      <div className="mt-1 h-5">
+                        <LoadingSkeleton className="h-5 w-[3.25rem] rounded-full" />
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -950,7 +1021,7 @@ const isAllRouteFavorited = (route: Route) =>
             )}
 
             {status === "error" && (
-              <p className="text-sm text-red-500 text-center py-8">
+              <p className="text-body text-muted text-center py-8">
                 노선 정보를 불러오지 못했어요
               </p>
             )}
@@ -1018,7 +1089,7 @@ const isAllRouteFavorited = (route: Route) =>
                   <button
                     type="button"
                     onClick={() => setShowMoreRoutes((v) => !v)}
-                    className="relative w-full flex items-center justify-center gap-1 pt-1 pb-2 text-xs font-medium text-muted active:text-ink before:content-[''] before:absolute before:inset-x-0 before:-inset-y-2"
+                    className="relative w-full flex items-center justify-center gap-1 pt-1 pb-2 text-caption text-muted active:text-ink before:content-[''] before:absolute before:inset-x-0 before:-inset-y-2"
                   >
                     {showMoreRoutes ? "접기" : `다른 노선 ${restRoutes.length}개 더 보기`}
                     <ChevronDown
@@ -1040,19 +1111,19 @@ const isAllRouteFavorited = (route: Route) =>
             {allStatus === "loading" && (
               /* 완성된 목록과 같은 모양(한 판 + 구분선, 같은 행 높이)으로 깔아야
                  값이 들어올 때 목록이 튀지 않는다. */
-              <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-line">
+              <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
                 {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="px-4 py-3 flex items-center gap-3">
-                    <LoadingSkeleton className="w-11 h-11 shrink-0" />
+                  <div key={i} className="min-h-16 px-4 py-3 flex items-center gap-3">
+                    <LoadingSkeleton className="w-12 h-9 rounded-tile shrink-0" />
                     <LoadingSkeleton className="h-4 flex-1" />
-                    <LoadingSkeleton className="h-5 w-[76px] shrink-0" />
+                    <LoadingSkeleton className="h-4 w-4 rounded-full shrink-0" />
                   </div>
                 ))}
               </div>
             )}
 
             {allStatus === "error" && (
-              <p className="text-sm text-red-500 text-center py-8">
+              <p className="text-body text-muted text-center py-8">
                 경유 노선을 불러오지 못했어요
               </p>
             )}
@@ -1068,7 +1139,7 @@ const isAllRouteFavorited = (route: Route) =>
 
             {allStatus === "success" &&
               allViaRoutes.length > 0 && (
-                <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-line">
+                <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
                   {allViaRoutes.map((route) => {
                     const isMain = isMainRoute(route.name);
                     return (
@@ -1078,29 +1149,28 @@ const isAllRouteFavorited = (route: Route) =>
                       tabIndex={0}
                       onClick={() => onSelectRoute(route)}
                       onKeyDown={(e) => e.key === "Enter" && onSelectRoute(route)}
-                      className="w-full px-4 py-3 text-left flex items-center gap-3 cursor-pointer select-none touch-manipulation transition-colors duration-75 active:bg-slate-100"
+                      className="w-full min-h-16 px-4 py-3 text-left flex items-center gap-3 cursor-pointer select-none touch-manipulation transition-colors duration-75 active:bg-canvas"
                     >
                       {/* 노선 검색 결과와 같은 배지를 쓴다. 같은 것(노선)을
-                          두 화면에서 다르게 그릴 이유가 없고, 본선/분선이
-                          배지 안으로 들어가면 아래 한 줄을 지울 수 있다. */}
+                          두 화면에서 다르게 그릴 이유가 없다. 4단계부터 그 배지가
+                          7-5 배지(48×36, 번호만)가 되어 본선/분선은 화면 읽기용
+                          글자로만 남는다. 예전에는 배지 안 작은 글자로 보였다. */}
                       <div
-                        className={`min-w-[56px] py-1.5 px-2 rounded-xl flex flex-col items-center justify-center shrink-0 ${
-                          isMain ? "bg-blue-500" : "bg-emerald-500"
+                        className={`min-w-12 h-9 px-1 rounded-tile flex items-center justify-center shrink-0 text-white ${
+                          isMain ? "bg-route-main" : "bg-route-branch"
                         }`}
                       >
-                        <span className="font-bold text-base leading-none tracking-tight text-white truncate max-w-full">
+                        <span className="text-body-strong font-bold tabular-nums whitespace-nowrap">
                           {route.number}
                         </span>
-                        <span className="text-[10px] leading-none mt-1 text-white opacity-80">
-                          {isMain ? "본선" : "분선"}
-                        </span>
+                        <span className="sr-only">{isMain ? "본선" : "분선"}</span>
                       </div>
 
                       {/* 배지에 번호가 이미 있다. 진한 글자에는 이 노선이
-                          어디로 가는지를 넣고, 본선/분선을 아래에 둔다 —
-                          노선 검색 결과와 같은 읽는 순서가 된다. */}
+                          어디로 가는지를 넣는다 — 노선 검색 결과와 같은 읽는
+                          순서가 된다. */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-ink truncate">
+                        <p className="text-body-strong text-ink truncate">
                           {route.start} → {route.end}
                         </p>
                       </div>
@@ -1121,8 +1191,8 @@ const isAllRouteFavorited = (route: Route) =>
                           <Star
                             className={`w-4 h-4 transition-colors ${
                               isAllRouteFavorited(route)
-                                ? "text-amber-400 fill-amber-400"
-                                : "text-slate-300"
+                                ? "text-star fill-star"
+                                : "text-faint"
                             }`}
                           />
                         </button>
@@ -1238,28 +1308,30 @@ const handleStopClick = async (stop: BusStop) => {
 
  
   return (
-    <div className="bg-canvas">
-      <header className="bg-white px-4 pt-safe-14 pb-5 border-b border-line sticky top-0 z-30">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="relative p-1.5 -ml-1.5 rounded-full active:bg-slate-100 before:content-[''] before:absolute before:-inset-y-1.5 before:-left-2 before:-right-1"
-          >
-            <ArrowLeft className="w-5 h-5 text-slate-700" />
-          </button>
+    // 맨 아래 pb-5: App 스크롤 영역이 남기는 0.5rem과 더해 하단 탭 위 28px.
+    <div className="bg-canvas pb-5">
+      {/* 얇은 헤더(정류장 상세와 같음): canvas 바탕, 제목 줄 안전영역 + 3.5rem,
+          아래 선 없음, sticky. 예전에는 흰 바탕 + 아래 선 + pt-safe-14였다.
+          운행 정보 줄과 배차시간 버튼은 예전처럼 헤더 안에 함께 붙어 있다. */}
+      <header className="bg-canvas px-5 pt-safe-0 pb-3 sticky top-0 z-30">
+        <div className="h-14 flex items-center gap-3">
+          <BackButton onClick={onBack} />
           {/* 예전에는 "본선104"처럼 분류와 번호가 붙어 한 단어로 읽혔다.
               번호를 제목으로 세우고 분류는 옆의 작은 태그로 내린다. */}
           <div className="flex-1 min-w-0">
-            <h1 className="flex items-baseline gap-1.5 text-lg font-bold text-ink">
+            <h1 className="flex items-baseline gap-1.5 text-title text-ink">
               {route.number}번
-              <span className="text-[11px] font-medium text-slate-400">
+              <span className="text-caption text-muted">
                 {getRouteCategory(route.name)}
               </span>
             </h1>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-caption text-muted truncate">
               {route.start || "기점 정보 없음"} → {route.end || "종점 정보 없음"}
             </p>
           </div>
+          {/* 노선 즐겨찾기. 뒤로 가기와 같은 원형 버튼(보이는 원 40px, 누르는
+              영역 44px)이라 헤더 양 끝이 같은 모양으로 맞는다. 예전에는 테두리
+              없는 별에 누르는 영역만 따로 넓혔다. */}
           <button
             onClick={() => {
               const existing = state.favorites.find(
@@ -1282,20 +1354,25 @@ const handleStopClick = async (stop: BusStop) => {
                 showToast("즐겨찾기에 추가했어요");
               }
             }}
-            className="relative p-2 rounded-full active:bg-slate-100 before:content-[''] before:absolute before:-inset-y-1 before:-left-1.5 before:-right-0.5"
+            aria-label={
+              state.favorites.some((f) => f.type === "route" && f.refId === route.id)
+                ? "즐겨찾기에서 빼기"
+                : "즐겨찾기에 추가"
+            }
+            className="relative w-10 h-10 shrink-0 rounded-full bg-surface border border-line flex items-center justify-center active:bg-canvas before:content-[''] before:absolute before:-inset-0.5 select-none touch-manipulation transition-transform duration-100 active:scale-[0.98]"
           >
             <Star
               className={`w-5 h-5 transition-colors ${
                 state.favorites.some((f) => f.type === "route" && f.refId === route.id)
-                  ? "text-amber-400 fill-amber-400"
-                  : "text-slate-300"
+                  ? "text-star fill-star"
+                  : "text-faint"
               }`}
             />
           </button>
         </div>
         {/* 값이 없는 항목은 라벨만 남아 "-" 하나가 줄 끝에 떠 있었다.
             있는 것만 쓴다. */}
-        <div className="flex items-center gap-4 mt-3 text-[11px] text-slate-400">
+        <div className="flex items-center gap-4 mt-1 text-caption text-muted">
           <span>첫차 {route.firstBus}</span>
           <span>막차 {route.lastBus}</span>
           <span>배차 {route.interval}</span>
@@ -1304,26 +1381,32 @@ const handleStopClick = async (stop: BusStop) => {
         <button
           onClick={() => setShowSchedule(true)}
           /* 파랑은 이 앱에서 "곧 온다"는 뜻이다. 보조 동작인 이 버튼이
-             파란 글씨를 쓰면 도착 시간과 같은 무게로 읽힌다. 회색으로 내린다. */
-          className="relative mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-sm font-semibold active:bg-slate-200 transition-colors before:content-[''] before:absolute before:inset-x-0 before:-inset-y-0.5"
+             파란 글씨를 쓰면 도착 시간과 같은 무게로 읽힌다. 예전에는 회색
+             면으로 내렸고, canvas 헤더 위인 지금은 흰 면 + 1px line + ink
+             글자로 낮춘다(검색창과 같은 full 모서리). */
+          className="relative mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 bg-surface border border-line text-ink rounded-full text-body font-semibold active:bg-canvas transition-colors select-none touch-manipulation before:content-[''] before:absolute before:inset-x-0 before:-inset-y-0.5"
         >
-          <Clock className="w-4 h-4 text-slate-400" />
+          <Clock className="w-4 h-4 text-faint" aria-hidden="true" />
           배차시간 보기
-          <ChevronDown className="w-4 h-4" />
+          <ChevronDown className="w-4 h-4 text-faint" aria-hidden="true" />
         </button>
       </header>
 
-      <div className="px-4 pt-3 flex items-center gap-1.5">
+      {/* 실시간 위치 상태. 점 색은 4-2를 따른다: 연동 중은 실시간 초록(예전
+          파랑), 실패는 danger 빨강(점에만 쓰는 색), 그 밖은 faint. 점 옆
+          글자가 상태를 말하므로 색만으로 구분하지 않는다. */}
+      <div className="px-5 pt-1 min-h-[1.125rem] flex items-center gap-1.5">
         <span
-          className={`w-1.5 h-1.5 rounded-full ${
+          aria-hidden="true"
+          className={`w-1.5 h-1.5 rounded-full shrink-0 ${
             busStatus === "success" && buses && buses.length > 0
-              ? "bg-blue-500"
+              ? "bg-live"
               : busStatus === "error"
-              ? "bg-red-400"
-              : "bg-slate-300"
+              ? "bg-danger"
+              : "bg-faint"
           }`}
         />
-        <span className="text-[11px] text-slate-400">
+        <span className="text-caption text-muted">
           {busStatus === "loading" && "실시간 위치 불러오는 중"}
           {busStatus === "error" && busError}
           {busStatus === "success" && buses && buses.length > 0 && "실시간 위치 연동 중"}
@@ -1333,20 +1416,23 @@ const handleStopClick = async (stop: BusStop) => {
           <button
             onClick={() => retryBuses()}
             /* 화면에서 가장 작은 표적(16.5px)이었다. 글자 크기는 그대로 두고
-               위아래로 14px씩 넓힌다 — 위 33px, 아래 16px의 여유 안에 들어간다. */
-            className="relative text-[11px] font-semibold text-blue-600 ml-auto active:underline before:content-[''] before:absolute before:-inset-x-2 before:-inset-y-[14px]"
+               위아래로 넓혀 44px를 만든다. 4단계에서 글자가 Caption(18px 줄)이
+               되어 위아래 13px씩 넓힌다. */
+            className="relative text-caption font-semibold text-brand ml-auto active:underline before:content-[''] before:absolute before:-inset-x-2 before:-inset-y-[13px]"
           >
             다시 시도
           </button>
         )}
         {busStatus !== "error" && lastUpdated && (
-          <span className="text-[10px] text-slate-300 ml-auto">
+          /* 갱신 시각은 정보라 faint가 아니라 muted다(4-1). 크기는 히어로의
+             갱신 시각과 같은 Micro. 예전 10px은 px라 큰 글씨를 따라가지 않았다. */
+          <span className="text-micro font-medium text-muted tabular-nums ml-auto">
             {lastUpdated.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })} 갱신
           </span>
         )}
       </div>
 
-      <div className="px-4 py-4">
+      <div className="px-5 pt-3">
         {status === "loading" && (
           <div className="space-y-2">
             {[1, 2, 3, 4, 5].map((i) => (
@@ -1360,7 +1446,10 @@ const handleStopClick = async (stop: BusStop) => {
         )}
         {status === "success" && stops && stops.length > 0 && (
           <div className="relative">
-            <div className="absolute left-[19px] top-2 bottom-2 w-0.5 bg-slate-200" />
+            {/* 세로선은 정류장 점의 가운데(점 16px의 절반 = 0.5rem)를 지난다.
+                예전에는 left 19px라 점 가운데(8px)에서 11px 비껴 지나갔다.
+                위아래는 첫 점과 마지막 점의 가운데쯤(1.25rem)에서 끝낸다. */}
+            <div className="absolute left-[calc(0.5rem-1px)] top-5 bottom-5 w-0.5 bg-line" aria-hidden="true" />
             <div className="space-y-1">
             {stops.map((stop, stopIndex) => {
                 const stopBuses = busesByStopIndex.get(stopIndex) ?? [];
@@ -1368,14 +1457,16 @@ const handleStopClick = async (stop: BusStop) => {
 
                 return (
                   <div key={`${stop.order}-${stop.id}`} className="relative flex items-start gap-3">
+                    {/* 정류장 점: 버스가 있으면 brand로 채우고(예전 밝은 파랑은
+                        흰 글자 대비 3.7:1), 없으면 흰 면 + faint 테두리. */}
                     <div
                       className={`relative z-10 mt-3 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-500 ease-out ${
-                        hasBus ? "bg-blue-500 border-blue-500 scale-125" : "bg-white border-slate-300 scale-100"
+                        hasBus ? "bg-brand border-brand scale-125" : "bg-surface border-faint scale-100"
                       }`}
                     >
                       {/* B2. 버스가 지금 이 정류장에 있다는 걸 은은한 펄스로 전달 — 장식이 아니라 실시간 상태 신호입니다 */}
                       {hasBus && (
-                        <span className="absolute inset-0 rounded-full bg-blue-400 animate-ping opacity-60" />
+                        <span className="absolute inset-0 rounded-full bg-brand animate-ping opacity-60" />
                       )}
                       <span className="sr-only">{stop.order}</span>
                     </div>
@@ -1384,32 +1475,34 @@ const handleStopClick = async (stop: BusStop) => {
                       disabled={addingStopId === stop.id}
                       /* 행 사이 간격이 4px뿐이라 위아래 2px씩만 넓힌다. 이웃 행과
                          맞닿기는 해도 겹치지는 않는다(간격 4 -> 0). */
-                      className="relative flex-1 flex items-center justify-between py-2.5 px-3 rounded-xl active:bg-white transition-colors text-left before:content-[''] before:absolute before:inset-x-0 before:-inset-y-0.5"
+                      className="relative flex-1 flex items-center justify-between py-2.5 px-3 rounded-tile active:bg-surface transition-colors text-left select-none touch-manipulation before:content-[''] before:absolute before:inset-x-0 before:-inset-y-0.5"
                     >
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[11px] text-slate-400 font-medium w-5 shrink-0">
+                        <span className="text-micro font-medium text-muted tabular-nums w-5 shrink-0">
                           {stop.order}
                         </span>
-                        <span className="text-sm font-medium text-slate-700">{stop.name}</span>
+                        <span className="text-body text-ink">{stop.name}</span>
+                        {/* 버스 표시: brand 알약 + 흰 글자(5.2:1). 예전 밝은 파랑
+                            위 10px 흰 글자는 3.7:1이었다. 글자는 Micro(rem). */}
                         {hasBus && (
                           <span
                             key={stopBuses[0].vehicleNo}
-                            className="flex items-center gap-1 bg-blue-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full animate-stop-badge-in"
+                            className="flex items-center gap-1 bg-brand text-white text-micro px-1.5 rounded-full animate-stop-badge-in"
                           >
-                            <Navigation className="w-2.5 h-2.5" />
+                            <Navigation className="w-2.5 h-2.5" aria-hidden="true" />
                             {stopBuses[0].vehicleNo || "버스"}
                             {stopBuses.length > 1 && ` +${stopBuses.length - 1}`}
                           </span>
                         )}
                       </div>
                       {addingStopId === stop.id ? (
-                        <span className="w-4 h-4 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin shrink-0" />
+                        <span className="w-4 h-4 border-2 border-line border-t-brand rounded-full animate-spin shrink-0" />
                       ) : (
                         <Star
                           className={`w-4 h-4 shrink-0 transition-colors ${
                             isArrivalFavorited(stop)
-                              ? "text-amber-400 fill-amber-400"
-                              : "text-slate-300"
+                              ? "text-star fill-star"
+                              : "text-faint"
                           }`}
                         />
                       )}
@@ -1536,55 +1629,56 @@ function DispatchScheduleModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl animate-slide-up">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+      <div className="relative bg-surface rounded-t-hero sm:rounded-hero w-full max-w-md max-h-[80vh] flex flex-col shadow-sheet animate-slide-up">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-line">
           <div className="flex items-center gap-2">
-            <Clock className="w-5 h-5 text-blue-600" />
-            <h2 className="text-lg font-bold text-slate-900">배차시간</h2>
+            <Clock className="w-5 h-5 text-brand" aria-hidden="true" />
+            <h2 className="text-title text-ink">배차시간</h2>
           </div>
           <button
             onClick={onClose}
-            className="relative p-1.5 rounded-full active:bg-slate-100 before:content-[''] before:absolute before:-inset-1.5"
+            aria-label="닫기"
+            className="relative p-1.5 rounded-full active:bg-canvas before:content-[''] before:absolute before:-inset-1.5"
           >
-            <X className="w-5 h-5 text-slate-500" />
+            <X className="w-5 h-5 text-muted" />
           </button>
         </div>
 
-        <div className="px-5 py-4 border-b border-slate-100">
+        <div className="px-5 py-4 border-b border-line">
           <div className="flex items-center gap-2 mb-3">
             {/* route.name은 "본선104"라 그대로 쓰면 번호가 두 번 나오고
                 분류와 번호가 한 단어로 붙는다. 노선 상세 제목과 같은 표기로
                 맞춘다 — 같은 노선이 화면마다 다르게 보이면 안 된다. */}
-            <span className="font-bold text-ink text-lg">{route.number}번</span>
-            <span className="text-xs text-slate-400">
+            <span className="text-body-strong font-bold text-ink">{route.number}번</span>
+            <span className="text-caption text-muted">
               {getRouteCategory(route.name)}
             </span>
           </div>
           <div className="grid grid-cols-3 gap-2">
-            <div className="bg-slate-50 rounded-xl p-3 text-center">
+            <div className="bg-canvas rounded-tile p-3 text-center">
               <div className="flex items-center justify-center mb-1">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                <Calendar className="w-3.5 h-3.5 text-faint" aria-hidden="true" />
               </div>
-              <p className="text-[10px] text-slate-400 mb-0.5">첫차</p>
-              <p className="text-sm font-bold text-slate-700">{route.firstBus}</p>
+              <p className="text-micro font-medium text-muted mb-0.5">첫차</p>
+              <p className="text-body font-bold text-ink tabular-nums">{route.firstBus}</p>
             </div>
-            <div className="bg-slate-50 rounded-xl p-3 text-center">
+            <div className="bg-canvas rounded-tile p-3 text-center">
               <div className="flex items-center justify-center mb-1">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                <Calendar className="w-3.5 h-3.5 text-faint" aria-hidden="true" />
               </div>
-              <p className="text-[10px] text-slate-400 mb-0.5">막차</p>
-              <p className="text-sm font-bold text-slate-700">{route.lastBus}</p>
+              <p className="text-micro font-medium text-muted mb-0.5">막차</p>
+              <p className="text-body font-bold text-ink tabular-nums">{route.lastBus}</p>
             </div>
-            <div className="bg-slate-50 rounded-xl p-3 text-center">
+            <div className="bg-canvas rounded-tile p-3 text-center">
               <div className="flex items-center justify-center mb-1">
-                <Clock className="w-3.5 h-3.5 text-blue-500" />
+                <Clock className="w-3.5 h-3.5 text-brand" aria-hidden="true" />
               </div>
-              <p className="text-[10px] text-slate-400 mb-0.5">배차간격</p>
-              <p className="text-sm font-bold text-blue-700">{route.interval}</p>
+              <p className="text-micro font-medium text-muted mb-0.5">배차간격</p>
+              <p className="text-body font-bold text-brand tabular-nums">{route.interval}</p>
             </div>
           </div>
           {intervalInfo && (
-            <p className="text-[11px] text-slate-400 mt-3 text-center">
+            <p className="text-caption text-muted mt-3 text-center">
               {intervalInfo.min}분 ~ {intervalInfo.max}분 간격으로 운행합니다
             </p>
           )}
@@ -1601,10 +1695,10 @@ function DispatchScheduleModal({
 
           {realStatus === "success" && realSchedule && (
             <>
-              <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-1.5">
-                <Navigation className="w-4 h-4 text-blue-500" />
+              <h3 className="text-body-strong text-ink mb-3 flex items-center gap-1.5">
+                <Navigation className="w-4 h-4 text-brand" aria-hidden="true" />
                 실제 배차시간표
-                <span className="text-[10px] font-normal text-blue-500 bg-slate-100 px-1.5 py-0.5 rounded-full ml-1">
+                <span className="inline-flex items-center h-5 px-2 rounded-full bg-brand-soft text-brand text-micro ml-1">
                   공식 데이터
                 </span>
               </h3>
@@ -1612,14 +1706,14 @@ function DispatchScheduleModal({
                 {markSchedule(realSchedule.times, intervalInfo?.min ?? 15).map(
                   ({ time, isPast, isNext }, i) => {
                   const cls = isNext
-                    ? "bg-blue-600 text-white font-bold"
+                    ? "bg-brand text-white font-bold"
                     : isPast
-                    ? "bg-slate-50 text-slate-300"
-                    : "bg-slate-50 text-slate-600";
+                    ? "bg-canvas text-faint"
+                    : "bg-canvas text-ink";
                   return (
                     <div
                       key={time + "-" + i}
-                      className={"py-2 rounded-lg text-center text-sm font-medium transition-colors " + cls}
+                      className={"py-2 rounded-tile text-center text-body tabular-nums transition-colors " + cls}
                     >
                       {time}
                     </div>
@@ -1627,21 +1721,21 @@ function DispatchScheduleModal({
                 })}
               </div>
               {realSchedule.note && (
-                <p className="text-[11px] text-slate-400 mt-4 whitespace-pre-line">{realSchedule.note}</p>
+                <p className="text-caption text-muted mt-4 whitespace-pre-line">{realSchedule.note}</p>
               )}
               {realSchedule.satSkip && (
-                <p className="text-[11px] text-slate-400 mt-2">토요일 미운행: {realSchedule.satSkip}</p>
+                <p className="text-caption text-muted mt-2">토요일 미운행: {realSchedule.satSkip}</p>
               )}
               {realSchedule.holidaySkip && (
-                <p className="text-[11px] text-slate-400 mt-1">일요일(공휴일) 미운행: {realSchedule.holidaySkip}</p>
+                <p className="text-caption text-muted mt-1">일요일(공휴일) 미운행: {realSchedule.holidaySkip}</p>
               )}
             </>
           )}
 
           {realStatus === "unavailable" && (
             <>
-              <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-1.5">
-                <Navigation className="w-4 h-4 text-blue-500" />
+              <h3 className="text-body-strong text-ink mb-3 flex items-center gap-1.5">
+                <Navigation className="w-4 h-4 text-brand" aria-hidden="true" />
                 예상 출발 시간표
               </h3>
               {timetable.length > 0 ? (
@@ -1649,14 +1743,14 @@ function DispatchScheduleModal({
                   {markSchedule(timetable, intervalInfo?.min ?? 15).map(
                     ({ time, isPast, isNext }, i) => {
                     const cls = isNext
-                      ? "bg-blue-600 text-white font-bold"
+                      ? "bg-brand text-white font-bold"
                       : isPast
-                      ? "bg-slate-50 text-slate-300"
-                      : "bg-slate-50 text-slate-600";
+                      ? "bg-canvas text-faint"
+                      : "bg-canvas text-ink";
                     return (
                       <div
                         key={time + "-" + i}
-                        className={"py-2 rounded-lg text-center text-sm font-medium transition-colors " + cls}
+                        className={"py-2 rounded-tile text-center text-body tabular-nums transition-colors " + cls}
                       >
                         {time}
                       </div>
@@ -1665,13 +1759,13 @@ function DispatchScheduleModal({
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-8">
-                  <Clock className="w-8 h-8 text-slate-300 mb-2" />
-                  <p className="text-sm text-slate-400">배차간격 정보가 없어</p>
-                  <p className="text-sm text-slate-400">시간표를 생성할 수 없어요</p>
+                  <Clock className="w-8 h-8 text-faint mb-2" aria-hidden="true" />
+                  <p className="text-body text-muted">배차간격 정보가 없어</p>
+                  <p className="text-body text-muted">시간표를 생성할 수 없어요</p>
                 </div>
               )}
               {timetable.length > 0 && (
-                <p className="text-[11px] text-slate-400 mt-4 text-center">
+                <p className="text-caption text-muted mt-4 text-center">
                   배차간격을 기준으로 한 예상 시간표로, 실제와 다를 수 있어요
                 </p>
               )}

@@ -15,6 +15,12 @@ export interface Favorite {
   appRouteId?: string;   // 우리 앱 내부 route.id (상세화면 이동용)
   stopName?: string;
   routeNumber?: string;
+  /**
+   * "내 정류장"으로 고정했는지. 고정한 stop_route가 홈 히어로에 먼저 올라간다.
+   * 한 번에 하나만 true다(reducer의 SET_FAVORITE_PIN이 보장).
+   * 2단계에서 새로 생긴 선택 필드라, 예전 저장값에는 없다 — 없으면 고정 안 함.
+   */
+  pinned?: boolean;
 }
 
 

@@ -8,7 +8,8 @@
 // 버전을 올리면 activate 핸들러가 이전 캐시를 전부 지운다. iOS 홈 화면 PWA는
 // Safari 탭과 저장소가 분리돼 있어, Safari에서는 최신 빌드가 보이는데 PWA만
 // 옛 자산을 계속 쓰는 경우가 있다. 그럴 때 강제로 갈아끼우기 위한 버전이다.
-const CACHE_NAME = "bus-stop-runtime-v2";
+// v3: 화면 개선 0~5단계(DESIGN.md 10장)로 화면 자산이 크게 바뀌어 올렸다.
+const CACHE_NAME = "bus-stop-runtime-v3";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();

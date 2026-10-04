@@ -69,17 +69,12 @@
 }
 
 @layer utilities {
-  /* iPhone notch / Dynamic Island / status bar 안전영역. 값 없는 기기에서는
-     기존 pt-16/pt-14와 동일하게 보이도록 max()의 두 번째 인자를 기존 고정값으로
-     둔다 — 안전영역이 있는 기기에서만 그만큼 더 내려간다. */
-  .pt-safe-16 {
-    padding-top: max(calc(env(safe-area-inset-top) + 1rem), 4rem);
-  }
-  .pt-safe-14 {
-    padding-top: max(calc(env(safe-area-inset-top) + 0.75rem), 3.5rem);
-  }
+  /* 예전에는 여기에 pt-safe-16 / pt-safe-14가 있었다(파란 머리글의 윗여백,
+     max(calc(env(safe-area-inset-top) + 1rem), 4rem) 같은 모양). 4단계에서 모든
+     머리글이 얇은 헤더(pt-safe-0 + h-14)로 바뀌어 쓰는 곳이 0건이 됐고, env()를
+     max() 안에 넣는 모양이라 5단계 정리에서 지웠다(CLAUDE.md 8장). */
 
-  /* 화면 최상단에 바로 붙는 배너 묶음/토스트용. 위 pt-safe-16/14와 달리
+  /* 화면 최상단에 바로 붙는 배너 묶음/토스트용. 예전 pt-safe-16/14와 달리
      max()로 최소 높이를 강제하지 않는다 — 헤더가 아니라 얇은 안내 줄이라,
      안전영역이 없는 환경(브라우저 탭)에서는 이 패딩이 그냥 0이면 된다.
      standalone PWA에서 상태바 아이콘과 겹쳐 닫기 버튼을 못 누르던 문제
@@ -88,12 +83,23 @@
      각 배너 자신이 아니라 그 둘을 감싸는 바깥 wrapper 하나에만 준다 —
      안 그러면 두 배너가 동시에 뜰 때 사이에 안전영역만큼 빈 틈이 하나
      더 생긴다. 토스트는 항상 화면 최상단에 단독으로 뜨므로 자기 자신에
-     바로 적용한다. */
+     바로 적용했다(2단계부터는 얇은 헤더 아래 top-safe-16을 쓴다).
+     4단계부터 홈 화면 앱은 상태바 아래부터 그려져(index.html 상태바 주석)
+     위쪽 안전영역이 0이다. 그래서 이 유틸리티들은 홈 화면 앱에서 상태바
+     높이를 더하지 않는다. 헤더 위치는 예전과 같다(상태바 바로 아래). */
   .pt-safe-0 {
     padding-top: env(safe-area-inset-top);
   }
   .top-safe-4 {
     top: calc(env(safe-area-inset-top) + 1rem);
+  }
+  /* 토스트 위치. 홈의 얇은 헤더(안전영역 + 3.5rem, DESIGN.md 7-2) 바로 아래
+     0.5rem이다. 위 top-safe-4에 두면 토스트가 헤더의 검색·알림 버튼을 덮어
+     3초 동안 누를 수 없었다. 헤더와 같이 rem이라 큰 글씨에서도 겹치지 않는다.
+     3단계에서 하단 탭 위로 내려 봤지만, 사용자 결정으로 이 자리로 되돌렸다.
+     대신 3초 동안 히어로 첫 줄(정류장 이름, 새로고침 버튼)을 덮는다. */
+  .top-safe-16 {
+    top: calc(env(safe-area-inset-top) + 4rem);
   }
 
   /* 하단 네비게이션 안전영역.
@@ -110,6 +116,16 @@
    * - standalone: 홈 인디케이터가 화면 하단 8~13pt 구간이라 20px면 7pt 여유를
    *   두고 완전히 비켜가고, iOS 홈 스와이프 제스처 구간(하단 ~20pt) 밖에 탭
    *   버튼이 놓여 탭이 제스처에 먹히지도 않는다.
+   *
+   * standalone 20px은 앱 아래끝이 화면 맨 아래와 같다는 전제다. 4단계 전에는
+   * 상태바 방식(black-translucent) 때문에 iOS 26에서 앱이 화면 맨 아래보다
+   * 47pt 위에서 끝나, 탭 아래에 흰 띠가 생기고 탭이 그만큼 더 떠 있었다
+   * (index.html 상태바 주석).
+   *
+   * iOS 홈 화면 앱은 html.ios-standalone(main.tsx, navigator.standalone)으로도
+   * 가린다. 4단계 실기기 캡처에서 홈 화면 앱인데 display-mode가 맞지 않아
+   * 브라우저 값 8px이 잡혔다(탭 717~781pt, 앱 아래끝 797pt — 탭 아래 16pt =
+   * 8 + 8). 상태바 방식을 바꾼 지금 8px이면 탭이 홈 인디케이터에 거의 붙는다.
    */
   .pb-nav-safe {
     padding-bottom: 8px;
@@ -119,6 +135,29 @@
       padding-bottom: 20px;
     }
   }
+  html.ios-standalone .pb-nav-safe {
+    padding-bottom: 20px;
+  }
+
+  /* 떠 있는 하단 탭(DESIGN.md 7-9)이 덮는 높이를 스크롤 영역 끝에 비워 둔다.
+     탭이 차지하는 높이 = pb-nav-safe(8px / 홈 화면 앱 20px) + 탭 아래 틈
+     8px + 탭 4rem. 여기에 0.5rem을 더 둬 마지막 항목이 탭에 딱 붙지 않게
+     한다. 위 pb-nav-safe와 같은 이유로 env()를 쓰지 않고 display-mode로
+     나눈 고정값을 쓴다 — calc 안에 env()를 넣지 않는다.
+     값을 바꿀 때는 BottomNav의 mb-[8px]·h-16과 함께 바꾼다. */
+  .pb-nav-clear {
+    padding-bottom: calc(8px + 8px + 4rem + 0.5rem);
+  }
+  @media (display-mode: standalone) {
+    .pb-nav-clear {
+      padding-bottom: calc(20px + 8px + 4rem + 0.5rem);
+    }
+  }
+  /* 위 pb-nav-safe와 같은 이유로 iOS 홈 화면 앱은 클래스로도 가린다. */
+  html.ios-standalone .pb-nav-clear {
+    padding-bottom: calc(20px + 8px + 4rem + 0.5rem);
+  }
+
   /* 스크롤 영역: 스크롤바를 감추고 iOS 관성 스크롤을 켠다.
      .app-scroll은 같은 뜻의 다른 이름이라 규칙을 따로 만들지 않고 함께 묶는다. */
   .scrollbar-hide,
@@ -147,35 +186,9 @@
   }
 }
 
-@keyframes slide-up {
-  from {
-    transform: translateY(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-@keyframes slide-down {
-  from {
-    transform: translateY(-100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.animate-slide-up {
-  animation: slide-up 0.3s ease-out;
-}
-
-.animate-slide-down {
-  animation: slide-down 0.3s ease-out;
-}
+/* slide-up / slide-down 키프레임과 .animate-slide-* 클래스는 tailwind.config.js의
+   animation·keyframes와 값이 같은 중복이라 5단계 정리에서 여기서 지웠다.
+   tailwind가 같은 이름으로 만든다. */
 
 /* B2. 정류장 타임라인에 버스 배지가 나타날 때 쓰는 상태 전달용 전환(장식용 아님) */
 @keyframes stop-badge-in {
@@ -233,18 +246,44 @@ html.color-blind .bg-blue-50 {
 html.color-blind .bg-emerald-50 {
   background-color: #fef3c7 !important;
 }
-/* 본선/분선 배지는 연한 배경(-50)이 아니라 채워진 배경(-500)에 흰 글씨다.
+/* 본선/분선 배지는 연한 배경(-50)이 아니라 채워진 배경에 흰 글씨다.
    초록/파랑 구분이 어려운 사용자를 위해 분선 배지를 주황 계열로 바꾼다.
-   흰 글씨 대비를 유지해야 하므로 충분히 진한 값을 쓴다. */
-html.color-blind .bg-emerald-500 {
+   흰 글씨 대비를 유지해야 하므로 충분히 진한 값을 쓴다.
+   예전에는 여기에 bg-emerald-500 / bg-emerald-600 / text-emerald-700 규칙도
+   있었다. 0단계에서 배지가 bg-route-branch 토큰으로 바뀌어(아래 규칙) 그 세
+   클래스를 쓰는 곳이 숨긴 화면까지 포함해 0건이 됐고, 5단계 정리에서 지웠다.
+   text-emerald-600은 숨긴 교통카드 화면이 아직 써서 남긴다. */
+html.color-blind .text-emerald-600 {
+  color: #b45309 !important;
+}
+
+/* 토큰으로 바꾼 노선 배지와 신뢰도 칩(DESIGN.md 4-2)에도 같은 대체 색을 건다.
+   클래스 이름이 바뀌면 위 규칙이 걸리지 않아, 색약 모드에서 본선과 분선이
+   다시 파랑/초록으로만 갈리게 된다.
+   - 분선 배지: 위 -500 배지와 같은 주황(흰 글자 대비 유지)
+   - 실시간 칩: 파랑 계열. 지연 의심과 같은 주황으로 두면 두 상태가 같은
+     색이 된다. 위 text-blue / bg-blue-50 대체 값을 쓴다.
+   - 지연 의심 칩: 주황 글자 + 위 bg-emerald-50 대체 값(연한 노랑) */
+html.color-blind .bg-route-branch {
   background-color: #b45309 !important;
 }
-html.color-blind .bg-emerald-600 {
-  background-color: #92400e !important;
+html.color-blind .text-live {
+  color: #1d4ed8 !important;
 }
-html.color-blind .text-emerald-600,
-html.color-blind .text-emerald-700 {
+/* 4단계: 노선 상세의 "실시간 위치 연동 중" 점이 live 바탕(bg-live)을 쓴다.
+   실시간 글자와 같은 파랑으로 맞춘다 — 안 그러면 색약 모드에서 실시간 칩은
+   파랑인데 이 점만 초록으로 남는다. */
+html.color-blind .bg-live {
+  background-color: #1d4ed8 !important;
+}
+html.color-blind .bg-live-soft {
+  background-color: #dbeafe !important;
+}
+html.color-blind .text-delay {
   color: #b45309 !important;
+}
+html.color-blind .bg-delay-soft {
+  background-color: #fef3c7 !important;
 }
 
 /* 기기 접근성 설정에서 "동작 줄이기"를 켠 사용자에게는 모든 전환을
