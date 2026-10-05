@@ -8,12 +8,10 @@ import type { TabId } from "@/components/BottomNav";
 import {
   AlertTriangle,
   Bell,
-  BellRing,
   Bus,
   ChevronDown,
   ChevronRight,
   MapPin,
-  Navigation,
   Pin,
   Plus,
   Search,
@@ -268,22 +266,13 @@ function HomeHeader({
   );
 }
 
-/* 빠른 실행 (DESIGN.md 7-7). 모두 이미 있는 화면으로 가는 바로가기다. */
-const QUICK_ACTIONS = [
-  { label: "노선 검색", Icon: Bus, tab: "bus" as const },
-  { label: "정류장 검색", Icon: MapPin, tab: "bus" as const, searchTab: "station" as const },
-  { label: "길찾기", Icon: Navigation, tab: "route" as const },
-  { label: "하차 알림", Icon: BellRing, tab: "alert" as const },
-];
-
 export function HomeScreen({
   onNavigate,
 }: {
   onNavigate: (
     tab: TabId,
     routeId?: string,
-    station?: { id: string; name: string; arsId?: string },
-    options?: { searchTab?: "route" | "station" }
+    station?: { id: string; name: string; arsId?: string }
   ) => void;
 }) {
   const { state, dispatch } = useApp();
@@ -639,32 +628,11 @@ export function HomeScreen({
         </section>
       )}
 
-      {/* ⑤ 빠른 실행 (7-7). 4칸을 똑같이 나누고 사이 12px. 칸은 정사각형. */}
-      <section className="px-5 mt-7 shrink-0">
-        <div className="grid grid-cols-4 gap-3">
-          {QUICK_ACTIONS.map(({ label, Icon, tab, searchTab }) => (
-            <button
-              key={label}
-              type="button"
-              onClick={() =>
-                onNavigate(tab, undefined, undefined, searchTab ? { searchTab } : undefined)
-              }
-              /* py-1: 큰 글씨에서는 아이콘 타일과 라벨이 rem이라 함께 커지는데
-                 칸 폭은 오히려 좁아진다(사이 간격도 rem). 375px에서 아이콘이 칸
-                 테두리에 붙었다(위아래 여백 1px). 위아래 4px을 지켜 두면 aspect-square는
-                 내용이 넘칠 때 그만큼 세로로 늘어난다. 보통 글씨에서는 내용이
-                 칸보다 작아 정사각형 그대로다(5단계 실측). */
-              className={`aspect-square py-1 bg-surface border border-line rounded-card flex flex-col items-center justify-center ${PRESSABLE}`}
-            >
-              <span className="w-10 h-10 rounded-tile bg-brand-soft flex items-center justify-center">
-                <Icon className="w-5 h-5 text-brand" aria-hidden="true" />
-              </span>
-              <span className="mt-1.5 text-micro text-ink whitespace-nowrap">{label}</span>
-            </button>
-          ))}
-        </div>
-      </section>
-
+      {/* ⑤ 빠른 실행(7-7)은 지웠다. 예전에는 여기에 노선 검색, 정류장 검색,
+          길찾기, 하차 알림 4칸이 있었다. 넷 다 이미 가는 길이 있고(하단 버스·
+          길찾기 탭, 헤더 돋보기와 종 버튼, 정류장 검색은 버스 탭의 정류장 칸),
+          이 칸이 자리를 차지해 최근 본 노선이 하단 탭 뒤로 밀렸다. 그래서 빈자리를
+          두지 않고 최근 본 노선이 바로 올라오게 했다(12장 "빠른 실행 삭제"). */}
       {/* ⑥ 최근 본 노선 (7-8).
           예전에는 과거 기록이라 즐겨찾기보다 가볍게 흰 판 없이 배경 위에 바로
           얹었다. 7-8에 따라 흰 카드 한 장에 담고 1px 선으로 행을 나눈다 — 위

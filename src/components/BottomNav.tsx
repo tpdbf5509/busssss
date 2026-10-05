@@ -3,8 +3,9 @@ import { Bus, Home, Navigation, User } from "lucide-react";
 export type TabId = "home" | "bus" | "route" | "alert" | "my";
 
 /* 하단 탭은 4개다(DESIGN.md 7-9). 알림은 탭에서 빼고 홈 헤더의 벨로
-   옮겼다. 알림 화면 자체는 그대로라 TabId에는 "alert"가 남는다 — 벨,
-   빠른 실행 "하차 알림"으로 들어가고, 화면 위쪽 뒤로 가기로 나온다. */
+   옮겼다. 알림 화면 자체는 그대로라 TabId에는 "alert"가 남는다. 예전에는
+   벨과 홈 빠른 실행 "하차 알림"으로 들어갔고, 빠른 실행을 지운 뒤로는 벨로만
+   들어간다. 나올 때는 화면 위쪽 뒤로 가기를 쓴다. */
 const tabs = [
   { id: "home" as const, label: "홈", icon: Home },
   { id: "bus" as const, label: "버스", icon: Bus },

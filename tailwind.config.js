@@ -84,7 +84,7 @@ export default {
       borderRadius: {
         hero: '28px',  // 히어로 카드, 바텀시트
         nav: '24px',   // 하단 내비
-        card: '20px',  // 카드, 빠른 실행 타일
+        card: '20px',  // 카드 (예전 홈 빠른 실행 타일에도 썼음, 빠른 실행은 삭제)
         tile: '12px',  // 노선 배지, 아이콘 타일
       },
 

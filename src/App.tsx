@@ -24,13 +24,12 @@ function AppContent() {
     name: string;
     arsId?: string;
   } | null>(null);
-  /* 홈 빠른 실행 "정류장 검색"(DESIGN.md 7-7)으로 들어올 때 버스 화면을
-     정류장 검색 쪽으로 열기 위한 값. 노선·정류장 바로 열기와 같은 방식으로
-     한 번 쓰고 비운다. */
-  const [pendingSearchTab, setPendingSearchTab] = useState<"route" | "station" | null>(null);
   const [homeRefreshKey, setHomeRefreshKey] = useState(0);
-  /* 알림 화면은 하단 탭에 없다(DESIGN.md 7-9). 홈 헤더의 벨이나 빠른 실행으로
-     들어가므로, 화면 위쪽 뒤로 가기는 들어오기 직전의 탭으로 돌려보낸다. */
+  /* 알림 화면은 하단 탭에 없다(DESIGN.md 7-9). 그래서 화면 위쪽 뒤로 가기는
+     들어오기 직전의 탭으로 돌려보낸다. 예전에는 홈 헤더의 벨과 홈 빠른 실행
+     "하차 알림" 두 곳에서 들어왔고, 빠른 실행을 지운 뒤로는 벨 하나로만
+     들어온다(DESIGN.md 12장 "빠른 실행 삭제"). 들어오는 곳이 하나여도 돌아갈
+     탭을 기억해 두는 방식은 그대로 둔다. */
   const [alertReturnTab, setAlertReturnTab] = useState<TabId>("home");
   const [dropoffAlarm, setDropoffAlarm] = useState<DropoffAlarm | null>(null);
   const [quickViewBanner, setQuickViewBanner] = useState<string | null>(null);
@@ -123,10 +122,11 @@ function AppContent() {
   const handleNavigate = (
     nextTab: TabId,
     routeId?: string,
-    station?: { id: string; name: string; arsId?: string },
-    options?: { searchTab?: "route" | "station" }
+    station?: { id: string; name: string; arsId?: string }
   ) => {
-    setPendingSearchTab(options?.searchTab ?? null);
+    /* 예전에는 네 번째 값으로 "버스 화면을 정류장 검색 쪽으로 열기"를 받았다
+       (홈 빠른 실행 "정류장 검색" 전용). 빠른 실행을 지우며 쓰는 곳이 없어져
+       함께 걷었다. 정류장 상세로 바로 가는 길(station)은 그대로다. */
     if (routeId) {
       setPendingRouteId(routeId);
       setPendingStation(null);
@@ -233,8 +233,6 @@ function AppContent() {
             onConsumeInitialRoute={() => setPendingRouteId(null)}
             initialStation={pendingStation ?? undefined}
             onConsumeInitialStation={() => setPendingStation(null)}
-            initialSearchTab={pendingSearchTab ?? undefined}
-            onConsumeInitialSearchTab={() => setPendingSearchTab(null)}
           />
         )}
        {tab === "route" && <RouteScreen />}

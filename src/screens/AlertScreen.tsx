@@ -73,8 +73,9 @@ export function AlertScreen({ onBack }: { onBack?: () => void }) {
         <div className="h-14 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             {/* 알림은 하단 탭에서 빠졌다(DESIGN.md 7-9). 하단 탭에 이 화면의
-                자리가 없으니, 들어온 곳(홈 헤더의 벨, 빠른 실행)으로 돌아가는
-                버튼을 위쪽에 둔다. 모양은 홈 헤더의 원형 버튼과 같다 — 보이는
+                자리가 없으니, 들어온 곳으로 돌아가는 버튼을 위쪽에 둔다. 예전에는
+                홈 헤더의 벨과 홈 빠른 실행에서 들어왔고, 빠른 실행을 지운 뒤로는
+                벨에서만 들어온다. 모양은 홈 헤더의 원형 버튼과 같다 — 보이는
                 원 40px, 투명한 ::before로 사방 2px씩 넓혀 누르는 영역 44px.
                 4단계부터 정류장·노선 상세와 같은 부품(ui.tsx BackButton)을 쓴다. */}
             {onBack && <BackButton onClick={onBack} />}
