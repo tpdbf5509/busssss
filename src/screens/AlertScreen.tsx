@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Bell,
   Plus,
@@ -13,14 +13,18 @@ import {
   ArrowLeft,
   Bus as BusIcon,
   AlertTriangle,
+  HelpCircle,
+  Check,
 } from "lucide-react";
 import { useApp } from "@/store/appContext";
 import { useAsync } from "@/hooks/useAsync";
 import { fetchAllRoutes, fetchStopsForRoute } from "@/services/routeService";
+import { fetchBusLocations } from "@/services/busLocationService";
 import { Toggle, LoadingSkeleton, BackButton } from "@/components/ui";
 import { showToast } from "@/lib/toastStore";
 import { indexOfStopByOrder, maxStopsBefore } from "@/lib/stopPosition";
 import { getRouteCategory, isMainRoute } from "@/lib/routeCategory";
+import { alertVehicleMode, listPickableVehicles, vehicleLabel } from "@/lib/dropoffAlert";
 import type { AlertSetting, AlertRecord } from "@/types";
 import type { Route, BusStop } from "@/types/route";
 import {
@@ -32,6 +36,10 @@ import {
 export function AlertScreen({ onBack }: { onBack?: () => void }) {
   const { state, dispatch } = useApp();
   const [showAdd, setShowAdd] = useState(false);
+  /* 탄 버스를 다시 고르는 창을 연 알림. 창이 열린 동안 감시가 고정을 풀 수
+     있으므로 알림 자체가 아니라 ID를 들고 있다가 최신 값을 찾는다. */
+  const [pickAlertId, setPickAlertId] = useState<string | null>(null);
+  const pickAlert = pickAlertId ? state.alerts.find((a) => a.id === pickAlertId) ?? null : null;
   const [records, setRecords] = useState<AlertRecord[]>(() => loadAlertRecords());
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>(
     () => ("Notification" in window ? Notification.permission : "denied")
@@ -156,6 +164,7 @@ export function AlertScreen({ onBack }: { onBack?: () => void }) {
                 key={alert.id}
                 alert={alert}
                 onToggle={() => dispatch({ type: "TOGGLE_ALERT", id: alert.id })}
+                onPickVehicle={() => setPickAlertId(alert.id)}
                 onRemove={() => {
                   dispatch({ type: "REMOVE_ALERT", id: alert.id });
                   showToast("알림을 삭제했어요");
@@ -234,6 +243,27 @@ export function AlertScreen({ onBack }: { onBack?: () => void }) {
         )}
       </section>
 
+      {pickAlert && (
+        <VehiclePickSheet
+          alert={pickAlert}
+          onClose={() => setPickAlertId(null)}
+          onPick={(vehicleNo) => {
+            dispatch({
+              type: "SET_ALERT_VEHICLE",
+              id: pickAlert.id,
+              vehicleNo,
+              boundAt: Date.now(),
+            });
+            setPickAlertId(null);
+            showToast(
+              vehicleNo
+                ? `${vehicleLabel(vehicleNo)} 기준으로 알려 드릴게요`
+                : "모든 버스 기준으로 알려 드릴게요"
+            );
+          }}
+        />
+      )}
+
       {showAdd && (
         <AddAlertModal
           onClose={() => setShowAdd(false)}
@@ -252,11 +282,15 @@ function AlertCard({
   alert,
   onToggle,
   onRemove,
+  onPickVehicle,
 }: {
   alert: AlertSetting;
   onToggle: () => void;
   onRemove: () => void;
+  /** 탄 버스 고르기 창을 연다(바꾸기, 다시 고르기). */
+  onPickVehicle: () => void;
 }) {
+  const vehicleMode = alertVehicleMode(alert);
   return (
     <div className="px-4 py-4">
       <div className="flex items-start justify-between gap-3">
@@ -290,6 +324,30 @@ function AlertCard({
             <span className="font-medium truncate">{alert.targetStation}</span>
             <span className="shrink-0">하차</span>
           </div>
+          {/* 무엇을 기준으로 울리는지 작게 한 줄로 보인다(Caption muted).
+              고정한 차량이면 "5668번 차량 기준 · 바꾸기"다. "바꾸기"는 잘못
+              고른 차량을 바로잡는 길이다 — 잘못 고르면 내가 탄 버스로는 울리지
+              않는다. 모든 버스 기준이면 "모든 버스 기준 · 버스 고르기"다.
+              처음에는 고정한 차량일 때만 이 줄을 두었는데, 그러면 "잘 모르겠어요"를
+              고른 알림이나 예전 알림은 지웠다 다시 만들어야 차량을 고를 수
+              있었다(사용자 결정으로 모든 카드에 둠). 고정이 풀려 다시 고르기를
+              기다리는 동안은 이 줄 대신 아래 안내가 보인다. 글자 줄(18px)에
+              ::before로 위아래 14px씩 더해 누르는 영역 46px. */}
+          {vehicleMode !== "awaiting" && (
+            <div className="flex items-center gap-1.5 mt-1 text-caption text-muted min-w-0">
+              <BusIcon className="w-3 h-3 shrink-0" aria-hidden="true" />
+              <span className="tabular-nums truncate">
+                {vehicleMode === "bound" ? `${vehicleLabel(alert.vehicleNo!)} 기준` : "모든 버스 기준"}
+              </span>
+              <button
+                onClick={onPickVehicle}
+                aria-label={vehicleMode === "bound" ? "탄 버스 바꾸기" : "탄 버스 고르기"}
+                className="relative shrink-0 ml-1 select-none touch-manipulation text-brand active:underline before:content-[''] before:absolute before:-inset-x-2 before:-inset-y-3.5"
+              >
+                {vehicleMode === "bound" ? "바꾸기" : "버스 고르기"}
+              </button>
+            </div>
+          )}
         </div>
         <Toggle
           checked={alert.active}
@@ -297,6 +355,27 @@ function AlertCard({
           label={`${alert.routeNumber}번 ${alert.targetStation} 하차 알림`}
         />
       </div>
+
+      {/* 고정이 풀려 다음 탑승 때 다시 골라야 하는 상태(lib/dropoffAlert.ts).
+          이때는 모든 버스 기준으로 돌아가지 않고 울리지 않으므로, 그 사실과
+          고르는 버튼을 카드 안에 둔다. 버튼은 섹션 "추가"와 같은 brand-soft
+          알약(높이 32px + 위아래 6px로 44px). */}
+      {vehicleMode === "awaiting" && (
+        <div className="flex items-center justify-between gap-3 mt-3">
+          {/* 한 줄씩 짧게 둔다. 길게 쓰면 버튼 옆에서 "전/에는"처럼 낱말이
+              갈라져, 줄바꿈도 낱말 단위(break-keep)로 한다. */}
+          <div className="min-w-0 break-keep">
+            <p className="text-caption text-ink">탈 버스를 다시 골라 주세요</p>
+            <p className="text-caption text-muted">고르기 전에는 울리지 않아요</p>
+          </div>
+          <button
+            onClick={onPickVehicle}
+            className="relative select-none touch-manipulation shrink-0 h-8 px-3 rounded-full bg-brand-soft text-brand text-caption font-semibold active:bg-line transition-colors before:content-[''] before:absolute before:inset-x-0 before:-inset-y-1.5"
+          >
+            버스 고르기
+          </button>
+        </div>
+      )}
 
       <div className="flex items-center gap-3 mt-3 pt-3 border-t border-line">
         <span className="flex items-center gap-1 text-caption text-muted">
@@ -329,10 +408,16 @@ function AddAlertModal({
   onClose: () => void;
   onAdd: (alert: AlertSetting) => void;
 }) {
-  const [step, setStep] = useState<"route" | "stop" | "options">("route");
+  // 노선 → 하차 정류장 → 탄 버스 → 알림 설정. 탄 버스 단계는 고를 버스가
+  // 없으면 건너뛴다(vehicleSkip). 예전에는 탄 버스 단계가 없어 모든 차량 기준이었다.
+  const [step, setStep] = useState<"route" | "stop" | "vehicle" | "options">("route");
   const [query, setQuery] = useState("");
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
   const [selectedStop, setSelectedStop] = useState<BusStop | null>(null);
+  /** 고른 차량번호. null이면 "잘 모르겠어요"(모든 버스 기준). */
+  const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
+  /** 탄 버스 단계를 건너뛴 이유. 알림 설정 단계에 안내 문구로 보인다. */
+  const [vehicleSkip, setVehicleSkip] = useState<"empty" | "error" | null>(null);
   const [stopsBefore, setStopsBefore] = useState(2);
   const [sound, setSound] = useState(true);
   const [vibrate, setVibrate] = useState(true);
@@ -369,6 +454,14 @@ function AddAlertModal({
     }
   }, [stopsBeforeMax]);
 
+  // 지금 보이는 버스가 없거나 위치를 못 불러오면 탄 버스 단계를 건너뛰고
+  // 모든 버스 기준으로 만든다. 알림 설정 단계에 이유를 한 줄로 남긴다.
+  const handleVehicleUnavailable = useCallback((reason: "empty" | "error") => {
+    setSelectedVehicle(null);
+    setVehicleSkip(reason);
+    setStep("options");
+  }, []);
+
   const handleSave = () => {
     if (!selectedRoute || !selectedStop) return;
     // 첫 정류장이거나 위치를 확인 못했으면 "N정거장 전"이 성립하지 않아 저장해도 절대 울리지 않는다.
@@ -384,6 +477,9 @@ function AddAlertModal({
       sound,
       vibrate,
       active: true,
+      // 탄 버스를 골랐을 때만 고정 키를 넣는다. 고르지 않으면 예전과 같은
+      // 모양(모든 차량 기준)으로 저장된다.
+      ...(selectedVehicle ? { vehicleNo: selectedVehicle, boundAt: Date.now() } : {}),
     });
   };
 
@@ -396,7 +492,11 @@ function AddAlertModal({
           {step !== "route" && (
             <button
               onClick={() => {
-                if (step === "options") setStep("stop");
+                // 탄 버스 단계를 건너뛰고 왔으면(고를 버스 없음, 첫 정류장 등)
+                // 그 단계로 돌아가지 않고 정류장 고르기로 간다.
+                if (step === "options") {
+                  setStep(vehicleSkip || targetIndex <= 0 ? "stop" : "vehicle");
+                } else if (step === "vehicle") setStep("stop");
                 else {
                   setStep("route");
                   setSelectedRoute(null);
@@ -413,6 +513,7 @@ function AddAlertModal({
           <h2 className="text-title text-ink">
             {step === "route" && "노선 선택"}
             {step === "stop" && "하차 정류장 선택"}
+            {step === "vehicle" && "탄 버스 선택"}
             {step === "options" && "알림 설정"}
           </h2>
         </div>
@@ -514,7 +615,12 @@ function AddAlertModal({
                     key={`${stop.order}-${stop.id}`}
                     onClick={() => {
                       setSelectedStop(stop);
-                      setStep("options");
+                      setSelectedVehicle(null);
+                      setVehicleSkip(null);
+                      // 첫 정류장이거나 목록에서 못 찾으면 알림을 만들 수 없다.
+                      // 탄 버스를 묻지 않고 바로 안내가 있는 설정 단계로 간다.
+                      const index = indexOfStopByOrder(stops, stop.order);
+                      setStep(index > 0 ? "vehicle" : "options");
                     }}
                     className="w-full min-h-12 flex items-center gap-3 px-3 py-3 text-left select-none touch-manipulation transition-colors duration-75 active:bg-canvas"
                   >
@@ -528,6 +634,30 @@ function AddAlertModal({
           </div>
         )}
 
+        {step === "vehicle" && selectedRoute && selectedStop && stops && (
+          /* 맨 아래가 "잘 모르겠어요" 줄이라, 알림 설정 단계(py-5)처럼 아래를
+             20px 띄워 홈 인디케이터 쪽에 붙지 않게 한다. */
+          <div className="px-4 pt-3 pb-5 break-keep">
+            <p className="text-caption text-muted">
+              {selectedRoute.name || selectedRoute.number} · 지금 탄 버스를 골라 주세요
+            </p>
+            <p className="text-caption text-muted mb-2">
+              고른 버스가 {selectedStop.name}에 가까워질 때만 울려요.
+            </p>
+            <VehicleChoices
+              route={selectedRoute}
+              stops={stops}
+              targetIndex={targetIndex}
+              onPick={(vehicleNo) => {
+                setSelectedVehicle(vehicleNo);
+                setVehicleSkip(null);
+                setStep("options");
+              }}
+              onUnavailable={handleVehicleUnavailable}
+            />
+          </div>
+        )}
+
         {step === "options" && selectedRoute && selectedStop && (
           <div className="px-5 py-5 space-y-5">
             <div className="bg-canvas rounded-tile p-3">
@@ -538,6 +668,19 @@ function AddAlertModal({
                 하차: {selectedStop.name}
                 {targetIndex >= 0 && ` (${targetIndex + 1}번째 정류장)`}
               </p>
+              {/* 첫 정류장 등으로 저장이 막히면 아래 안내가 따로 나오므로 숨긴다. */}
+              {!stopsBeforeDisabled && (
+                <p className="text-caption text-muted">
+                  {selectedVehicle ? `${vehicleLabel(selectedVehicle)} 기준` : "모든 버스 기준"}
+                </p>
+              )}
+              {!stopsBeforeDisabled && vehicleSkip && (
+                <p className="text-caption text-muted">
+                  {vehicleSkip === "empty"
+                    ? "지금 운행 중인 버스가 보이지 않아 고르지 못했어요."
+                    : "버스 위치를 불러오지 못해 고르지 못했어요."}
+                </p>
+              )}
             </div>
 
             <div>
@@ -619,6 +762,243 @@ function AddAlertModal({
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 탄 버스 고르기 목록 (DESIGN.md 12장 "하차 알림 차량 고정").
+ *
+ * 새 종류의 조회 없이 노선 상세와 같은 버스 위치 조회(fetchBusLocations)를
+ * 한 번만 부른다. 15초마다 다시 부르지 않는 이유: 고르는 동안 목록 순서가
+ * 바뀌면 다른 버스를 잘못 누를 수 있다. 위치 조회는 3초 동안 저장값을
+ * 같이 쓰므로, 감시가 방금 부른 노선이면 요청이 새로 나가지 않는다.
+ *
+ * 행: 36px 아이콘 타일(7-8) / 차량번호(Body-strong) / 지금 정류장(Caption)
+ * / 하차까지 남은 정거장(Caption). 맨 아래 "잘 모르겠어요"는 모든 버스 기준.
+ */
+function VehicleChoices({
+  route,
+  stops,
+  targetIndex,
+  currentVehicleNo,
+  onPick,
+  onUnavailable,
+}: {
+  route: Route;
+  stops: BusStop[];
+  targetIndex: number;
+  /** 지금 고정된 차량. 다시 고를 때 그 줄에 체크를 보인다. */
+  currentVehicleNo?: string;
+  /** null이면 "잘 모르겠어요"(모든 버스 기준). */
+  onPick: (vehicleNo: string | null) => void;
+  /**
+   * 있으면 고를 버스가 없을 때 목록 대신 이것을 부른다(알림 만들기에서 이
+   * 단계를 건너뜀). 없으면 안내와 "다시 불러오기"를 이 자리에 보인다.
+   */
+  onUnavailable?: (reason: "empty" | "error") => void;
+}) {
+  const { data: locations, status, retry } = useAsync(() => fetchBusLocations(route), [route.id]);
+  const pickable = locations ? listPickableVehicles(locations, stops, targetIndex) : null;
+  const unavailable: "empty" | "error" | null =
+    status === "error"
+      ? "error"
+      : status === "success" && pickable && pickable.vehicles.length === 0
+        ? "empty"
+        : null;
+
+  useEffect(() => {
+    if (unavailable && onUnavailable) onUnavailable(unavailable);
+  }, [unavailable, onUnavailable]);
+
+  // 조회 전(idle)도 불러오는 중으로 본다. 건너뛸 때도 다음 단계로 넘어가기
+  // 전 한 순간이라 같은 모양을 깔아 둔다.
+  if (status === "idle" || status === "loading" || (unavailable && onUnavailable)) {
+    return (
+      <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="min-h-16 px-3 py-3 flex items-center gap-3">
+            <LoadingSkeleton className="w-9 h-9 rounded-tile shrink-0" />
+            <div className="flex-1 space-y-1.5">
+              <LoadingSkeleton className="h-4 w-20" />
+              <LoadingSkeleton className="h-3 w-32" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {unavailable ? (
+        /* 다른 빈 상태와 같은 점선 카드(8장). */
+        <div className="bg-surface rounded-card border-[1.5px] border-dashed border-faint px-6 py-7 flex flex-col items-center text-center">
+          <div className="w-14 h-14 rounded-full bg-brand-soft flex items-center justify-center mb-3">
+            <BusIcon className="w-6 h-6 text-brand" aria-hidden="true" />
+          </div>
+          <p className="text-body-strong text-ink">
+            {unavailable === "empty"
+              ? "지금 운행 중인 버스가 보이지 않아요"
+              : "버스 위치를 불러오지 못했어요"}
+          </p>
+          <p className="text-caption text-muted mt-1">
+            {unavailable === "empty" ? "버스에 탄 뒤 다시 불러와 주세요" : "잠시 후 다시 불러와 주세요"}
+          </p>
+          <button
+            onClick={retry}
+            className="relative mt-2 select-none touch-manipulation text-body text-brand active:underline before:content-[''] before:absolute before:-inset-x-2 before:-inset-y-3"
+          >
+            다시 불러오기
+          </button>
+        </div>
+      ) : (
+        pickable && (
+          <>
+            <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line max-h-[45vh] overflow-y-auto">
+              {pickable.vehicles.map((v) => {
+                const isCurrent =
+                  currentVehicleNo != null &&
+                  currentVehicleNo.replace(/\s+/g, "") === v.vehicleNo.replace(/\s+/g, "");
+                return (
+                  <button
+                    key={v.vehicleNo}
+                    onClick={() => onPick(v.vehicleNo)}
+                    className="w-full min-h-16 flex items-center gap-3 px-3 py-3 text-left select-none touch-manipulation transition-colors duration-75 active:bg-canvas"
+                  >
+                    <div className="w-9 h-9 rounded-tile bg-brand-soft flex items-center justify-center shrink-0">
+                      <BusIcon className="w-4.5 h-4.5 text-brand" aria-hidden="true" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-body-strong text-ink tabular-nums truncate">{v.vehicleNo}</p>
+                      <p className="text-caption text-muted truncate">
+                        {v.stopName ? `${v.stopName} 부근` : "위치 확인 중"}
+                      </p>
+                    </div>
+                    {v.stopsLeft !== null && (
+                      <span className="text-caption text-muted tabular-nums shrink-0">
+                        하차까지 {v.stopsLeft}정거장
+                      </span>
+                    )}
+                    {isCurrent ? (
+                      <Check className="w-4 h-4 text-brand shrink-0" aria-label="지금 고른 버스" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4 text-faint shrink-0" aria-hidden="true" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            {pickable.passedCount > 0 && (
+              <p className="text-caption text-muted mt-2">
+                내릴 정류장을 이미 지난 버스 {pickable.passedCount}대는 뺐어요.
+              </p>
+            )}
+          </>
+        )
+      )}
+
+      {/* 고르지 않으면 예전처럼 모든 버스 기준이다. 목록이 길어 스크롤돼도
+          보이도록 목록 상자 밖, 맨 아래에 둔다. */}
+      <button
+        onClick={() => onPick(null)}
+        className="mt-2 w-full min-h-16 flex items-center gap-3 px-3 py-3 bg-surface rounded-card border border-line text-left select-none touch-manipulation transition-colors duration-75 active:bg-canvas"
+      >
+        <div className="w-9 h-9 rounded-tile bg-brand-soft flex items-center justify-center shrink-0">
+          <HelpCircle className="w-4.5 h-4.5 text-brand" aria-hidden="true" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-body text-ink">잘 모르겠어요</p>
+          <p className="text-caption text-muted">모든 버스 기준</p>
+        </div>
+        <ChevronRight className="w-4 h-4 text-faint shrink-0" aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
+
+/**
+ * 알림 카드에서 여는 탄 버스 고르기 창. 고정이 풀린 알림을 다음 탑승 때
+ * 다시 고르거나("버스 고르기"), 잘못 고른 차량을 바꿀 때("바꾸기"), 모든
+ * 버스 기준 알림에 차량을 고를 때("버스 고르기") 쓴다.
+ * 모양은 하차 알림 추가 창과 같은 바텀시트(모서리 28px, sheet 그림자).
+ */
+function VehiclePickSheet({
+  alert,
+  onClose,
+  onPick,
+}: {
+  alert: AlertSetting;
+  onClose: () => void;
+  onPick: (vehicleNo: string | null) => void;
+}) {
+  // 노선 목록과 정류장 목록은 routeService가 저장해 두어 보통 새 요청이 없다.
+  const { data, status, retry } = useAsync(async () => {
+    const routes = await fetchAllRoutes();
+    const route = routes.find((r) => r.id === alert.routeId);
+    if (!route) throw new Error("노선을 찾지 못했어요");
+    const stops = await fetchStopsForRoute(route);
+    return { route, stops };
+  }, [alert.routeId]);
+  const targetIndex = data ? indexOfStopByOrder(data.stops, alert.targetStopOrder) : -1;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-surface rounded-t-hero sm:rounded-hero w-full max-w-md max-h-[85vh] overflow-y-auto shadow-sheet">
+        <div className="px-5 py-4 border-b border-line sticky top-0 bg-surface z-10">
+          <h2 className="text-title text-ink">탄 버스 선택</h2>
+          <p className="text-caption text-muted mt-0.5 truncate">
+            {alert.routeNumber ? `${alert.routeNumber}번` : alert.routeName} · {alert.targetStation} 하차
+          </p>
+        </div>
+
+        <div className="px-4 py-3 break-keep">
+          <p className="text-caption text-muted mb-2">
+            지금 탄 버스를 골라 주세요. 고른 버스가 가까워질 때만 울려요.
+          </p>
+          {status === "error" ? (
+            <div className="bg-surface rounded-card border-[1.5px] border-dashed border-faint px-6 py-7 flex flex-col items-center text-center">
+              <p className="text-body-strong text-ink">노선 정보를 불러오지 못했어요</p>
+              <button
+                onClick={retry}
+                className="relative mt-2 select-none touch-manipulation text-body text-brand active:underline before:content-[''] before:absolute before:-inset-x-2 before:-inset-y-3"
+              >
+                다시 불러오기
+              </button>
+            </div>
+          ) : data ? (
+            <VehicleChoices
+              route={data.route}
+              stops={data.stops}
+              targetIndex={targetIndex}
+              currentVehicleNo={alert.vehicleNo}
+              onPick={onPick}
+            />
+          ) : (
+            <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="min-h-16 px-3 py-3 flex items-center gap-3">
+                  <LoadingSkeleton className="w-9 h-9 rounded-tile shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <LoadingSkeleton className="h-4 w-20" />
+                    <LoadingSkeleton className="h-3 w-32" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="px-4 pt-1 pb-5">
+          <button
+            onClick={onClose}
+            className="select-none touch-manipulation w-full py-3 bg-canvas text-ink rounded-full text-body active:bg-line"
+          >
+            닫기
+          </button>
+        </div>
       </div>
     </div>
   );
