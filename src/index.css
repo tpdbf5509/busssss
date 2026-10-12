@@ -270,10 +270,21 @@ html.color-blind .bg-route-branch {
 html.color-blind .text-live {
   color: #1d4ed8 !important;
 }
+/* 녹색 복원: 글자가 없는 자리(아이콘·점)는 밝은 녹색 토큰(live-icon, live-bright)을
+   따로 쓴다. 클래스 이름이 달라 위 .text-live 규칙이 걸리지 않으므로 같은 파랑을
+   여기에도 건다 — 안 그러면 색약 모드에서 실시간 칩 글자는 파랑인데 아이콘만,
+   또는 토스트 완료 아이콘과 알림 센터 도착 아이콘만 초록으로 남는다. */
+html.color-blind .text-live-icon,
+html.color-blind .text-live-bright {
+  color: #1d4ed8 !important;
+}
 /* 4단계: 노선 상세의 "실시간 위치 연동 중" 점이 live 바탕(bg-live)을 쓴다.
    실시간 글자와 같은 파랑으로 맞춘다 — 안 그러면 색약 모드에서 실시간 칩은
-   파랑인데 이 점만 초록으로 남는다. */
-html.color-blind .bg-live {
+   파랑인데 이 점만 초록으로 남는다.
+   녹색 복원 뒤로 이 점은 밝은 bg-live-bright를 쓴다. 예전 .bg-live 규칙은 이제
+   쓰는 곳이 없지만, 같은 파랑을 두 이름에 함께 걸어 둔다(되돌릴 때 대비). */
+html.color-blind .bg-live,
+html.color-blind .bg-live-bright {
   background-color: #1d4ed8 !important;
 }
 html.color-blind .bg-live-soft {

@@ -188,8 +188,12 @@ export function AlertScreen({ onBack }: { onBack?: () => void }) {
                  행마다 48px씩 차지했다. 읽지 않음은 연파랑 배경(1.07:1)으로도
                  표시했는데 연속되면 파란 덩어리로 뭉쳐 오히려 행 구분이 흐려졌다.
                  신호는 점(5.17:1)과 제목 굵기, 둘로 충분하다.
-                 색은 4-2 상태 색을 쓴다: 도착은 실시간 초록(live), 지연은
-                 지연 의심 주황(delay). 예전 -600 값은 흰 바탕 대비가 모자랐다. */
+                 색은 4-2 상태 색을 쓴다: 도착은 실시간 초록, 지연은
+                 지연 의심 주황(delay). 예전 -600 값은 흰 바탕 대비가 모자랐다.
+                 도착 아이콘은 4단계에서 진한 live(emerald-700)로 올렸다가, 녹색
+                 복원 작업에서 디자인 작업 전 값인 live-icon(emerald-600, 3.77:1)으로
+                 되돌렸다. 글자가 아닌 아이콘이라 3:1 기준이고, 옆 제목 글자가
+                 종류를 함께 말한다. */
               const Icon =
                 r.type === "dropoff"
                   ? MapPin
@@ -200,7 +204,7 @@ export function AlertScreen({ onBack }: { onBack?: () => void }) {
                 r.type === "dropoff"
                   ? "text-brand"
                   : r.type === "arrival"
-                    ? "text-live"
+                    ? "text-live-icon"
                     : "text-delay";
               return (
               <div key={r.id} className="min-h-16 flex items-start gap-3 px-4 py-3.5">
