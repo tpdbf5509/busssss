@@ -320,20 +320,27 @@ function AlertCard({
             <span className="font-medium truncate">{alert.targetStation}</span>
             <span className="shrink-0">하차</span>
           </div>
-          {/* 고정한 차량은 작게 한 줄로 보인다(Caption muted). 고정이 풀리면
-              이 줄은 사라진다. "바꾸기"는 잘못 고른 차량을 바로잡는 길이다 —
-              잘못 고르면 내가 탄 버스로는 울리지 않는다. 글자 줄(18px)에
+          {/* 무엇을 기준으로 울리는지 작게 한 줄로 보인다(Caption muted).
+              고정한 차량이면 "5668번 차량 기준 · 바꾸기"다. "바꾸기"는 잘못
+              고른 차량을 바로잡는 길이다 — 잘못 고르면 내가 탄 버스로는 울리지
+              않는다. 모든 버스 기준이면 "모든 버스 기준 · 버스 고르기"다.
+              처음에는 고정한 차량일 때만 이 줄을 두었는데, 그러면 "잘 모르겠어요"를
+              고른 알림이나 예전 알림은 지웠다 다시 만들어야 차량을 고를 수
+              있었다(사용자 결정으로 모든 카드에 둠). 고정이 풀려 다시 고르기를
+              기다리는 동안은 이 줄 대신 아래 안내가 보인다. 글자 줄(18px)에
               ::before로 위아래 14px씩 더해 누르는 영역 46px. */}
-          {vehicleMode === "bound" && (
+          {vehicleMode !== "awaiting" && (
             <div className="flex items-center gap-1.5 mt-1 text-caption text-muted min-w-0">
               <BusIcon className="w-3 h-3 shrink-0" aria-hidden="true" />
-              <span className="tabular-nums truncate">{vehicleLabel(alert.vehicleNo!)} 기준</span>
+              <span className="tabular-nums truncate">
+                {vehicleMode === "bound" ? `${vehicleLabel(alert.vehicleNo!)} 기준` : "모든 버스 기준"}
+              </span>
               <button
                 onClick={onPickVehicle}
-                aria-label="탄 버스 바꾸기"
+                aria-label={vehicleMode === "bound" ? "탄 버스 바꾸기" : "탄 버스 고르기"}
                 className="relative shrink-0 ml-1 select-none touch-manipulation text-brand active:underline before:content-[''] before:absolute before:-inset-x-2 before:-inset-y-3.5"
               >
-                바꾸기
+                {vehicleMode === "bound" ? "바꾸기" : "버스 고르기"}
               </button>
             </div>
           )}
@@ -909,7 +916,8 @@ function VehicleChoices({
 
 /**
  * 알림 카드에서 여는 탄 버스 고르기 창. 고정이 풀린 알림을 다음 탑승 때
- * 다시 고르거나("버스 고르기"), 잘못 고른 차량을 바꿀 때("바꾸기") 쓴다.
+ * 다시 고르거나("버스 고르기"), 잘못 고른 차량을 바꿀 때("바꾸기"), 모든
+ * 버스 기준 알림에 차량을 고를 때("버스 고르기") 쓴다.
  * 모양은 하차 알림 추가 창과 같은 바텀시트(모서리 28px, sheet 그림자).
  */
 function VehiclePickSheet({
