@@ -56,10 +56,13 @@ export function BottomNav({
             >
               {/* 활성 탭은 아이콘 뒤에 60×44px 알약을 깐다. 색만으로 구분하지
                   않도록 알약 모양과 aria-current도 함께 쓴다. 아이콘 26px,
-                  알약은 rem이라 큰 글씨에서 함께 커진다. */}
+                  알약은 rem이라 큰 글씨에서 함께 커진다.
+                  비활성 아이콘은 예전에 faint(흰 바탕 2.56:1)였다. 라벨을 뺀 뒤로
+                  아이콘만이 탭을 알아보는 단서라 아이콘 기준(3:1)을 넘는 muted
+                  (4.76:1)로 올렸다. 활성(brand 알약)과는 알약 모양으로 구분된다. */}
               <span
                 className={`w-[3.75rem] h-11 rounded-full flex items-center justify-center transition-colors ${
-                  isActive ? "bg-brand-soft text-brand" : "text-faint"
+                  isActive ? "bg-brand-soft text-brand" : "text-muted"
                 }`}
               >
                 <Icon className="w-[1.625rem] h-[1.625rem]" aria-hidden="true" />
