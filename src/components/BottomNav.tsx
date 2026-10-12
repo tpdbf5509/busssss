@@ -33,7 +33,7 @@ export function BottomNav({
     // 이유는 그쪽 주석 참고 — iOS standalone PWA에서 값이 부풀어 오른다.
     // 탭 아래로 8px을 더 띄워 떠 있는 카드로 보이게 한다(7-9: pb-nav-safe + 8px).
     // 이 틈은 홈 인디케이터와의 거리라 큰 글씨에서도 늘리지 않는다(px).
-    // 탭 높이는 글자가 들어 있어 큰 글씨를 따라가도록 rem(4rem)으로 둔다.
+    // 탭 높이는 아이콘 알약(rem)이 들어 있어 큰 글씨를 따라가도록 rem(4rem)으로 둔다.
     // 바깥 상자는 좌우 12px 여백까지 덮으므로, 그 여백을 눌러도 아래 내용이
     // 눌리도록 바깥은 터치를 통과시키고 탭 카드만 받는다.
     <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40 px-3 pb-nav-safe">
@@ -50,25 +50,24 @@ export function BottomNav({
               type="button"
               onClick={() => onChange(tab.id)}
               aria-current={isActive ? "page" : undefined}
-              /* 칸 전체(약 88×64px)가 누르는 영역이다. hover 없이 active만 쓴다. */
-              className="flex flex-col items-center justify-center gap-0.5 select-none touch-manipulation transition-transform duration-100 active:scale-[0.98]"
+              /* 칸 전체(약 88×64px)가 누르는 영역이다. hover 없이 active만 쓴다.
+                 글자 라벨은 화면에서 빼고(아래 sr-only) 아이콘만 보인다. */
+              className="flex items-center justify-center select-none touch-manipulation transition-transform duration-100 active:scale-[0.98]"
             >
-              {/* 활성 탭은 아이콘 뒤에 52×32px 알약을 깐다. 색만으로 구분하지
-                  않도록 알약 모양과 라벨 굵기(600/500)도 함께 바뀐다. */}
+              {/* 활성 탭은 아이콘 뒤에 60×44px 알약을 깐다. 색만으로 구분하지
+                  않도록 알약 모양과 aria-current도 함께 쓴다. 아이콘 26px,
+                  알약은 rem이라 큰 글씨에서 함께 커진다. */}
               <span
-                className={`w-[3.25rem] h-8 rounded-full flex items-center justify-center transition-colors ${
+                className={`w-[3.75rem] h-11 rounded-full flex items-center justify-center transition-colors ${
                   isActive ? "bg-brand-soft text-brand" : "text-faint"
                 }`}
               >
-                <Icon className="w-5 h-5" aria-hidden="true" />
+                <Icon className="w-[1.625rem] h-[1.625rem]" aria-hidden="true" />
               </span>
-              <span
-                className={`text-micro transition-colors ${
-                  isActive ? "text-brand" : "text-faint font-medium"
-                }`}
-              >
-                {tab.label}
-              </span>
+              {/* 예전에는 아이콘 아래에 보이는 라벨(홈, 버스, 길찾기, 마이)이
+                  있었다. 사용자 결정으로 아이콘만 남겼다. 화면 읽기 프로그램은
+                  이 글자로 탭 이름을 읽는다. */}
+              <span className="sr-only">{tab.label}</span>
             </button>
           );
         })}
