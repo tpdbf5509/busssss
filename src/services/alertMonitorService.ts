@@ -44,7 +44,11 @@ const VEHICLE_SEEN_KEY = "busssss_alert_vehicle_seen_v1";
 let alarmTimer: number | null = null;
 let alarmContext: AudioContext | null = null;
 
-/** 이미 울린 알림 (alertId + vehicleNo) 중복 방지 */
+/**
+ * 이미 울린 알림 (alertId + vehicleNo) 중복 방지.
+ * 예전에는 모든 알림이 이 모양이었다. 지금 차량을 고정한 알림은 고정 시각도
+ * 키에 넣는다(lib/dropoffAlert.ts). 모든 차량 기준 알림은 예전 모양 그대로다.
+ */
 function loadFired(): Set<string> {
   try {
     const raw = localStorage.getItem(FIRED_KEY);
