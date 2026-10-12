@@ -26,12 +26,14 @@ export function ToastContainer() {
             : toast.type === "error"
             ? AlertCircle
             : Info;
-        /* 아이콘 색은 4-2 토큰: 완료는 실시간 초록(live), 실패는 danger(아이콘이라
+        /* 아이콘 색은 4-2 토큰: 완료는 실시간 초록, 실패는 danger(아이콘이라
            빨강 허용), 안내는 brand. 예전 -500 원색은 흰 바탕 대비가 모자랐다.
-           종류는 아이콘 모양(체크·느낌표·i)으로도 구분된다. */
+           완료 아이콘은 4단계에서 진한 live(emerald-700)였는데, 녹색 복원 작업에서
+           디자인 작업 전 값인 밝은 live-bright(emerald-500)로 되돌렸다. 글자가 아닌
+           아이콘이고, 종류는 아이콘 모양(체크·느낌표·i)과 옆 문구로도 구분된다. */
         const color =
           toast.type === "success"
-            ? "text-live"
+            ? "text-live-bright"
             : toast.type === "error"
             ? "text-danger"
             : "text-brand";

@@ -1,4 +1,4 @@
-import type { Favorite } from "@/types";
+import type { AlertSetting, Favorite } from "@/types";
 import type { AppState, Action, StorageLoadError } from "@/store/appContext";
 
 /**
@@ -58,6 +58,30 @@ function setFavoritePin(favorites: Favorite[], id: string, pinned: boolean): Fav
 
   if (target.type !== "stop_route") return favorites;
   return favorites.map((f) => (f.id === id ? { ...f, pinned: true } : withoutPin(f)));
+}
+
+/** 차량 고정 관련 키(vehicleNo, boundAt, awaitingVehicle)를 모두 뺀 알림. */
+function withoutVehicle(alert: AlertSetting): AlertSetting {
+  const next = { ...alert };
+  delete next.vehicleNo;
+  delete next.boundAt;
+  delete next.awaitingVehicle;
+  return next;
+}
+
+/**
+ * 하차 알림의 탄 버스 고정 (DESIGN.md 12장 "하차 알림 차량 고정").
+ *
+ * 세 가지 모양 중 하나만 남긴다. 쓰지 않는 키는 false·빈 값으로 채우지 않고
+ * 아예 지운다(즐겨찾기 pinned와 같은 방식). 모든 버스 기준 알림은 예전 저장
+ * 형식과 같은 모양이 된다.
+ *   - 모든 버스 기준: 고정 키 없음
+ *   - 차량 고정: vehicleNo + boundAt
+ *   - 다시 고르기 대기: awaitingVehicle: true
+ */
+function setAlertVehicle(alert: AlertSetting, vehicleNo: string | null, boundAt: number): AlertSetting {
+  const base = withoutVehicle(alert);
+  return vehicleNo ? { ...base, vehicleNo, boundAt } : base;
 }
 
 export function reducer(state: AppState, action: Action): AppState {
@@ -151,6 +175,34 @@ export function reducer(state: AppState, action: Action): AppState {
         alerts: state.alerts.filter((a) => a.id !== action.id),
         storageError: clearStorageError(state.storageError, "alerts"),
       };
+    case "SET_ALERT_VEHICLE":
+      return {
+        ...state,
+        alerts: state.alerts.map((a) =>
+          a.id === action.id ? setAlertVehicle(a, action.vehicleNo, action.boundAt) : a
+        ),
+        storageError: clearStorageError(state.storageError, "alerts"),
+      };
+    case "RELEASE_ALERT_VEHICLE": {
+      /* 감시가 판정하는 동안 사용자가 같은 알림에 버스를 새로 골랐으면, 풀
+         대상은 이미 없다. 고정 값이 그대로일 때만 푼다.
+         자동 동작이라 저장 잠금(storageError)은 풀지 않는다(SYNC_FAVORITE_*와
+         같음). */
+      const target = state.alerts.find((a) => a.id === action.id);
+      if (
+        !target ||
+        target.vehicleNo !== action.vehicleNo ||
+        target.boundAt !== action.boundAt
+      ) {
+        return state;
+      }
+      return {
+        ...state,
+        alerts: state.alerts.map((a) =>
+          a.id === action.id ? { ...withoutVehicle(a), awaitingVehicle: true as const } : a
+        ),
+      };
+    }
     case "DISMISS_STORAGE_ERROR":
       // 배너만 숨긴다. 저장 잠금(favorites/alerts 플래그)은 그대로 둔다 —
       // 여기서 같이 풀면 직후에 도는 SYNC_FAVORITE_* 자동 보정만으로
