@@ -67,6 +67,17 @@ export type Action =
   | { type: "ADD_ALERT"; alert: AlertSetting }
   | { type: "TOGGLE_ALERT"; id: string }
   | { type: "REMOVE_ALERT"; id: string }
+  /**
+   * 사용자가 하차 알림의 탄 버스를 고름. vehicleNo가 null이면 "잘 모르겠어요"
+   * (모든 버스 기준)라 고정 키를 모두 지운다. 다시 고르기 대기도 끝난다.
+   */
+  | { type: "SET_ALERT_VEHICLE"; id: string; vehicleNo: string | null; boundAt: number }
+  /**
+   * 감시가 차량 고정을 풂(lib/dropoffAlert.ts의 해제 조건). 다음 탑승 때
+   * 다시 고르기를 기다리는 상태가 된다. vehicleNo·boundAt은 풀기 전 값이라,
+   * 그 사이 사용자가 새로 고정했으면 무시한다.
+   */
+  | { type: "RELEASE_ALERT_VEHICLE"; id: string; vehicleNo: string; boundAt: number | undefined }
   | { type: "DISMISS_STORAGE_ERROR" };
 
 export interface AppContextValue {
