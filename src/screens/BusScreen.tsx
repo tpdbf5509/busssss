@@ -593,7 +593,8 @@ function StationRouteCard({
            시선이 한 줄기로 내려간다(홈 즐겨찾기 카드와 같은 문법). */
         className="w-full text-left flex items-center gap-3.5 select-none touch-manipulation transition-colors duration-75 active:bg-canvas rounded-card py-4 pl-4 pr-12"
       >
-        {/* 배지 색은 4-2(본선 brand, 분선 live 초록), 모서리는 노선 배지의 12px.
+        {/* 배지 색은 4-2(본선 brand, 분선 route-branch 초록. 예전에는 live와 같은
+            값이었고, 녹색 복원 뒤로는 한 단계 밝은 emerald-600), 모서리는 노선 배지의 12px.
             크기는 이 카드에서만 쓰는 56px 정사각형을 그대로 둔다. */}
         <div
           className={`relative w-14 h-14 rounded-tile flex items-center justify-center shrink-0 ${
@@ -1383,13 +1384,15 @@ const handleStopClick = async (stop: BusStop) => {
 
       {/* 실시간 위치 상태. 점 색은 4-2를 따른다: 연동 중은 실시간 초록(예전
           파랑), 실패는 danger 빨강(점에만 쓰는 색), 그 밖은 faint. 점 옆
-          글자가 상태를 말하므로 색만으로 구분하지 않는다. */}
+          글자가 상태를 말하므로 색만으로 구분하지 않는다.
+          초록 점은 4단계에서 진한 live(emerald-700)였는데, 녹색 복원 작업에서
+          글자가 없는 점이라 밝은 live-bright(emerald-500)로 바꿨다. */}
       <div className="px-5 pt-1 min-h-[1.125rem] flex items-center gap-1.5">
         <span
           aria-hidden="true"
           className={`w-1.5 h-1.5 rounded-full shrink-0 ${
             busStatus === "success" && buses && buses.length > 0
-              ? "bg-live"
+              ? "bg-live-bright"
               : busStatus === "error"
               ? "bg-danger"
               : "bg-faint"

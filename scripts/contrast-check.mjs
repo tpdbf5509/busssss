@@ -3,13 +3,19 @@
 // 5단계 마감 점검에서 만들었다. 색을 바꾸면 다시 돌려 12장 표를 고친다.
 // muted는 tailwind.config.js에서 읽는다. muted 색 변경 커밋을 되돌려도 이 스크립트를
 // 따로 고칠 필요가 없게 하기 위해서다. --muted=#xxxxxx로 다른 값을 시험할 수 있다.
+// 녹색(live 계열, route-branch)도 같은 이유로 tailwind.config.js에서 읽는다(녹색 복원 작업).
+// 예전에는 live #047857을 여기에 직접 적었고, 분선 배지도 live 값으로 계산했다
+// (그때는 둘이 같은 값이었다).
 import tailwindConfig from '../tailwind.config.js';
 const arg = process.argv.find((a) => a.startsWith('--muted='));
+const colors = tailwindConfig.theme.extend.colors;
 const C = {
   brand: '#2563EB', 'brand-deep': '#1D4ED8', 'brand-soft': '#EFF4FE',
   canvas: '#F7F8FA', surface: '#FFFFFF', line: '#E8ECF2',
-  ink: '#172033', muted: arg ? arg.split('=')[1] : tailwindConfig.theme.extend.colors.muted, faint: '#94A3B8', pending: '#64748B',
-  live: '#047857', 'live-soft': '#ECFDF5', delay: '#B45309', 'delay-soft': '#FFFBEB',
+  ink: '#172033', muted: arg ? arg.split('=')[1] : colors.muted, faint: '#94A3B8', pending: '#64748B',
+  live: colors.live.DEFAULT, 'live-icon': colors.live.icon, 'live-bright': colors.live.bright, 'live-soft': colors.live.soft,
+  'route-branch': colors.route.branch,
+  delay: '#B45309', 'delay-soft': '#FFFBEB',
   danger: '#EF4444', star: '#FBBF24', white: '#FFFFFF', black: '#000000',
   // 색약 모드 대체 색(index.css)
   'cb-blue': '#1D4ED8', 'cb-blue-soft': '#DBEAFE', 'cb-amber': '#B45309', 'cb-amber-soft': '#FEF3C7',
@@ -54,15 +60,19 @@ const rows = [
   [w90gloss, heroGloss, '히어로 보조 글자 white/90 (광택 자리)', 'text'],
   ['white', chipOnBrand, '히어로 노선 칩 black/20 (시작색)', 'text'],
   ['white', chipOnGloss, '히어로 노선 칩 black/20 (광택 자리)', 'text'],
-  ['white', 'live', '분선 배지', 'text'],
+  ['white', 'route-branch', '분선 배지 흰 번호(15px 굵게)', 'text'],
   ['white', 'ink', '"다시 시도" 버튼', 'text'],
-  ['live', 'live-soft', '실시간 칩', 'text'],
-  ['live', 'surface', '실시간 칩(히어로 흰 칩), 알림 권한 허용', 'text'],
+  ['live', 'live-soft', '실시간 칩 글자', 'text'],
+  ['live', 'surface', '실시간 칩 글자(히어로 흰 칩), 알림 권한 "허용됨"', 'text'],
+  ['live-icon', 'live-soft', '실시간 칩 아이콘(옆 글자와 함께)', 'ui'],
+  ['live-icon', 'surface', '실시간 칩 아이콘(히어로 흰 칩), 알림 센터 도착 아이콘', 'ui'],
+  ['live-bright', 'surface', '토스트 완료 아이콘(옆 문구와 함께)', 'ui'],
+  ['live-bright', 'canvas', '노선 상세 실시간 점(옆 글자와 함께)', 'ui'],
   ['delay', 'delay-soft', '지연 의심 칩', 'text'],
   ['delay', 'surface', '지연 의심(히어로 흰 칩), 경고 글자', 'text'],
   ['delay', 'canvas', '알림 추가 창 경고 글자(바탕)', 'text'],
   ['cb-blue', 'cb-blue-soft', '색약: 실시간 칩', 'text'],
-  ['cb-blue', 'surface', '색약: 실시간(히어로 흰 칩)', 'text'],
+  ['cb-blue', 'surface', '색약: 실시간(히어로 흰 칩), 실시간 아이콘·점·토스트 완료 아이콘', 'text'],
   ['white', 'cb-amber', '색약: 분선 배지', 'text'],
   ['cb-amber', 'cb-amber-soft', '색약: 지연 의심 칩', 'text'],
   ['danger', 'surface', '알림 점, 삭제 아이콘(글자 아님)', 'ui'],

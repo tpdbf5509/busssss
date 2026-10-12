@@ -106,11 +106,15 @@ export function Toggle({
    도착 표시는 히어로(HeroArrivalCard)와 목록 칸(HomeScreen FavoriteArrivalInfo),
    정류장 상세 카드가 각자 맡는다. */
 
+/* icon: 아이콘만 다른 색을 쓸 때. 예전에는 아이콘도 글자 색(text)을 그대로
+   따랐다. 녹색 복원 작업에서 실시간 아이콘은 디자인 작업 전의 밝은 녹색
+   (live-icon, emerald-600)으로 되돌렸고, 글자는 대비 때문에 진한 live에 남는다.
+   지연 의심과 확인 중은 글자와 같은 색이다. */
 const CHIP_CONTENT: Record<
   ReliabilityChipKind,
-  { label: string; Icon: typeof Radio; text: string; bg: string }
+  { label: string; Icon: typeof Radio; text: string; bg: string; icon?: string }
 > = {
-  live: { label: "실시간", Icon: Radio, text: "text-live", bg: "bg-live-soft" },
+  live: { label: "실시간", Icon: Radio, text: "text-live", bg: "bg-live-soft", icon: "text-live-icon" },
   delay: { label: "지연 의심", Icon: AlertTriangle, text: "text-delay", bg: "bg-delay-soft" },
   pending: { label: "확인 중", Icon: Clock3, text: "text-pending", bg: "bg-canvas" },
 };
@@ -131,14 +135,14 @@ export function ReliabilityChip({
   kind: ReliabilityChipKind;
   onHero?: boolean;
 }) {
-  const { label, Icon, text, bg } = CHIP_CONTENT[kind];
+  const { label, Icon, text, bg, icon = "" } = CHIP_CONTENT[kind];
   return (
     <span
       className={`inline-flex items-center gap-1 h-5 px-2 rounded-full text-micro whitespace-nowrap ${text} ${
         onHero ? "bg-surface" : bg
       }`}
     >
-      <Icon className="w-3 h-3 shrink-0" aria-hidden="true" />
+      <Icon className={`w-3 h-3 shrink-0 ${icon}`} aria-hidden="true" />
       {label}
     </span>
   );
