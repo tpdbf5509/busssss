@@ -1,6 +1,15 @@
 import { fetchBusLocations } from "@/services/busLocationService";
 import { fetchAllRoutes, fetchStopsForRoute } from "@/services/routeService";
-import { indexOfStopByOrder, resolveBusStopIndex } from "@/lib/stopPosition";
+import { indexOfStopByOrder } from "@/lib/stopPosition";
+import {
+  alertVehicleMode,
+  evaluateDropoffAlert,
+  isBindingExpired,
+  vehicleLabel,
+  VEHICLE_BIND_MAX_MS,
+  VEHICLE_LOST_RELEASE_MS,
+  type VehicleReleaseReason,
+} from "@/lib/dropoffAlert";
 import type { AlertSetting, AlertRecord } from "@/types";
 import type { Route } from "@/types/route";
 
@@ -21,6 +30,16 @@ import type { Route } from "@/types/route";
 
 const FIRED_KEY = "busssss_alert_fired_v1";
 const RECORDS_KEY = "busssss_alert_records_v1";
+/**
+ * 차량을 고정한 알림마다 그 차량을 위치 목록에서 마지막으로 본 시각.
+ * 고정 해제 조건 (b) "30분 넘게 안 보임"을 재려고 둔다. 알림 설정
+ * (busssss_alerts_v1)에 넣지 않는 이유: 20초마다 바뀌는 값이라, 넣으면 알림
+ * 목록이 바뀔 때마다 검사가 처음부터 다시 돌아 위치 조회가 늘어난다.
+ * 메모리에만 두지 않는 이유: 홈 화면 앱이 백그라운드에서 내려갔다 다시 열리면
+ * 값이 사라져, "사라진 지"를 "고정한 지"로 잘못 재게 된다.
+ * 키는 `알림ID|고정시각`이라 새로 고정하면 예전 값을 쓰지 않는다.
+ */
+const VEHICLE_SEEN_KEY = "busssss_alert_vehicle_seen_v1";
 
 let alarmTimer: number | null = null;
 let alarmContext: AudioContext | null = null;
@@ -42,6 +61,33 @@ function saveFired(set: Set<string>) {
   } catch (err) {
     console.warn("[alertMonitorService] 중복 방지 기록 저장 실패:", err);
   }
+}
+
+function loadVehicleSeen(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(VEHICLE_SEEN_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, number>;
+      }
+    }
+  } catch (err) {
+    console.warn("[alertMonitorService] 고정 차량 확인 기록 로드 실패:", err);
+  }
+  return {};
+}
+
+function saveVehicleSeen(seen: Record<string, number>) {
+  try {
+    localStorage.setItem(VEHICLE_SEEN_KEY, JSON.stringify(seen));
+  } catch (err) {
+    console.warn("[alertMonitorService] 고정 차량 확인 기록 저장 실패:", err);
+  }
+}
+
+function vehicleSeenKey(alert: AlertSetting): string {
+  return `${alert.id}|${alert.boundAt}`;
 }
 
 export function loadAlertRecords(): AlertRecord[] {
@@ -167,16 +213,132 @@ export async function requestNotificationPermission(): Promise<boolean> {
   return result === "granted";
 }
 
+/** 차량 고정을 푼 결과. 화면 상태(알림 목록)에 반영하는 것은 호출부 몫이다. */
+export interface VehicleRelease {
+  alertId: string;
+  /** 풀기 전 고정 값. 그 사이 사용자가 새로 고정했으면 reducer가 무시하는 데 쓴다. */
+  vehicleNo: string;
+  boundAt: number | undefined;
+  reason: VehicleReleaseReason;
+}
+
+export interface DropoffCheckResult {
+  /** 이번 검사에서 새로 저장한 알림 기록 */
+  records: AlertRecord[];
+  /** 이번 검사에서 고정을 푼 알림. 다음 탑승 때 다시 고르기를 기다리게 된다. */
+  releases: VehicleRelease[];
+}
+
+function recordTime(): string {
+  return new Date().toLocaleString("ko-KR", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function newRecordId(): string {
+  return `ar_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+/**
+ * (b)(c)로 고정이 풀렸다는 안내 기록. 이때는 알람이 울리지 않았으니, 왜 이
+ * 알림이 다음부터 울리지 않는지 알림 센터에 남긴다(홈 종 버튼의 빨간 점도
+ * 켜진다). (a)는 하차 알람 기록이 이미 남아 따로 만들지 않는다 — 알림
+ * 카드에 "다시 골라 주세요" 안내가 보인다.
+ */
+function releaseRecord(alert: AlertSetting, reason: "lost" | "expired"): AlertRecord {
+  const vehicle = vehicleLabel(alert.vehicleNo ?? "");
+  const what = `${alert.routeNumber ? `${alert.routeNumber}번` : alert.routeName} ${alert.targetStation} 하차 알림`;
+  const why =
+    reason === "lost"
+      ? `${vehicle}이 ${Math.round(VEHICLE_LOST_RELEASE_MS / 60000)}분 넘게 보이지 않아 고정을 풀었어요.`
+      : `${vehicle}을 고정한 지 ${Math.round(VEHICLE_BIND_MAX_MS / 3600000)}시간이 지나 고정을 풀었어요.`;
+  return {
+    id: newRecordId(),
+    title: "탈 버스를 다시 골라 주세요",
+    body: `${why} ${what}은 다음에 탈 버스를 고르면 다시 울려요.`,
+    time: recordTime(),
+    read: false,
+    type: "system",
+  };
+}
+
 /**
  * 활성 하차 알림을 한 번 검사하고, 조건이 맞으면 알림을 울립니다.
- * 반환값: 새로 추가된 AlertRecord[]
+ * 반환값: 새로 추가된 AlertRecord[]와 고정을 푼 알림 목록.
+ * (예전 반환값은 AlertRecord[]뿐이었다. 차량 고정을 풀려면 알림 설정을
+ * 바꿔야 하는데, 설정은 화면 상태(reducer)가 저장하므로 결과로 돌려준다.)
+ *
+ * 차량을 고정한 알림은 그 차량만 본다(lib/dropoffAlert.ts). 고정이 풀려
+ * 다시 고르기를 기다리는 알림은 검사하지 않는다 — 위치 조회도 하지 않는다.
  */
 export async function checkDropoffAlerts(
   alerts: AlertSetting[]
-): Promise<AlertRecord[]> {
-  const active = alerts.filter((a) => a.active);
-  if (active.length === 0) return [];
+): Promise<DropoffCheckResult> {
+  const now = Date.now();
+  const newRecords: AlertRecord[] = [];
+  const releases: VehicleRelease[] = [];
+  const seen = loadVehicleSeen();
 
+  const release = (alert: AlertSetting, reason: VehicleReleaseReason) => {
+    releases.push({
+      alertId: alert.id,
+      vehicleNo: alert.vehicleNo ?? "",
+      boundAt: alert.boundAt,
+      reason,
+    });
+    if (reason !== "fired") newRecords.push(releaseRecord(alert, reason));
+  };
+
+  // (c) 고정한 지 오래된 알림은 위치 조회가 되든 안 되든 먼저 푼다. 시간만
+  // 보는 조건이라 조회 실패로 미룰 이유가 없다.
+  const active: AlertSetting[] = [];
+  for (const a of alerts) {
+    if (!a.active || alertVehicleMode(a) === "awaiting") continue;
+    if (isBindingExpired(a, now)) {
+      release(a, "expired");
+      continue;
+    }
+    active.push(a);
+  }
+
+  if (active.length > 0) {
+    await checkActiveAlerts(active, now, seen, newRecords, release);
+  }
+
+  // 지금 고정돼 있는 알림의 확인 기록만 남긴다. 풀렸거나 지운 알림의 값은
+  // 다시 쓰이지 않는다(새로 고정하면 키가 달라짐).
+  const released = new Set(releases.map((r) => r.alertId));
+  const keep = new Set(
+    alerts
+      .filter((a) => alertVehicleMode(a) === "bound" && !released.has(a.id))
+      .map(vehicleSeenKey),
+  );
+  const nextSeen: Record<string, number> = {};
+  for (const [key, at] of Object.entries(seen)) {
+    if (keep.has(key)) nextSeen[key] = at;
+  }
+  if (Object.keys(nextSeen).length > 0 || Object.keys(seen).length > 0) {
+    saveVehicleSeen(nextSeen);
+  }
+
+  if (newRecords.length > 0) {
+    const prev = loadAlertRecords();
+    saveAlertRecords([...newRecords, ...prev]);
+  }
+
+  return { records: newRecords, releases };
+}
+
+async function checkActiveAlerts(
+  active: AlertSetting[],
+  now: number,
+  seen: Record<string, number>,
+  newRecords: AlertRecord[],
+  release: (alert: AlertSetting, reason: VehicleReleaseReason) => void,
+) {
   const routes = await fetchAllRoutes();
   const routeMap = new Map<string, Route>();
   for (const r of routes) {
@@ -184,7 +346,6 @@ export async function checkDropoffAlerts(
   }
 
   const fired = loadFired();
-  const newRecords: AlertRecord[] = [];
 
   // 노선별로 그룹핑해서 API 호출 최소화
   const byRoute = new Map<string, AlertSetting[]>();
@@ -204,6 +365,7 @@ export async function checkDropoffAlerts(
     } catch (err) {
       // 20초마다 재시도하므로 warn으로 올리면 콘솔이 잠긴다. 다만 완전히
       // 삼키면 알림이 계속 안 울릴 때 단서가 없어 debug로 흔적만 남긴다.
+      // 조회가 실패한 동안은 고정 차량이 "사라졌다"고 보지 않는다(b).
       console.debug(`[alertMonitorService] ${route.number}번 실시간 위치 조회 실패:`, err);
       continue;
     }
@@ -235,53 +397,30 @@ export async function checkDropoffAlerts(
         continue;
       }
 
-      const triggerIndex = targetIndex - alert.stopsBefore;
-      if (triggerIndex < 0) continue;
-
-      for (const bus of locations) {
-        const { index: busIndex, resolvedBy } = resolveBusStopIndex(
-          stops,
-          bus.nodeId,
-          bus.nodeOrder,
-          bus.nodeName,
-        );
-        if (busIndex === -1) continue;
-
-        if (resolvedBy === "order" || resolvedBy === "name+order") {
-          // GW가 정류장 ID를 안 줘서 순번 체계가 같다는 가정에 의존한 경우다.
-          // ("name+order"는 이름이 같은 정류장이 여럿이라 순번으로 가려낸 경우)
-          // 실제 운영 데이터로 이 가정을 확인할 수 있게 흔적을 남긴다.
+      // 차량 반복문(구간 판정, 중복 방지 키, 다시 무장)은 lib/dropoffAlert.ts로
+      // 설명 주석과 함께 옮겼다. 차량을 고정한 알림은 거기서 그 차량만 본다.
+      const seenKey = vehicleSeenKey(alert);
+      const decision = evaluateDropoffAlert({
+        alert,
+        stops,
+        targetIndex,
+        locations,
+        fired,
+        today,
+        now,
+        lastSeenAt: seen[seenKey],
+        onOrderFallback: (bus, resolvedBy, stopName) => {
           console.debug(
             `[alertMonitorService] 버스 ${bus.vehicleNo} 위치를 nodeOrder(${bus.nodeOrder})로 환산했습니다 ` +
-              `(${resolvedBy}, 정류장 ID 없음 → ${stops[busIndex].name}).`,
+              `(${resolvedBy}, 정류장 ID 없음 → ${stopName}).`,
           );
-        }
+        },
+      });
+      if (decision.boundSeen) seen[seenKey] = now;
 
-        const key = `${today}_${alert.id}_${bus.vehicleNo}`;
-
-        // 이 차량이 아직 트리거 구간 앞에 있으면 발송 기록을 푼다.
-        //
-        // 버스는 하루에 같은 노선을 여러 번 운행한다. 날짜+알림+차량번호만으로
-        // 막으면, 오전에 한 번 울린 뒤 같은 차량이 오후에 같은 구간을 다시
-        // 지나가도 두 번째는 조용히 무시됐다 — 매일 켜두는 출퇴근 알림이
-        // 전제인데 하루 두 번째 탑승에서 알림이 안 오는 셈이었다.
-        // "구간 앞으로 돌아왔다 = 다음 운행이 시작됐다"로 보고 다시 무장한다.
-        if (busIndex < triggerIndex) {
-          fired.delete(key);
-          continue;
-        }
-
-        // 여기부터는 버스가 트리거 구간 안에 들어온 경우다. 상한
-        // (< targetIndex)은 두지 않는다 — 두면 폴링 사이에 버스가 구간을
-        // 통째로 지나쳐버렸을 때 알림이 영원히 안 울린다. 한 번의 접근에
-        // 대한 중복 발송은 위 fired 키가 막는다.
-        if (fired.has(key)) continue;
-
-        fired.add(key);
-
+      for (const { bus, stopsRemaining } of decision.fires) {
         // 폴링 사이에 버스가 목표 정류장까지 통째로 지나쳤으면 stopsRemaining이
         // 0 이하가 된다. 그대로 표시하면 "약 -2정거장"처럼 나오므로 문구를 분기한다.
-        const stopsRemaining = targetIndex - busIndex;
         const title = "하차 알람";
         const body =
           stopsRemaining > 0
@@ -293,7 +432,7 @@ export async function checkDropoffAlerts(
         await showBrowserNotification(title, body);
 
         const record: AlertRecord = {
-          id: `ar_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          id: newRecordId(),
           title,
           // 팝업(body)과 같은 값을 쓴다. 설정값(stopsBefore)을 그대로 저장하면
           // 나중에 기록을 봤을 때 실제 울린 시점과 숫자가 어긋난다.
@@ -301,26 +440,16 @@ export async function checkDropoffAlerts(
             stopsRemaining > 0
               ? `${alert.routeName} 버스가 ${alert.targetStation} 정류장에 ${stopsRemaining}정거장 전입니다. (${bus.nodeName})`
               : `${alert.routeName} 버스가 ${alert.targetStation} 정류장에 이미 도착했거나 지나쳤을 수 있어요. (${bus.nodeName})`,
-          time: new Date().toLocaleString("ko-KR", {
-            month: "numeric",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
+          time: recordTime(),
           read: false,
           type: "dropoff",
         };
         newRecords.push(record);
       }
+
+      if (decision.release) release(alert, decision.release);
     }
   }
 
   saveFired(fired);
-
-  if (newRecords.length > 0) {
-    const prev = loadAlertRecords();
-    saveAlertRecords([...newRecords, ...prev]);
-  }
-
-  return newRecords;
 }

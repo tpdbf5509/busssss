@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { reducer } from "@/store/appReducer";
 import { pickHeroFavorite } from "@/lib/heroArrival";
 import type { AppState } from "@/store/appContext";
-import type { Favorite } from "@/types";
+import type { AlertSetting, Favorite } from "@/types";
 
 const fav = (id: string, type: Favorite["type"], extra: Partial<Favorite> = {}): Favorite => ({
   id,
@@ -114,5 +114,79 @@ describe("고정과 히어로", () => {
     s = reducer(s, { type: "SET_FAVORITE_PIN", id: "b", pinned: true });
     const reloaded = JSON.parse(JSON.stringify(s.favorites)) as Favorite[];
     expect(pickHeroFavorite(reloaded)?.id).toBe("b");
+  });
+});
+
+describe("reducer — 하차 알림 차량 고정", () => {
+  const alert = (extra: Partial<AlertSetting> = {}): AlertSetting => ({
+    id: "a1",
+    routeId: "R1004",
+    routeName: "본선1004",
+    routeNumber: "1004",
+    targetStation: "전북대",
+    targetStopOrder: 8,
+    stopsBefore: 2,
+    sound: true,
+    vibrate: true,
+    active: true,
+    ...extra,
+  });
+  const withAlerts = (alerts: AlertSetting[], storageError: AppState["storageError"] = null): AppState => ({
+    ...state([], storageError),
+    alerts,
+  });
+
+  it("차량을 고르면 vehicleNo와 boundAt만 붙고, 다시 고르기 대기는 끝난다", () => {
+    const s = reducer(withAlerts([alert({ awaitingVehicle: true })]), {
+      type: "SET_ALERT_VEHICLE",
+      id: "a1",
+      vehicleNo: "5668",
+      boundAt: 1000,
+    });
+    expect(s.alerts[0]).toEqual(alert({ vehicleNo: "5668", boundAt: 1000 }));
+    expect("awaitingVehicle" in s.alerts[0]).toBe(false);
+  });
+
+  it("'잘 모르겠어요'는 고정 키를 모두 지워 예전 저장 형식과 같은 모양이 된다", () => {
+    const s = reducer(withAlerts([alert({ vehicleNo: "5668", boundAt: 1000 })]), {
+      type: "SET_ALERT_VEHICLE",
+      id: "a1",
+      vehicleNo: null,
+      boundAt: 2000,
+    });
+    expect(Object.keys(s.alerts[0]).sort()).toEqual(Object.keys(alert()).sort());
+  });
+
+  it("감시가 고정을 풀면 다시 고르기 대기가 된다", () => {
+    const s = reducer(withAlerts([alert({ vehicleNo: "5668", boundAt: 1000 })]), {
+      type: "RELEASE_ALERT_VEHICLE",
+      id: "a1",
+      vehicleNo: "5668",
+      boundAt: 1000,
+    });
+    expect(s.alerts[0]).toEqual(alert({ awaitingVehicle: true }));
+    expect(s.alerts[0].active).toBe(true);
+  });
+
+  it("그 사이 사용자가 새로 고정했으면 푸는 요청을 무시한다", () => {
+    const before = withAlerts([alert({ vehicleNo: "5670", boundAt: 3000 })]);
+    const s = reducer(before, {
+      type: "RELEASE_ALERT_VEHICLE",
+      id: "a1",
+      vehicleNo: "5668",
+      boundAt: 1000,
+    });
+    expect(s).toBe(before);
+  });
+
+  it("푸는 것은 자동 동작이라 저장 잠금을 풀지 않는다", () => {
+    const lock = { favorites: false, alerts: true, dismissed: false };
+    const s = reducer(withAlerts([alert({ vehicleNo: "5668", boundAt: 1000 })], lock), {
+      type: "RELEASE_ALERT_VEHICLE",
+      id: "a1",
+      vehicleNo: "5668",
+      boundAt: 1000,
+    });
+    expect(s.storageError).toEqual(lock);
   });
 });
