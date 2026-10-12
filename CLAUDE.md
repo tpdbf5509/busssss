@@ -97,7 +97,7 @@ public/                manifest.json, sw.js, icons/
 
 - **React 훅을 `map` 안에서 부르지 않습니다.** 목록 항목마다 훅이 필요하면 하위 컴포넌트로 뺍니다(예: `FavoriteArrivalInfo`).
 - **`setInterval`, 이벤트 리스너는 반드시 정리(cleanup)합니다.**
-- **색은 토큰만 씁니다**(`brand`, `canvas`, `surface`, `line`, `ink`, `muted`, `faint`, `pending`, `live`, `delay`, `route-main`, `route-branch`, `danger`, `star`, `DESIGN.md` 4장). `slate-*`, `blue-*` 같은 원시 색을 새로 쓰지 않습니다. 색약 모드 대체 색은 `index.css`의 토큰 클래스 규칙에 겁니다. 색을 바꾸면 `scripts/contrast-check.mjs`로 대비를 다시 계산합니다.
+- **색은 토큰만 씁니다**(`brand`, `canvas`, `surface`, `line`, `ink`, `muted`, `faint`, `pending`, `live`(글자)·`live-icon`(아이콘)·`live-bright`(점), `delay`, `route-main`, `route-branch`, `danger`, `star`, `DESIGN.md` 4장). `slate-*`, `blue-*` 같은 원시 색을 새로 쓰지 않습니다. 색약 모드 대체 색은 `index.css`의 토큰 클래스 규칙에 겁니다. 색을 바꾸면 `scripts/contrast-check.mjs`로 대비를 다시 계산합니다.
 - **모바일 기준입니다.** hover 스타일을 쓰지 않고 `active:`만 씁니다. 누르는 요소는 44×44px 이상입니다.
 - **화면이 흔들리지 않게 합니다.** 바뀌는 숫자에는 `tabular-nums`, 로딩·값·오류 상태는 같은 높이를 씁니다.
 - **새 글자 크기는 `rem`으로** 씁니다. px 값은 "큰 글씨" 설정을 따라가지 않습니다.
