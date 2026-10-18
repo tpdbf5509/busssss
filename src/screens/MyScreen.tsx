@@ -294,7 +294,7 @@ export function MyScreen() {
                           {/* 출근·퇴근 지정(6단계). 시간대 기능을 켠 때, 남은 분이 있는
                               정류장+노선에만 보인다. 한 시간대에는 하나만 지정된다. */}
                           {settings.commuteSwitch && fav.type === "stop_route" && (
-                            <div className="mt-1.5 flex items-center gap-1.5">
+                            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                               {(["morning", "evening"] as const).map((slot) => (
                                 <CommutePill
                                   key={slot}
@@ -586,7 +586,7 @@ function CommutePill({
       onClick={onToggle}
       aria-pressed={selected}
       aria-label={`${label} 정류장으로 정하기`}
-      className={`relative h-7 px-2.5 rounded-full border flex items-center gap-1 text-caption font-semibold select-none touch-manipulation transition-colors before:content-[''] before:absolute before:inset-x-0 before:-inset-y-2 ${
+      className={`relative h-7 px-2.5 shrink-0 whitespace-nowrap rounded-full border flex items-center gap-1 text-caption font-semibold select-none touch-manipulation transition-colors before:content-[''] before:absolute before:inset-x-0 before:-inset-y-2 ${
         selected
           ? "bg-brand-soft border-brand text-brand"
           : "bg-surface border-line text-muted active:bg-canvas"
@@ -598,7 +598,7 @@ function CommutePill({
   );
 }
 
-/** 설정 서랍의 시간대 한 줄. "출근  05시 ~ 11시". 글자 크기 16px은 iOS가 선택 상자를 확대하지 않는 최소값이다. */
+/** 설정 서랍의 시간대 한 칸. "출근" 아래에 "05시 ~ 11시". 선택 상자 글자 크기 16px은 iOS가 선택 상자를 확대하지 않는 최소값이다. */
 function CommuteWindowRow({
   icon: Icon,
   label,
@@ -611,41 +611,45 @@ function CommuteWindowRow({
   onChange: (w: { start: number; end: number }) => void;
 }) {
   const selectClass =
-    "h-11 rounded-tile bg-surface border border-line px-2 text-base text-ink tabular-nums focus:outline-none focus:ring-2 focus:ring-brand";
+    "h-11 min-w-0 flex-1 rounded-tile bg-surface border border-line px-2 text-base text-ink tabular-nums focus:outline-none focus:ring-2 focus:ring-brand";
   const hours = Array.from({ length: 24 }, (_, h) => h);
+  /* 서랍 폭(288px)에서 한 줄에 다 넣으면 큰 글씨에서 꺾인다. 이름 줄 아래에 두 선택 상자를
+     같은 폭으로 나란히 둔다. */
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-      <span className="flex items-center gap-1.5 w-12 text-body text-ink">
+    <div>
+      <span className="flex items-center gap-1.5 mb-1.5 text-body text-ink">
         <Icon className="w-4 h-4 text-muted" aria-hidden="true" />
         {label}
       </span>
-      <select
-        aria-label={`${label} 시작 시각`}
-        value={value.start}
-        onChange={(e) => onChange({ ...value, start: Number(e.target.value) })}
-        className={selectClass}
-      >
-        {hours.map((h) => (
-          <option key={h} value={h}>
-            {String(h).padStart(2, "0")}시
-          </option>
-        ))}
-      </select>
-      <span className="text-muted" aria-hidden="true">
-        ~
-      </span>
-      <select
-        aria-label={`${label} 끝 시각`}
-        value={value.end}
-        onChange={(e) => onChange({ ...value, end: Number(e.target.value) })}
-        className={selectClass}
-      >
-        {hours.map((h) => (
-          <option key={h} value={h}>
-            {String(h).padStart(2, "0")}시
-          </option>
-        ))}
-      </select>
+      <div className="flex items-center gap-2">
+        <select
+          aria-label={`${label} 시작 시각`}
+          value={value.start}
+          onChange={(e) => onChange({ ...value, start: Number(e.target.value) })}
+          className={selectClass}
+        >
+          {hours.map((h) => (
+            <option key={h} value={h}>
+              {String(h).padStart(2, "0")}시
+            </option>
+          ))}
+        </select>
+        <span className="text-muted shrink-0" aria-hidden="true">
+          ~
+        </span>
+        <select
+          aria-label={`${label} 끝 시각`}
+          value={value.end}
+          onChange={(e) => onChange({ ...value, end: Number(e.target.value) })}
+          className={selectClass}
+        >
+          {hours.map((h) => (
+            <option key={h} value={h}>
+              {String(h).padStart(2, "0")}시
+            </option>
+          ))}
+        </select>
+      </div>
     </div>
   );
 }
