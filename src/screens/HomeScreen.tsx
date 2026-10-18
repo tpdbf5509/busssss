@@ -24,6 +24,7 @@ import type { Favorite } from "@/types";
 import type { Route } from "@/types/route";
 import { isMainRoute } from "@/lib/routeCategory";
 import { heroArrivalView, pickHeroFavoriteForSlot } from "@/lib/heroArrival";
+import { rowScheduleLabel } from "@/lib/heroSchedule";
 import { currentCommuteSlot, msUntilSlotChange, type CommuteConfig, type CommuteSlot } from "@/lib/commute";
 import { commuteConfigOf, loadSettings } from "@/lib/appSettings";
 import { favoriteSubtitle, favoriteTitle } from "@/lib/favoriteDisplay";
@@ -163,6 +164,8 @@ function FavoriteArrivalInfo({
   /* tabular-nums: 20초마다 값이 갱신될 때 자릿수가 바뀌어도 숫자 폭이
      고정이라 옆의 아이콘이 좌우로 밀리지 않는다. 값이 바뀌면 key가 바뀌어
      새 값이 150ms 동안 나타난다. */
+  const rowSchedule = state === "error" ? rowScheduleLabel(route, new Date()) : null;
+
   const top =
     state === "normal" ? (
       <span key={`m-${minutes}`} className={`text-title tabular-nums animate-fade-in ${tone}`}>
@@ -186,13 +189,17 @@ function FavoriteArrivalInfo({
         출발 전
       </span>
     ) : (
-      <span key="error" className="text-body text-muted whitespace-nowrap">
-        정보 없음
+      /* 정보 없음. 운행 전·운행 종료가 노선 목록의 첫차·막차로 분명하면 그 사실을
+         쓴다(6단계). 행은 시간표(ITS)를 따로 부르지 않는다. */
+      <span key={`error-${rowSchedule?.top ?? ""}`} className="text-body text-muted whitespace-nowrap">
+        {rowSchedule?.top ?? "정보 없음"}
       </span>
     );
 
   const bottom =
-    state === "stopsOnly"
+    rowSchedule
+      ? rowSchedule.bottom
+      : state === "stopsOnly"
       ? "시간 확인 중"
       : state === "atOrigin"
         ? "기점 대기"
