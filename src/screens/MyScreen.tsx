@@ -15,6 +15,10 @@ import {
   X,
   Menu,
   Smartphone,
+  Clock,
+  Sunrise,
+  Sunset,
+  Check,
 } from "lucide-react";
 import { useApp } from "@/store/appContext";
 import { useAsync } from "@/hooks/useAsync";
@@ -287,6 +291,29 @@ export function MyScreen() {
                                 ? "정류장 도착정보"
                                 : "노선")}
                           </p>
+                          {/* 출근·퇴근 지정(6단계). 시간대 기능을 켠 때, 남은 분이 있는
+                              정류장+노선에만 보인다. 한 시간대에는 하나만 지정된다. */}
+                          {settings.commuteSwitch && fav.type === "stop_route" && (
+                            <div className="mt-1.5 flex items-center gap-1.5">
+                              {(["morning", "evening"] as const).map((slot) => (
+                                <CommutePill
+                                  key={slot}
+                                  slot={slot}
+                                  selected={fav.commute === slot}
+                                  onToggle={() => {
+                                    const on = fav.commute !== slot;
+                                    dispatch({
+                                      type: "SET_FAVORITE_COMMUTE",
+                                      id: fav.id,
+                                      slot: on ? slot : null,
+                                    });
+                                    const name = slot === "morning" ? "출근" : "퇴근";
+                                    showToast(on ? `${name} 정류장으로 정했어요` : `${name} 지정을 풀었어요`);
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          )}
                         </div>
                         {/* 세 버튼은 아이콘 16px + 안쪽 6px = 28px이고, ::before로
                             사방 8px씩 넓혀 누르는 영역 44px. 동작 아이콘이라
@@ -432,6 +459,41 @@ export function MyScreen() {
               subtitleTone={notifPermission === "granted" ? "ok" : "warn"}
             />
 
+            {/* 시간대별 내 정류장(6단계). 끄면 5단계까지와 똑같이 고정 → 첫 번째
+                stop_route가 히어로에 올라온다. 출근·퇴근 지정은 아래 "즐겨찾기
+                관리"의 정류장+노선 행에서 한다(켠 때만 보인다). 홈은 열릴 때 설정을
+                읽으므로, 바꾼 뒤 홈으로 가면 반영된다. */}
+            <SettingToggle
+              icon={Clock}
+              label="시간대별 내 정류장"
+              checked={settings.commuteSwitch}
+              onChange={(v) => {
+                updateSetting("commuteSwitch", v);
+                showToast(v ? "시간대별 내 정류장을 켰어요" : "시간대별 내 정류장을 껐어요");
+              }}
+            />
+
+            {settings.commuteSwitch && (
+              <div className="px-4 py-3 bg-canvas/60 space-y-3">
+                <CommuteWindowRow
+                  icon={Sunrise}
+                  label="출근"
+                  value={settings.commuteMorning}
+                  onChange={(w) => updateSetting("commuteMorning", w)}
+                />
+                <CommuteWindowRow
+                  icon={Sunset}
+                  label="퇴근"
+                  value={settings.commuteEvening}
+                  onChange={(w) => updateSetting("commuteEvening", w)}
+                />
+                <p className="text-caption text-muted">
+                  이 시간에는 출근·퇴근으로 정한 정류장이 홈 맨 위에 올라와요. 정하지 않았거나 시간대
+                  밖이면 고정한 정류장을 보여 줘요.
+                </p>
+              </div>
+            )}
+
             {/* settings.voiceGuide를 실제로 읽어서 동작하는 코드가 아직 없다.
                 켜지는 것처럼 보이면 안 되므로 "준비 중"으로 표시하고 잠근다. */}
             <SettingToggle
@@ -500,6 +562,90 @@ export function MyScreen() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** 즐겨찾기 행의 출근/퇴근 알약. 선택은 색뿐 아니라 체크 아이콘으로도 보인다. */
+function CommutePill({
+  slot,
+  selected,
+  onToggle,
+}: {
+  slot: "morning" | "evening";
+  selected: boolean;
+  onToggle: () => void;
+}) {
+  const label = slot === "morning" ? "출근" : "퇴근";
+  const Icon = selected ? Check : slot === "morning" ? Sunrise : Sunset;
+  /* 보이는 높이 28px, ::before로 위아래 8px씩 넓혀 누르는 영역 44px. 좌우는
+     넓히지 않아 옆 알약과 겹치지 않는다. */
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={selected}
+      aria-label={`${label} 정류장으로 정하기`}
+      className={`relative h-7 px-2.5 rounded-full border flex items-center gap-1 text-caption font-semibold select-none touch-manipulation transition-colors before:content-[''] before:absolute before:inset-x-0 before:-inset-y-2 ${
+        selected
+          ? "bg-brand-soft border-brand text-brand"
+          : "bg-surface border-line text-muted active:bg-canvas"
+      }`}
+    >
+      <Icon className="w-3 h-3" aria-hidden="true" />
+      {label}
+    </button>
+  );
+}
+
+/** 설정 서랍의 시간대 한 줄. "출근  05시 ~ 11시". 글자 크기 16px은 iOS가 선택 상자를 확대하지 않는 최소값이다. */
+function CommuteWindowRow({
+  icon: Icon,
+  label,
+  value,
+  onChange,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: { start: number; end: number };
+  onChange: (w: { start: number; end: number }) => void;
+}) {
+  const selectClass =
+    "h-11 rounded-tile bg-surface border border-line px-2 text-base text-ink tabular-nums focus:outline-none focus:ring-2 focus:ring-brand";
+  const hours = Array.from({ length: 24 }, (_, h) => h);
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <span className="flex items-center gap-1.5 w-12 text-body text-ink">
+        <Icon className="w-4 h-4 text-muted" aria-hidden="true" />
+        {label}
+      </span>
+      <select
+        aria-label={`${label} 시작 시각`}
+        value={value.start}
+        onChange={(e) => onChange({ ...value, start: Number(e.target.value) })}
+        className={selectClass}
+      >
+        {hours.map((h) => (
+          <option key={h} value={h}>
+            {String(h).padStart(2, "0")}시
+          </option>
+        ))}
+      </select>
+      <span className="text-muted" aria-hidden="true">
+        ~
+      </span>
+      <select
+        aria-label={`${label} 끝 시각`}
+        value={value.end}
+        onChange={(e) => onChange({ ...value, end: Number(e.target.value) })}
+        className={selectClass}
+      >
+        {hours.map((h) => (
+          <option key={h} value={h}>
+            {String(h).padStart(2, "0")}시
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
