@@ -1,4 +1,5 @@
 import type { Favorite } from "@/types";
+import type { CommuteSlot } from "@/lib/commute";
 import type { ArrivalInfo } from "@/services/arrivalService";
 import {
   reliabilityChipKind,
@@ -23,6 +24,25 @@ import {
 export function pickHeroFavorite(favorites: Favorite[]): Favorite | null {
   const stopRoutes = favorites.filter((f) => f.type === "stop_route");
   return stopRoutes.find((f) => f.pinned === true) ?? stopRoutes[0] ?? null;
+}
+
+/**
+ * 시간대별 "내 정류장"(6단계)을 반영해 히어로에 올릴 즐겨찾기를 고른다.
+ *
+ * slot이 있고 그 시간대로 지정한 stop_route가 있으면 그것이다. 그 밖에는 모두
+ * 5단계까지의 규칙(pickHeroFavorite: 고정 → 첫 번째 stop_route)으로 돌아간다.
+ * 시간대 기능을 끄면 slot이 null이라 5단계와 똑같이 동작한다(회귀 없음).
+ * 시간대 밖이거나 그 시간대에 지정한 즐겨찾기가 없을 때도 같다(12장 "6단계").
+ */
+export function pickHeroFavoriteForSlot(
+  favorites: Favorite[],
+  slot: CommuteSlot | null,
+): Favorite | null {
+  if (slot) {
+    const designated = favorites.find((f) => f.type === "stop_route" && f.commute === slot);
+    if (designated) return designated;
+  }
+  return pickHeroFavorite(favorites);
 }
 
 /**

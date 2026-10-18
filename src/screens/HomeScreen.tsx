@@ -23,7 +23,10 @@ import { triggerArrivalRefresh } from "@/services/arrivalService";
 import type { Favorite } from "@/types";
 import type { Route } from "@/types/route";
 import { isMainRoute } from "@/lib/routeCategory";
-import { heroArrivalView, pickHeroFavorite } from "@/lib/heroArrival";
+import { heroArrivalView, pickHeroFavoriteForSlot } from "@/lib/heroArrival";
+import { rowScheduleLabel } from "@/lib/heroSchedule";
+import { currentCommuteSlot, msUntilSlotChange, type CommuteConfig, type CommuteSlot } from "@/lib/commute";
+import { commuteConfigOf, loadSettings } from "@/lib/appSettings";
 import { favoriteSubtitle, favoriteTitle } from "@/lib/favoriteDisplay";
 import { isSettled } from "@/lib/asyncStatus";
 
@@ -47,6 +50,47 @@ const UNREAD_POLL_MS = 5_000;
 
 function hasUnreadAlerts(): boolean {
   return loadAlertRecords().some((r) => r.read === false);
+}
+
+/**
+ * 지금이 출근·퇴근 어느 시간대인지 들고 있는다(6단계). cfg가 null(기능 꺼짐)이면
+ * 늘 null이라 히어로는 5단계까지의 규칙을 그대로 따른다.
+ *
+ * 분 단위로 다시 계산하지 않는다(깜빡임 금지). 시간대가 바뀔 수 있는 다음 정각에
+ * 타이머를 한 번만 걸고, 그때 다시 계산한다. 같은 시간대면 setSlot이 같은 값이라
+ * 다시 그리지 않는다. 앱을 숨겼다 다시 열면 타이머가 늦게 깨어날 수 있어(iOS는
+ * 백그라운드 타이머를 멈춘다) 보일 때 한 번 더 계산한다.
+ */
+function useCommuteSlot(cfg: CommuteConfig | null): CommuteSlot | null {
+  const [slot, setSlot] = useState<CommuteSlot | null>(() =>
+    cfg ? currentCommuteSlot(new Date(), cfg) : null,
+  );
+
+  useEffect(() => {
+    if (!cfg) {
+      setSlot(null);
+      return;
+    }
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const sync = () => {
+      clearTimeout(timer);
+      const now = new Date();
+      setSlot(currentCommuteSlot(now, cfg));
+      const wait = msUntilSlotChange(now, cfg);
+      if (wait !== null) timer = setTimeout(sync, wait);
+    };
+    sync();
+    const onVisibility = () => {
+      if (document.visibilityState !== "hidden") sync();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [cfg]);
+
+  return slot;
 }
 
 function ArrivalSkeleton() {
@@ -120,6 +164,8 @@ function FavoriteArrivalInfo({
   /* tabular-nums: 20초마다 값이 갱신될 때 자릿수가 바뀌어도 숫자 폭이
      고정이라 옆의 아이콘이 좌우로 밀리지 않는다. 값이 바뀌면 key가 바뀌어
      새 값이 150ms 동안 나타난다. */
+  const rowSchedule = state === "error" ? rowScheduleLabel(route, new Date()) : null;
+
   const top =
     state === "normal" ? (
       <span key={`m-${minutes}`} className={`text-title tabular-nums animate-fade-in ${tone}`}>
@@ -143,13 +189,17 @@ function FavoriteArrivalInfo({
         출발 전
       </span>
     ) : (
-      <span key="error" className="text-body text-muted whitespace-nowrap">
-        정보 없음
+      /* 정보 없음. 운행 전·운행 종료가 노선 목록의 첫차·막차로 분명하면 그 사실을
+         쓴다(6단계). 행은 시간표(ITS)를 따로 부르지 않는다. */
+      <span key={`error-${rowSchedule?.top ?? ""}`} className="text-body text-muted whitespace-nowrap">
+        {rowSchedule?.top ?? "정보 없음"}
       </span>
     );
 
   const bottom =
-    state === "stopsOnly"
+    rowSchedule
+      ? rowSchedule.bottom
+      : state === "stopsOnly"
       ? "시간 확인 중"
       : state === "atOrigin"
         ? "기점 대기"
@@ -306,8 +356,13 @@ export function HomeScreen({
 
   /* 히어로(DESIGN.md 7-3)에 올라온 즐겨찾기는 아래 목록에서 뺀다. 같은 값을
      두 번 보여 주지 않고, 같은 조회를 두 번 하지 않기 위해서다.
-     고정(pinned)한 stop_route가 먼저, 없으면 첫 번째 stop_route가 올라온다. */
-  const heroFav = pickHeroFavorite(state.favorites);
+     고정(pinned)한 stop_route가 먼저, 없으면 첫 번째 stop_route가 올라온다.
+     시간대별 전환(6단계)을 켰고 지금 시간대로 지정한 stop_route가 있으면 그것이
+     맨 먼저다. 설정은 홈이 열릴 때 한 번 읽는다 — 마이에서 바꾸고 홈으로 오면
+     홈이 새로 열려 그때 반영된다(App.tsx). */
+  const [commuteCfg] = useState(() => commuteConfigOf(loadSettings()));
+  const commuteSlot = useCommuteSlot(commuteCfg);
+  const heroFav = pickHeroFavoriteForSlot(state.favorites, commuteSlot);
   const listFavorites = heroFav
     ? state.favorites.filter((f) => f.id !== heroFav.id)
     : state.favorites;

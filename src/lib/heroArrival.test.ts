@@ -4,6 +4,7 @@ import {
   heroArrivalView,
   miniRouteLayout,
   pickHeroFavorite,
+  pickHeroFavoriteForSlot,
   updatedLabel,
 } from "@/lib/heroArrival";
 import type { Favorite } from "@/types";
@@ -22,6 +23,51 @@ const UNKNOWN: ReliabilityState = { source: "unknown", delayed: false };
 const ESTIMATED: ReliabilityState = { source: "estimated", delayed: false };
 const DELAYED_LIVE: ReliabilityState = { source: "realtime", delayed: true };
 const DELAYED_ESTIMATED: ReliabilityState = { source: "estimated", delayed: true };
+
+describe("pickHeroFavoriteForSlot (6단계 시간대 전환)", () => {
+  const list = [
+    fav("a", "stop_route"),
+    { ...fav("b", "stop_route"), pinned: true },
+    { ...fav("c", "stop_route"), commute: "morning" as const },
+    { ...fav("d", "stop_route"), commute: "evening" as const },
+    fav("e", "route"),
+  ];
+
+  it("slot이 null(기능 꺼짐·시간대 밖)이면 5단계까지와 똑같다", () => {
+    expect(pickHeroFavoriteForSlot(list, null)?.id).toBe(pickHeroFavorite(list)?.id);
+    expect(pickHeroFavoriteForSlot(list, null)?.id).toBe("b");
+    const noPin = list.filter((f) => !f.pinned);
+    expect(pickHeroFavoriteForSlot(noPin, null)?.id).toBe("a");
+    expect(pickHeroFavoriteForSlot([], null)).toBeNull();
+  });
+
+  it("출근 시간대에는 출근으로 지정한 것이, 퇴근 시간대에는 퇴근으로 지정한 것이 고정보다 먼저", () => {
+    expect(pickHeroFavoriteForSlot(list, "morning")?.id).toBe("c");
+    expect(pickHeroFavoriteForSlot(list, "evening")?.id).toBe("d");
+  });
+
+  it("그 시간대로 지정한 것이 없으면 고정 → 첫 번째 stop_route로 돌아간다", () => {
+    const onlyMorning = list.filter((f) => f.id !== "d");
+    expect(pickHeroFavoriteForSlot(onlyMorning, "evening")?.id).toBe("b");
+    const noPin = onlyMorning.filter((f) => !f.pinned);
+    expect(pickHeroFavoriteForSlot(noPin, "evening")?.id).toBe("a");
+  });
+
+  it("stop_route가 아닌 항목의 commute 값은 무시한다", () => {
+    const odd = [{ ...fav("x", "route"), commute: "morning" as const }, fav("y", "stop_route")];
+    expect(pickHeroFavoriteForSlot(odd, "morning")?.id).toBe("y");
+  });
+
+  it("예전 저장값(pinned·commute 필드 없음)도 그대로 읽힌다", () => {
+    const saved = JSON.parse(
+      '[{"id":"1","type":"stop_route","name":"104","label":"전북대","refId":"r1"},' +
+        '{"id":"2","type":"stop_route","name":"5","label":"시청","refId":"r2"}]',
+    ) as Favorite[];
+    expect(pickHeroFavoriteForSlot(saved, null)?.id).toBe("1");
+    expect(pickHeroFavoriteForSlot(saved, "morning")?.id).toBe("1");
+    expect(pickHeroFavoriteForSlot(saved, "evening")?.id).toBe("1");
+  });
+});
 
 describe("pickHeroFavorite", () => {
   it("즐겨찾기 목록에서 첫 번째 stop_route를 고른다", () => {

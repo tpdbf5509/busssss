@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { MapPin, Plus, RefreshCw } from "lucide-react";
 import { useArrivalInfo } from "@/hooks/useArrivalInfo";
 import { heroArrivalView, updatedLabel, type HeroArrivalView } from "@/lib/heroArrival";
+import { heroScheduleNote, type HeroScheduleNote } from "@/lib/heroSchedule";
+import { serviceStatus } from "@/lib/serviceSchedule";
+import { useTodayTimetable } from "@/hooks/useTodayTimetable";
 import { MiniRouteLine } from "@/components/MiniRouteLine";
 import { ReliabilityChip } from "@/components/ui";
 import type { Favorite } from "@/types";
@@ -64,13 +67,28 @@ export function HeroArrivalCard({
     return () => clearInterval(id);
   }, []);
 
+  const view = heroArrivalView(data, status, reliability);
+  const nowDate = new Date(now);
+
+  /* 도착 정보가 없을 때(정보 없음, 기점 대기)만 시간표로 문구를 채운다(6단계).
+     배차시간표(ITS)는 운행 중일 때만 필요하고(운행 전·종료는 노선 목록의 첫차·막차로
+     충분), 받는 것도 노선당 하루 한 번이다. 실시간 값이 있는 상태에서는 부르지
+     않는다. 20초 갱신에는 들어가지 않는다. */
+  const needsTimetable =
+    (view.state === "error" || view.state === "atOrigin") &&
+    route !== undefined &&
+    serviceStatus(nowDate, route.firstBus, route.lastBus).kind === "running";
+  const timetable = useTodayTimetable(route?.id, needsTimetable);
+  const schedule = heroScheduleNote(view.state, route, route?.start || undefined, nowDate, timetable);
+
   return (
     <HeroArrivalCardView
       stopName={fav.stopName ?? fav.name}
       routeNumber={fav.routeNumber ?? route?.number ?? routeNumber}
       direction={route?.end ? `${route.end} 방면` : undefined}
       origin={route?.start || undefined}
-      view={heroArrivalView(data, status, reliability)}
+      view={view}
+      schedule={schedule}
       updatedText={updatedLabel(receivedAt, now, isRefreshing)}
       onOpen={onOpen}
       onRefresh={onRefresh}
@@ -102,6 +120,7 @@ export function HeroArrivalCardView({
   direction,
   origin,
   view,
+  schedule,
   updatedText,
   onOpen,
   onRefresh,
@@ -113,6 +132,8 @@ export function HeroArrivalCardView({
   /** 노선의 기점 이름("평화동종점"). 기점 대기 문구에 쓴다. */
   origin?: string;
   view: HeroArrivalView;
+  /** 시간표로 채운 문구(6단계). 없으면 7-3 표의 원래 문구다. */
+  schedule?: HeroScheduleNote | null;
   updatedText: string;
   onOpen: () => void;
   onRefresh: () => void;
@@ -147,7 +168,7 @@ export function HeroArrivalCardView({
 
         {/* 3줄: 남은 분. 가장 먼저 읽히는 숫자다. */}
         <span className="mt-2 h-16 flex items-end min-w-0">
-          <HeroBigRow view={view} />
+          <HeroBigRow view={view} schedule={schedule} />
         </span>
 
         {/* 4줄: 남은 정거장. 3줄과 사이를 두지 않는다 — 64px 숫자 아래에
@@ -155,6 +176,16 @@ export function HeroArrivalCardView({
         <span className="h-7 flex items-center min-w-0">
           {state === "loading" ? (
             <span className="block h-5 w-28 rounded-full bg-white/20 animate-pulse" />
+          ) : schedule ? (
+            /* 시간표 문구. 앞부분(기점 이름)은 길면 잘리고, 시각이 든 뒷부분은
+               항상 다 보인다. */
+            <span
+              key={`${schedule.sub.lead ?? ""}|${schedule.sub.text}`}
+              className="flex items-baseline gap-1.5 min-w-0 text-headline text-white/90 tabular-nums animate-fade-in"
+            >
+              {schedule.sub.lead && <span className="truncate">{schedule.sub.lead}</span>}
+              <span className="shrink-0 whitespace-nowrap">{schedule.sub.text}</span>
+            </span>
           ) : (
             <span
               key={subText(view, origin)}
@@ -171,6 +202,11 @@ export function HeroArrivalCardView({
             <span className="block h-2 w-full rounded-full bg-white/20 animate-pulse" />
           )}
           {hasData && <MiniRouteLine stopsAway={stopsAway} atOrigin={state === "atOrigin"} />}
+          {/* 정보 없음에서 시간표 문구를 쓸 때는 노선도 자리에 "기점 출발 시각"임을
+              밝히는 한 줄을 둔다. 14px 미만이라 흰색 100%다(4-4). */}
+          {state === "error" && schedule?.note && (
+            <span className="min-w-0 text-caption text-white truncate">{schedule.note}</span>
+          )}
         </span>
 
         {/* 6줄: 신뢰도 칩 + 갱신 시각 */}
@@ -228,7 +264,13 @@ function subText({ state, stopsAway }: HeroArrivalView, origin?: string): string
 }
 
 /** 3줄. 숫자는 Display, 단위는 Display-unit("3분", "2정거장 전"과 같은 짜임). */
-function HeroBigRow({ view }: { view: HeroArrivalView }) {
+function HeroBigRow({
+  view,
+  schedule,
+}: {
+  view: HeroArrivalView;
+  schedule?: HeroScheduleNote | null;
+}) {
   const { state, minutes, stopsAway } = view;
 
   if (state === "loading") {
@@ -236,9 +278,12 @@ function HeroBigRow({ view }: { view: HeroArrivalView }) {
   }
 
   if (state === "error") {
+    /* 운행 전·운행 종료면 "도착 정보 없음" 대신 그 사실을 크게 쓴다(6단계). 버스가
+       없는 이유가 시간표로 분명할 때만이다. */
+    const text = schedule?.big ?? "도착 정보 없음";
     return (
-      <span key="error" className="text-headline animate-fade-in">
-        도착 정보 없음
+      <span key={`error-${text}`} className="text-headline animate-fade-in">
+        {text}
       </span>
     );
   }

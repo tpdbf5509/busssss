@@ -33,10 +33,10 @@ src/
   screens/             Home, Bus(정류장·노선 상세 포함), Route(길찾기), Alert(홈 헤더 벨로 들어감), My, Card(숨김), Auth(미사용)
   components/          HeroArrivalCard·MiniRouteLine(홈 히어로), BottomNav(떠 있는 4탭), Toast,
                        ui.tsx(공통: 스켈레톤, 빈 상태, 신뢰도 칩, 토글, 뒤로 가기), RegionModal(미사용)
-  hooks/               useArrivalInfo(20초 폴링), useBusLocations(15초), useDropoffAlertMonitor
-  services/            arrivalService(캐시·검증), routeService, stationService, alertMonitorService(하차 알림 20초 감시·기록)
+  hooks/               useArrivalInfo(20초 폴링), useBusLocations(15초), useDropoffAlertMonitor, useTodayTimetable(오늘 배차시간표, 폴링 없음)
+  services/            arrivalService(캐시·검증), routeService, stationService, alertMonitorService(하차 알림 20초 감시·기록), timetableService(ITS 시간표 노선당 하루 한 번 저장)
   api/                 tago.ts, jeonju.ts, jeonjuBis.ts → 모두 Supabase 프록시 경유
-  lib/                 formatArrival, reliability, stopPosition, arrivalPlausibility, heroArrival(히어로 상태), appSettings(큰 글씨·색약), dropoffAlert(하차 알림 판정·탄 차량 고정) 등 순수 로직
+  lib/                 formatArrival, reliability, stopPosition, arrivalPlausibility, heroArrival(히어로 상태·히어로 고르기), commute(출근·퇴근 시간대), serviceSchedule·heroSchedule(운행 전·종료·다음 출발 문구), appSettings(큰 글씨·색약·시간대), dropoffAlert(하차 알림 판정·탄 차량 고정) 등 순수 로직
   store/               AppContext + appReducer(즐겨찾기 고정 포함) + localStorage 저장
 scripts/contrast-check.mjs   DESIGN.md 4장 색 대비 계산 (node scripts/contrast-check.mjs --md)
 supabase/functions/    tago-proxy, jeonju-proxy, bis-proxy, sync-bus-data
@@ -67,11 +67,12 @@ public/                manifest.json, sw.js, icons/
 ## 5. 상태 저장
 
 - 사용자 데이터는 모두 localStorage에만 있습니다. 서버에 올라가는 사용자 데이터는 없습니다.
-  - `busssss_favorites_v1`, `busssss_alerts_v1`, `busssss_recent_routes_v1`, `busssss_alert_records_v1`(알림 센터), `busssss_settings_v1`(큰 글씨·색약)
+  - `busssss_favorites_v1`, `busssss_alerts_v1`, `busssss_recent_routes_v1`, `busssss_alert_records_v1`(알림 센터), `busssss_settings_v1`(큰 글씨·색약·시간대별 내 정류장), `busssss_bis_times_v1`(오늘 날짜의 ITS 배차시간표, 노선별, 날짜가 다르면 버림)
   - 하차 알림 감시용: `busssss_alert_fired_v1`(이미 울린 알림, 중복 방지), `busssss_alert_vehicle_seen_v1`(고정한 차량을 마지막으로 본 시각)
 - 저장 형식을 바꿀 때는 예전 데이터가 그대로 읽히게 합니다. 새 필드는 선택 필드(`?`)로 추가합니다.
 - 즐겨찾기 종류: `station`(정류장), `route`(노선), `stop_route`(정류장+노선, 도착 시간이 있는 유일한 종류)
 - 하차 알림 탄 차량 고정(`AlertSetting`, 선택 필드): `vehicleNo?`·`boundAt?`가 있으면 그 차량만 보고 울립니다. 고정은 이번 탑승 한 번이라, 울린 뒤·30분 안 보일 때·3시간 뒤에 풀리고 `awaitingVehicle?: true`(다시 고르기 대기, 울리지 않음)가 됩니다. 셋 다 없으면 예전처럼 모든 차량 기준이고 예전 저장값과 같은 모양입니다. 규칙은 `lib/dropoffAlert.ts`, 근거는 `DESIGN.md` 12장 "하차 알림 차량 고정".
+- 시간대별 내 정류장(6단계): `Favorite.commute?: "morning" | "evening"`(선택 필드, `stop_route`만, 한 시간대에 하나, reducer `SET_FAVORITE_COMMUTE`). 설정 `commuteSwitch`(기본 꺼짐)·`commuteMorning`(기본 5~11시)·`commuteEvening`(기본 15~21시)은 `appSettings`가 읽고 이상한 값은 기본값으로 바로잡는다. 켜고 지금이 그 시간대면 지정한 것이 먼저, 아니면 고정 → 첫 번째(`pickHeroFavoriteForSlot`). 끄면 5단계까지와 같다.
 - 즐겨찾기 고정: `pinned?: boolean`(선택 필드). `stop_route` 하나만 고정되고(reducer `SET_FAVORITE_PIN`), 고정한 것이 홈 히어로에 올라갑니다. 없으면 첫 번째 `stop_route`입니다. 고정하지 않은 항목에는 `pinned` 키를 두지 않아 예전 저장 형식과 같습니다.
 
 ## 5-1. 화면 구성 (디자인 개선 0~5단계 뒤)
@@ -80,7 +81,9 @@ public/                manifest.json, sw.js, icons/
 - 알림 화면은 탭이 아닙니다. 홈 헤더의 종 버튼(안 읽은 알림이 있으면 빨간 점)으로만 들어가고, 위쪽 뒤로 가기로 돌아갑니다. 하차 알림 설정도 이 화면에서만 합니다. (예전 홈 빠른 실행 "하차 알림"은 지웠습니다.) 하차 알림 추가는 노선 → 하차 정류장 → 탄 버스 → 알림 설정 순서입니다. 탄 버스 목록은 버스 위치 조회를 한 번만 쓰고, 보이는 버스가 없으면 건너뜁니다. 알림 카드에는 기준 줄("5668번 차량 기준 · 바꾸기" 또는 "모든 버스 기준 · 버스 고르기")이나, 고정이 풀린 뒤 다시 고르기 안내가 보입니다. 다시 고르기 안내는 홈에 띄우지 않습니다(사용자 결정, 알림 센터 기록과 종 버튼 빨간 점으로 충분).
 - 홈: 얇은 헤더 → 히어로(내 정류장 + 내 버스, 7가지 상태) → 다른 즐겨찾기 → 점선 추가 행 → 최근 본 노선 (`DESIGN.md` 7장). 빠른 실행 4칸은 지웠습니다(`DESIGN.md` 7-7, 12장). 같은 길이 하단 탭과 헤더 버튼에 있습니다.
 - 히어로 "기점 대기" 상태: 시간이 없고 가장 가까운 버스가 기점에 서 있으면 "출발 전"(`ArrivalInfo.atOrigin`, 4장).
+- 히어로 시간표 문구(6단계): 정보 없음·기점 대기일 때만, 노선 목록의 첫차·막차(`serviceStatus`)로 "운행 전 / 운행 종료 · 내일 첫차"를, 운행 중이면 ITS 시간표(`fetchBisTimeInfo`)로 "다음 출발"을 보여 준다(`heroScheduleNote`, DESIGN.md 7-3). **ITS와 첫차·막차는 모두 기점 출발 시각이라 내 정류장 도착처럼 쓰지 않는다**(문구에 기점 이름과 "출발"을 밝힌다). ITS는 히어로 노선당 하루 한 번만 받고(`timetableService`) 20초 갱신에 넣지 않는다. 다른 즐겨찾기 행은 시간표를 부르지 않고 첫차·막차만 쓴다(`rowScheduleLabel`).
 - 알림(토스트)은 얇은 헤더 바로 아래(`top-safe-16`)에 뜹니다. 3초 동안 히어로 첫 줄을 덮습니다(사용자 결정).
+- 시간대별 내 정류장: 마이 → 메뉴(≡)에서 켜고 끄고 시간대를 고친다. 출근·퇴근 지정은 마이 → 즐겨찾기 관리의 알약(켠 때만 보임).
 - 큰 글씨·색약 모드: 마이 → 메뉴(≡) → 더보기. 설정(`lib/appSettings.ts`)은 앱을 열 때 `main.tsx`가 `html`에 붙이고, 마이에서 바꾸면 다시 붙입니다.
 - 탭 화면(홈·버스·길찾기·마이) 머리글의 검은 제목은 같은 높이입니다. 홈은 "전주시 ▾" 아래, 길찾기는 부제 아래, 버스·마이는 `TAB_TITLE_CLASS`(ui.tsx)로 맞춥니다. 새 탭 화면도 이 규칙을 따릅니다.
 
@@ -95,7 +98,7 @@ public/                manifest.json, sw.js, icons/
 
 이 항목들은 사용자가 요청하기 전에 켜거나 고치지 않습니다.
 
-**앞으로의 계획**: 6단계(히어로 시간대 전환 + 다음 배차·운행 종료), 7단계(다크 모드를 색 이름 방식으로 다시 만들기), 8단계(길찾기 켜기)가 `DESIGN.md` 10장 "앞으로의 계획"에 있습니다. 사용자가 이 세 가지를 요청했으므로 해당 단계에서 켜거나 고칩니다. 단계마다 "먼저 사용자에게 확인할 것"의 답을 받은 뒤 시작하고, 끝나면 이 목록을 고칩니다.
+**앞으로의 계획**: 6단계(히어로 시간대 전환 + 다음 배차·운행 종료)는 구현을 마쳤고 사용자 폰 확인과 병합을 기다립니다(`design-stage-6`, 결정은 `DESIGN.md` 12장 "6단계"). 7단계(다크 모드를 색 이름 방식으로 다시 만들기), 8단계(길찾기 켜기)가 `DESIGN.md` 10장 "앞으로의 계획"에 있습니다. 사용자가 요청했으므로 해당 단계에서 켜거나 고칩니다. 단계마다 "먼저 사용자에게 확인할 것"의 답을 받은 뒤 시작하고, 끝나면 이 목록을 고칩니다.
 
 ## 7. 코드 규칙
 
