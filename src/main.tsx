@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
-import { applySettings, loadSettings } from '@/lib/appSettings';
+import { applyAppearance, loadSettings, watchSystemTheme } from '@/lib/appSettings';
 
 // iOS 홈 화면 앱이면 html에 ios-standalone을 붙인다. index.css의 하단 탭
 // 여백(pb-nav-safe, pb-nav-clear)이 이걸 보고 홈 화면 앱 값을 쓴다.
@@ -13,9 +13,17 @@ if ((window.navigator as Navigator & { standalone?: boolean }).standalone === tr
   document.documentElement.classList.add('ios-standalone');
 }
 
-// 큰 글씨·색약 모드를 첫 화면을 그리기 전에 붙인다. 예전에는 마이 화면에
-// 들어가야 붙어서, 앱을 열면 한동안 보통 글씨로 보였다(lib/appSettings 참고).
-applySettings(document.documentElement, loadSettings());
+// 화면 모드(다크)·큰 글씨·색약 모드를 첫 화면을 그리기 전에 붙인다. 예전에는 마이 화면에
+// 들어가야 붙어서, 앱을 열면 한동안 보통 글씨로 보였다(lib/appSettings 참고). 다크는
+// index.html의 작은 스크립트가 더 일찍 한 번 붙여 첫 화면이 번쩍이지 않게 한다.
+applyAppearance(loadSettings());
+
+// 기기 설정 따르기를 골랐다면 앱을 연 채 기기 화면 모드가 바뀌어도 따라간다. 앱이 도는 동안
+// 계속 필요한 구독이라 끊지 않는다.
+watchSystemTheme(() => {
+  const s = loadSettings();
+  if (s.themeMode === 'system') applyAppearance(s);
+});
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

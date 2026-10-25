@@ -28,7 +28,27 @@
          예전에는 브랜드 파랑(#2563eb)이었다. 이번에 머리글 바탕(canvas)과 같은
          값으로 바꿔 상태바와 머리글이 한 면으로 이어져 보이게 한다.
          manifest.json의 theme_color(첫 실행 화면용)는 그대로 둔다. -->
-    <meta name="theme-color" content="#F7F8FA" />
+    <meta name="theme-color" content="#F7F8FA" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0B1220" media="(prefers-color-scheme: dark)" />
+    <!-- 7단계 다크 모드. 기기 모드에 맞춘 위 두 값은 앱 설정을 읽기 전의 기본이고, 아래 작은
+         스크립트와 main.tsx가 앱 설정(끄기 / 켜기 / 기기 설정 따르기)에 맞게 둘을 같은 값으로
+         바꾼다. 이 스크립트가 없으면 다크를 켠 사람이 앱을 열 때마다 흰 화면이 한 번 번쩍인다
+         (main.tsx는 CSS를 받은 뒤 실행된다). 저장 키와 값은 lib/appSettings.ts와 같아야 한다.
+         iOS 홈 화면 앱은 theme-color를 홈 화면에 추가할 때 읽으므로, 바꾸면 앱을 다시 추가해야 한다. -->
+    <script>
+      (function () {
+        try {
+          var m = (JSON.parse(localStorage.getItem('busssss_settings_v1') || '{}') || {}).themeMode;
+          var dark =
+            m === 'dark' ||
+            (m === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) document.documentElement.classList.add('dark');
+          // 앱 설정이 기기 모드와 다르면 상태바·주소창 색도 앱 설정을 따른다.
+          var metas = document.querySelectorAll('meta[name="theme-color"]');
+          for (var i = 0; i < metas.length; i++) metas[i].setAttribute('content', dark ? '#0B1220' : '#F7F8FA');
+        } catch (e) {}
+      })();
+    </script>
 
     <meta charset="UTF-8" />
 

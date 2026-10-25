@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { applySettings, commuteConfigOf, defaultSettings, parseSettings } from "@/lib/appSettings";
+import {
+  THEME_COLOR,
+  applySettings,
+  applyThemeColor,
+  commuteConfigOf,
+  defaultSettings,
+  parseSettings,
+  resolveDark,
+  sanitizeThemeMode,
+} from "@/lib/appSettings";
 
 function fakeRoot() {
   const set = new Set<string>();
@@ -61,8 +70,25 @@ describe("parseSettings", () => {
     expect(s.commuteEvening).toEqual({ start: 15, end: 21 });
   });
 
-  it("다크 모드는 저장값이 켜져 있어도 끈다(토글을 숨긴 동안)", () => {
-    expect(parseSettings(JSON.stringify({ darkMode: true })).darkMode).toBe(false);
+  it("화면 모드: 저장한 값(끄기·켜기·기기 설정)을 그대로 읽고 darkMode는 켜기일 때만 true", () => {
+    expect(parseSettings(JSON.stringify({ themeMode: "light" }))).toMatchObject({ themeMode: "light", darkMode: false });
+    expect(parseSettings(JSON.stringify({ themeMode: "dark" }))).toMatchObject({ themeMode: "dark", darkMode: true });
+    expect(parseSettings(JSON.stringify({ themeMode: "system" }))).toMatchObject({ themeMode: "system", darkMode: false });
+  });
+
+  it("7단계 이전 저장값(themeMode 없음)은 끄기다 — 옛 darkMode: true는 읽지 않는다", () => {
+    const old = parseSettings(JSON.stringify({ darkMode: true, largeText: true }));
+    expect(old.themeMode).toBe("light");
+    expect(old.darkMode).toBe(false);
+    expect(old.largeText).toBe(true);
+    expect(parseSettings(JSON.stringify({ darkMode: false, largeText: false, colorBlind: false, voiceGuide: false })).themeMode).toBe("light");
+  });
+
+  it("화면 모드가 이상한 값이면 끄기로 바로잡는다", () => {
+    for (const bad of [null, 1, "", "auto", "DARK", {}, true]) {
+      expect(parseSettings(JSON.stringify({ themeMode: bad })).themeMode).toBe("light");
+    }
+    expect(sanitizeThemeMode(undefined)).toBe("light");
   });
 
   it("객체가 아닌 저장값은 기본값", () => {
@@ -83,5 +109,53 @@ describe("applySettings", () => {
 
     applySettings(root, { ...defaultSettings, colorBlind: true });
     expect([...root.set]).toEqual(["color-blind"]);
+  });
+});
+
+describe("resolveDark / 화면 모드 적용", () => {
+  it("끄기는 늘 라이트, 켜기는 늘 다크, 기기 설정은 기기를 따른다", () => {
+    expect(resolveDark("light", true)).toBe(false);
+    expect(resolveDark("light", false)).toBe(false);
+    expect(resolveDark("dark", false)).toBe(true);
+    expect(resolveDark("dark", true)).toBe(true);
+    expect(resolveDark("system", true)).toBe(true);
+    expect(resolveDark("system", false)).toBe(false);
+  });
+
+  it("applySettings가 dark 클래스를 모드와 기기 설정에 맞게 붙이고 뗀다", () => {
+    const root = fakeRoot();
+    applySettings(root, { ...defaultSettings, themeMode: "dark" });
+    expect(root.set.has("dark")).toBe(true);
+    applySettings(root, { ...defaultSettings, themeMode: "light" }, true);
+    expect(root.set.has("dark")).toBe(false);
+    applySettings(root, { ...defaultSettings, themeMode: "system" }, true);
+    expect(root.set.has("dark")).toBe(true);
+    applySettings(root, { ...defaultSettings, themeMode: "system" }, false);
+    expect(root.set.has("dark")).toBe(false);
+  });
+
+  it("다크와 색약·큰 글씨는 서로 독립이다", () => {
+    const root = fakeRoot();
+    applySettings(root, { ...defaultSettings, themeMode: "dark", colorBlind: true, largeText: true });
+    expect([...root.set].sort()).toEqual(["color-blind", "dark", "large-text"]);
+  });
+});
+
+describe("applyThemeColor", () => {
+  const fakeDoc = (n: number) => {
+    const metas = Array.from({ length: n }, () => ({ content: "", setAttribute(_k: string, v: string) { this.content = v; } }));
+    return { metas, querySelectorAll: () => metas };
+  };
+
+  it("theme-color 메타를 모두 같은 값으로 맞춘다(기기 모드용 media 메타 포함)", () => {
+    const doc = fakeDoc(2);
+    applyThemeColor(doc, true);
+    expect(doc.metas.map((m) => m.content)).toEqual([THEME_COLOR.dark, THEME_COLOR.dark]);
+    applyThemeColor(doc, false);
+    expect(doc.metas.map((m) => m.content)).toEqual([THEME_COLOR.light, THEME_COLOR.light]);
+  });
+
+  it("라이트 값은 예전 theme-color(canvas)와 같다", () => {
+    expect(THEME_COLOR.light).toBe("#F7F8FA");
   });
 });
