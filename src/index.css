@@ -9,6 +9,39 @@
 @tailwind utilities;
 
 @layer base {
+  /* 색 변수 (7단계, DESIGN.md 4-1~4-2, 4-7). tailwind.config.js의 색 이름이 이 값을
+     가리킨다. "R G B" 세 숫자라 투명도 표기(bg-canvas/60)가 된다. 라이트 값은 예전
+     16진수와 같다(주석). 다크는 아래 html.dark가 변수만 바꾼다. */
+  :root {
+    --c-canvas: 247 248 250; /* #F7F8FA */
+    --c-surface: 255 255 255; /* #FFFFFF */
+    --c-line: 232 236 242; /* #E8ECF2 */
+    --c-ink: 23 32 51; /* #172033 */
+    --c-muted: 100 116 139; /* #64748B */
+    --c-faint: 148 163 184; /* #94A3B8 */
+    --c-brand: 37 99 235; /* #2563EB */
+    --c-brand-deep: 29 78 216; /* #1D4ED8 */
+    --c-brand-soft: 239 244 254; /* #EFF4FE */
+    --c-brand-fill: 37 99 235; /* #2563EB */
+    --c-brand-fill-deep: 29 78 216; /* #1D4ED8 */
+    --c-live: 4 120 87; /* #047857 */
+    --c-live-icon: 5 150 105; /* #059669 */
+    --c-live-bright: 16 185 129; /* #10B981 */
+    --c-live-soft: 236 253 245; /* #ECFDF5 */
+    --c-delay: 180 83 9; /* #B45309 */
+    --c-delay-soft: 255 251 235; /* #FFFBEB */
+    --c-pending: 100 116 139; /* #64748B */
+    --c-route-main: 37 99 235; /* #2563EB */
+    --c-route-branch: 5 150 105; /* #059669 */
+    --c-danger: 239 68 68; /* #EF4444 */
+    --c-star: 251 191 36; /* #FBBF24 */
+    --shadow-hero: 37 99 235; /* #2563EB */
+    --shadow-float: 23 32 51; /* #172033 */
+    --hero-from: 37 99 235; /* #2563EB */
+    --hero-to: 29 78 216; /* #1D4ED8 */
+    --hero-gloss: 0.1;
+  }
+
   html {
     -webkit-tap-highlight-color: transparent;
     /* manipulation(=pan-x pan-y pinch-zoom)은 핀치줌을 허용한다. 이 앱의
@@ -24,7 +57,7 @@
   }
   body {
     font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background-color: #ffffff;
+    background-color: rgb(var(--c-surface)); /* 라이트 #ffffff */
 
     /* 길게 눌렀을 때 글자가 드래그 선택되는 걸 막는다. 웹페이지에서는
        당연한 동작이지만 앱에서는 일어나지 않는다. 실제로 복사가 필요한
@@ -258,43 +291,21 @@ html.color-blind .text-emerald-600 {
 }
 
 /* 토큰으로 바꾼 노선 배지와 신뢰도 칩(DESIGN.md 4-2)에도 같은 대체 색을 건다.
-   클래스 이름이 바뀌면 위 규칙이 걸리지 않아, 색약 모드에서 본선과 분선이
-   다시 파랑/초록으로만 갈리게 된다.
-   - 분선 배지: 위 -500 배지와 같은 주황(흰 글자 대비 유지)
-   - 실시간 칩: 파랑 계열. 지연 의심과 같은 주황으로 두면 두 상태가 같은
-     색이 된다. 위 text-blue / bg-blue-50 대체 값을 쓴다.
-   - 지연 의심 칩: 주황 글자 + 위 bg-emerald-50 대체 값(연한 노랑) */
-html.color-blind .bg-route-branch {
-  background-color: #b45309 !important;
-}
-html.color-blind .text-live {
-  color: #1d4ed8 !important;
-}
-/* 녹색 복원: 글자가 없는 자리(아이콘·점)는 밝은 녹색 토큰(live-icon, live-bright)을
-   따로 쓴다. 클래스 이름이 달라 위 .text-live 규칙이 걸리지 않으므로 같은 파랑을
-   여기에도 건다 — 안 그러면 색약 모드에서 실시간 칩 글자는 파랑인데 아이콘만,
-   또는 토스트 완료 아이콘과 알림 센터 도착 아이콘만 초록으로 남는다. */
-html.color-blind .text-live-icon,
-html.color-blind .text-live-bright {
-  color: #1d4ed8 !important;
-}
-/* 4단계: 노선 상세의 "실시간 위치 연동 중" 점이 live 바탕(bg-live)을 쓴다.
-   실시간 글자와 같은 파랑으로 맞춘다 — 안 그러면 색약 모드에서 실시간 칩은
-   파랑인데 이 점만 초록으로 남는다.
-   녹색 복원 뒤로 이 점은 밝은 bg-live-bright를 쓴다. 예전 .bg-live 규칙은 이제
-   쓰는 곳이 없지만, 같은 파랑을 두 이름에 함께 걸어 둔다(되돌릴 때 대비). */
-html.color-blind .bg-live,
-html.color-blind .bg-live-bright {
-  background-color: #1d4ed8 !important;
-}
-html.color-blind .bg-live-soft {
-  background-color: #dbeafe !important;
-}
-html.color-blind .text-delay {
-  color: #b45309 !important;
-}
-html.color-blind .bg-delay-soft {
-  background-color: #fef3c7 !important;
+   7단계: 예전에는 클래스마다 !important로 덮었는데(.text-live, .bg-route-branch …),
+   색이 CSS 변수가 되어 변수 값만 바꾸면 된다. 클래스 이름이 달라져도(예: text-live-icon,
+   bg-live-bright) 빠지는 곳이 없고, 다크 모드의 대체 색도 같은 자리에서 정한다(아래).
+   - 분선 배지: 주황(흰 글자 대비 유지)
+   - 실시간 글자·아이콘·점: 파랑. 지연 의심과 같은 주황으로 두면 두 상태가 같은 색이 된다.
+   - 실시간 칩 바탕: 연한 파랑 / 지연 의심 칩 바탕: 연한 노랑
+   값은 예전 !important 규칙과 같다. */
+html.color-blind {
+  --c-route-branch: 180 83 9; /* #b45309 */
+  --c-live: 29 78 216; /* #1d4ed8 */
+  --c-live-icon: 29 78 216;
+  --c-live-bright: 29 78 216;
+  --c-live-soft: 219 234 254; /* #dbeafe */
+  --c-delay: 180 83 9; /* #b45309 */
+  --c-delay-soft: 254 243 199; /* #fef3c7 */
 }
 
 /* 기기 접근성 설정에서 "동작 줄이기"를 켠 사용자에게는 모든 전환을

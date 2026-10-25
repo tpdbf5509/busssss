@@ -177,7 +177,7 @@ export function RouteScreen() {
           type="button"
           onClick={() => handleSearch()}
           disabled={searching || !query.trim()}
-          className="select-none touch-manipulation mt-3 w-full rounded-full bg-brand text-white text-body font-semibold py-3 disabled:opacity-40 active:scale-[0.98] transition-transform duration-100"
+          className="select-none touch-manipulation mt-3 w-full rounded-full bg-brand-fill text-white text-body font-semibold py-3 disabled:opacity-40 active:scale-[0.98] transition-transform duration-100"
         >
           {searching ? "검색 중..." : "경로 검색"}
         </button>

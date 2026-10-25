@@ -89,7 +89,7 @@ export function Toggle({
          넓혀 누르는 영역 44px. */
       onClick={() => onChange(!checked)}
       className={`relative w-11 h-6 shrink-0 rounded-full transition-colors before:content-[''] before:absolute before:inset-x-0 before:-inset-y-2.5 ${
-        checked ? "bg-brand" : "bg-faint"
+        checked ? "bg-brand-fill" : "bg-faint"
       }`}
     >
       <span

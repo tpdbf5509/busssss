@@ -157,7 +157,7 @@ export function MyScreen() {
   return (
     <div className="h-full flex flex-col overflow-hidden bg-canvas">
       {/* 공통 얇은 헤더(DESIGN.md 8장): canvas 바탕, 안전영역 + 3.5rem, 제목
-          Title, 아래 선 없음. 예전에는 넓은 파란 머리(bg-brand, pt-safe-16 +
+          Title, 아래 선 없음. 예전에는 넓은 파란 머리(bg-brand-fill, pt-safe-16 +
           pb-9) 안에 프로필이 있었고 즐겨찾기 카드가 그 위로 겹쳐 올라왔다.
           4-6 "넓은 파랑 면은 히어로 하나뿐"에 맞춰 파란 면을 걷고, 프로필은
           아래 흰 카드로 옮겼다. */}
@@ -257,7 +257,7 @@ export function MyScreen() {
                             두 버튼은 높이 32px 알약 + 위아래 6px로 누르는 영역 44px. */}
                         <button
                           type="submit"
-                          className="relative select-none touch-manipulation shrink-0 h-8 px-3 rounded-full bg-brand text-white text-caption font-semibold active:bg-brand-deep before:content-[''] before:absolute before:inset-x-0 before:-inset-y-1.5"
+                          className="relative select-none touch-manipulation shrink-0 h-8 px-3 rounded-full bg-brand-fill text-white text-caption font-semibold active:bg-brand-fill-deep before:content-[''] before:absolute before:inset-x-0 before:-inset-y-1.5"
                         >
                           저장
                         </button>
@@ -386,7 +386,7 @@ export function MyScreen() {
                   쓰기로 해서 brand로 바꿨다. 로컬 데이터는 지워지지 않는 동작이다. */}
               <button
                 onClick={performLogout}
-                className="flex-1 py-3 bg-brand text-white rounded-full text-body font-semibold active:scale-[0.98] transition-transform duration-100"
+                className="flex-1 py-3 bg-brand-fill text-white rounded-full text-body font-semibold active:scale-[0.98] transition-transform duration-100"
               >
                 로그아웃
               </button>
@@ -417,7 +417,7 @@ export function MyScreen() {
             </ul>
             <button
               onClick={() => setHelpOpen(false)}
-              className="mt-5 w-full py-3 bg-brand text-white rounded-full text-body font-semibold active:scale-[0.98] transition-transform duration-100"
+              className="mt-5 w-full py-3 bg-brand-fill text-white rounded-full text-body font-semibold active:scale-[0.98] transition-transform duration-100"
             >
               확인
             </button>

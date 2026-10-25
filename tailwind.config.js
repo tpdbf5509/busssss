@@ -13,21 +13,34 @@ export default {
        * 쓴다. 면(surface)과 배경(canvas)은 흰색 계열로 두고, 구분은 그림자가
        * 아니라 1px 테두리와 여백으로 만든다.
        */
+      /* 7단계: 모든 색은 CSS 변수(index.css의 :root, html.dark)를 가리킨다. 라이트
+       * 값은 예전 16진수와 같아서(주석에 그대로 남긴다) 화면이 달라지지 않고,
+       * html.dark가 변수만 바꿔 다크 모드가 된다. 변수는 "R G B" 세 숫자라
+       * bg-canvas/60 같은 투명도 표기도 그대로 쓴다. */
       colors: {
-        canvas: '#F7F8FA',   // 화면 바탕
-        surface: '#FFFFFF',  // 카드 면
-        line: '#E8ECF2',     // 1px 테두리
-        ink: '#172033',      // 본문 텍스트
+        canvas: 'rgb(var(--c-canvas) / <alpha-value>)',   // 화면 바탕 (라이트 #F7F8FA)
+        surface: 'rgb(var(--c-surface) / <alpha-value>)', // 카드 면 (라이트 #FFFFFF)
+        line: 'rgb(var(--c-line) / <alpha-value>)',       // 1px 테두리 (라이트 #E8ECF2)
+        ink: 'rgb(var(--c-ink) / <alpha-value>)',         // 본문 텍스트 (라이트 #172033)
         /* 보조 텍스트. 예전에는 #718096(흰 카드 위 4.0:1, 바탕 위 3.8:1)이라 작은
            글자 기준(4.5:1)에 못 미쳤다. 5단계에서 DESIGN.md 4-5가 대안으로 적어 둔
            #64748B(slate-500, 이미 pending으로 쓰는 값)로 바꾼다: 흰 카드 위 4.76:1,
            바탕 위 4.48:1. 실기기에서 보고 되돌릴 수 있게 이 줄만 따로 커밋했다. */
-        muted: '#64748B',
-        faint: '#94A3B8',    // 비활성 아이콘/라벨
+        muted: 'rgb(var(--c-muted) / <alpha-value>)', // 라이트 #64748B
+        faint: 'rgb(var(--c-faint) / <alpha-value>)', // 비활성 아이콘/라벨 (라이트 #94A3B8)
         brand: {
-          DEFAULT: '#2563EB',
-          deep: '#1D4ED8',   // 히어로 그라데이션의 끝 색
-          soft: '#EFF4FE',   // 아주 좁은 면적의 선택 배경에만
+          /* 글자·아이콘·테두리·링에 쓰는 파랑(라이트 #2563EB). 다크에서는 어두운 면
+             위에서 읽히도록 밝아진다. */
+          DEFAULT: 'rgb(var(--c-brand) / <alpha-value>)',
+          deep: 'rgb(var(--c-brand-deep) / <alpha-value>)', // 히어로 그라데이션의 끝 색 (라이트 #1D4ED8)
+          soft: 'rgb(var(--c-brand-soft) / <alpha-value>)', // 아주 좁은 면적의 선택 배경에만 (라이트 #EFF4FE)
+          /* 7단계: 흰 글자가 올라가는 파란 면(버튼, 켜진 토글, 다음 출발 칸)의 바탕.
+             글자·아이콘용 brand를 다크에서 밝게 하면 이 면 위 흰 글자 대비가 무너져서
+             따로 뗐다. 라이트에서는 brand·brand-deep과 같은 값이다. */
+          fill: {
+            DEFAULT: 'rgb(var(--c-brand-fill) / <alpha-value>)', // 라이트 #2563EB
+            deep: 'rgb(var(--c-brand-fill-deep) / <alpha-value>)', // 눌렀을 때 (라이트 #1D4ED8)
+          },
         },
 
         /* 상태 색 (DESIGN.md 4-2).
@@ -37,14 +50,14 @@ export default {
            어둡다는 의견으로 녹색 복원 작업에서 글자가 없는 자리(아이콘·점)는 디자인
            작업 전의 밝은 녹색으로 되돌렸다. 글자만 대비 때문에 -700에 남는다. */
         live: {
-          DEFAULT: '#047857', // 실시간 글자 (emerald-700, 5.2:1). 칩 글자, 알림 권한 "허용됨"
-          icon: '#059669',    // 실시간 아이콘 (emerald-600, 예전 실시간 태그·도착 알림 아이콘 값)
-          bright: '#10B981',  // 점, 토스트 완료 아이콘 (emerald-500, 예전 토스트 완료 아이콘 값)
-          soft: '#ECFDF5',    // 실시간 칩 배경
+          DEFAULT: 'rgb(var(--c-live) / <alpha-value>)', // 실시간 글자 (라이트 #047857, emerald-700, 5.2:1). 칩 글자, 알림 권한 "허용됨"
+          icon: 'rgb(var(--c-live-icon) / <alpha-value>)', // 실시간 아이콘 (라이트 #059669, emerald-600, 예전 실시간 태그·도착 알림 아이콘 값)
+          bright: 'rgb(var(--c-live-bright) / <alpha-value>)', // 점, 토스트 완료 아이콘 (라이트 #10B981, emerald-500, 예전 토스트 완료 아이콘 값)
+          soft: 'rgb(var(--c-live-soft) / <alpha-value>)', // 실시간 칩 배경 (라이트 #ECFDF5)
         },
         delay: {
-          DEFAULT: '#B45309', // 지연 의심 글자·아이콘 (amber-700, 4.8:1)
-          soft: '#FFFBEB',    // 지연 의심 칩 배경
+          DEFAULT: 'rgb(var(--c-delay) / <alpha-value>)', // 지연 의심 글자·아이콘 (라이트 #B45309, amber-700, 4.8:1)
+          soft: 'rgb(var(--c-delay-soft) / <alpha-value>)', // 지연 의심 칩 배경 (라이트 #FFFBEB)
         },
         /* "확인 중" 칩 글자. 예전 muted(#718096)는 canvas 칩 위에서 3.78:1이라
            작은 글자 기준(4.5:1)에 한참 못 미친다. DESIGN.md 4-5가 대안으로
@@ -52,7 +65,7 @@ export default {
            위에서는 4.48:1로 기준에 살짝 모자라고, 흰 칩(히어로) 위에서는
            4.76:1이다. 5단계에서 muted도 같은 값이 됐다. pending은 "확인 중"
            칩의 뜻을 담은 이름이라 따로 둔다(muted 커밋을 되돌려도 칩은 그대로). */
-        pending: '#64748B',
+        pending: 'rgb(var(--c-pending) / <alpha-value>)', // 라이트 #64748B
 
         /* 노선 배지 배경. 흰 번호가 올라가므로 흰 글자 대비 기준으로 고른다.
            예전 blue-500 / emerald-500은 흰 글자 대비가 3.7 / 2.5:1이었다.
@@ -62,16 +75,16 @@ export default {
            흰 번호 대비 3.77:1로 작은 글자 기준(4.5:1)에는 못 미친다(DESIGN.md 12장
            "녹색 복원"에 근거). */
         route: {
-          main: '#2563EB',    // 본선 (5.2:1)
-          branch: '#059669',  // 분선 (emerald-600, 3.8:1)
+          main: 'rgb(var(--c-route-main) / <alpha-value>)',     // 본선 (라이트 #2563EB, 5.2:1)
+          branch: 'rgb(var(--c-route-branch) / <alpha-value>)', // 분선 (라이트 #059669, emerald-600, 3.8:1). 색약 모드는 변수만 바꾼다(index.css)
         },
 
-        danger: '#EF4444',   // 알림 점, 삭제. 점과 아이콘에만 쓴다
+        danger: 'rgb(var(--c-danger) / <alpha-value>)', // 알림 점, 삭제 (라이트 #EF4444). 점과 아이콘에만 쓴다
 
         /* 즐겨찾기 별. 예전에 화면마다 직접 쓰던 amber-400 값을 그대로 이름만
            붙였다(새 색 아님). 채운 별/빈 별 모양이 함께 상태를 말하므로 색만으로
            구분하지 않는다. 글자에는 쓰지 않는다(흰 바탕 대비 1.7:1). */
-        star: '#FBBF24',
+        star: 'rgb(var(--c-star) / <alpha-value>)', // 라이트 #FBBF24
       },
 
       /* 글자 크기 (DESIGN.md 5장).
@@ -100,8 +113,10 @@ export default {
 
       /* 그림자 (DESIGN.md 6장). 일반 카드는 그림자 없이 1px line으로 나눈다. */
       boxShadow: {
-        hero: '0 12px 32px rgba(37, 99, 235, 0.25)',
-        float: '0 8px 24px rgba(23, 32, 51, 0.08)',
+        /* 색은 변수(--shadow-hero, --shadow-float: "R G B")고 불투명도는 여기 그대로다.
+           라이트 값은 예전과 같다(파랑 25%, 먹색 8%). */
+        hero: '0 12px 32px rgb(var(--shadow-hero) / 0.25)',
+        float: '0 8px 24px rgb(var(--shadow-float) / 0.08)',
         sheet: '0 25px 50px -12px rgb(0 0 0 / 0.25)', // 기존 shadow-2xl과 같은 값
       },
 
@@ -110,8 +125,8 @@ export default {
          brand에서 brand-deep으로 간다. 위에 옅은 광택을 한 겹 얹는다. */
       backgroundImage: {
         hero:
-          'linear-gradient(120deg, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, 0.10) 50%, rgba(255, 255, 255, 0) 70%), ' +
-          'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+          'linear-gradient(120deg, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, var(--hero-gloss)) 50%, rgba(255, 255, 255, 0) 70%), ' +
+          'linear-gradient(135deg, rgb(var(--hero-from)) 0%, rgb(var(--hero-to)) 100%)',
       },
       animation: {
         'slide-up': 'slide-up 0.3s ease-out',

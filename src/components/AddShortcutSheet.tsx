@@ -72,7 +72,7 @@ export function AddShortcutSheet({
         <button
           type="button"
           onClick={() => window.location.assign(shortcutUrl)}
-          className="w-full rounded-full bg-brand py-3.5 text-body font-semibold text-white active:scale-[0.98] transition-transform duration-100"
+          className="w-full rounded-full bg-brand-fill py-3.5 text-body font-semibold text-white active:scale-[0.98] transition-transform duration-100"
         >
           {favorite.name} 화면으로 이동
         </button>

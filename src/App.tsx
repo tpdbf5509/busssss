@@ -176,7 +176,7 @@ function AppContent() {
                 stopDropoffAlarm();
                 setDropoffAlarm(null);
               }}
-              className="mt-7 w-full rounded-full bg-brand px-5 py-4 text-body-strong font-bold text-white active:scale-[0.98] transition-transform duration-100"
+              className="mt-7 w-full rounded-full bg-brand-fill px-5 py-4 text-body-strong font-bold text-white active:scale-[0.98] transition-transform duration-100"
             >
               알람 끄기
             </button>
