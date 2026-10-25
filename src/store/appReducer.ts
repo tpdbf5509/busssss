@@ -60,6 +60,45 @@ function setFavoritePin(favorites: Favorite[], id: string, pinned: boolean): Fav
   return favorites.map((f) => (f.id === id ? { ...f, pinned: true } : withoutPin(f)));
 }
 
+/** commute 필드를 뺀 즐겨찾기. 지정이 없는 항목은 그대로 돌려줘 불필요한 변경을 만들지 않는다. */
+function withoutCommute(favorite: Favorite): Favorite {
+  if (!favorite.commute) return favorite;
+  const next = { ...favorite };
+  delete next.commute;
+  return next;
+}
+
+/**
+ * 시간대별 "내 정류장" 지정 (6단계).
+ *
+ * 한 시간대에는 즐겨찾기 하나만 둔다 — 같은 시간대에 둘을 올릴 수 없어서
+ * 새로 지정하면 기존 지정은 풀린다. 한 즐겨찾기가 출근과 퇴근을 겸하는 것은
+ * 허용하지 않는다(키 하나라 한 값뿐이다). 남은 분이 있는 stop_route만 히어로에
+ * 오를 수 있어 다른 종류는 지정하지 않는다. 풀 때는 pinned처럼 키를 지워
+ * 예전 저장 형식과 같은 모양으로 남긴다.
+ */
+function setFavoriteCommute(
+  favorites: Favorite[],
+  id: string,
+  slot: "morning" | "evening" | null,
+): Favorite[] {
+  const target = favorites.find((f) => f.id === id);
+  if (!target) return favorites;
+
+  if (slot === null) {
+    if (!target.commute) return favorites;
+    return favorites.map((f) => (f.id === id ? withoutCommute(f) : f));
+  }
+
+  if (target.type !== "stop_route") return favorites;
+  if (target.commute === slot && !favorites.some((f) => f.id !== id && f.commute === slot)) {
+    return favorites;
+  }
+  return favorites.map((f) =>
+    f.id === id ? { ...f, commute: slot } : f.commute === slot ? withoutCommute(f) : f,
+  );
+}
+
 /** 차량 고정 관련 키(vehicleNo, boundAt, awaitingVehicle)를 모두 뺀 알림. */
 function withoutVehicle(alert: AlertSetting): AlertSetting {
   const next = { ...alert };
@@ -118,6 +157,15 @@ export function reducer(state: AppState, action: Action): AppState {
       };
     case "SET_FAVORITE_PIN": {
       const favorites = setFavoritePin(state.favorites, action.id, action.pinned);
+      if (favorites === state.favorites) return state;
+      return {
+        ...state,
+        favorites,
+        storageError: clearStorageError(state.storageError, "favorites"),
+      };
+    }
+    case "SET_FAVORITE_COMMUTE": {
+      const favorites = setFavoriteCommute(state.favorites, action.id, action.slot);
       if (favorites === state.favorites) return state;
       return {
         ...state,

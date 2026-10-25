@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applySettings, defaultSettings, parseSettings } from "@/lib/appSettings";
+import { applySettings, commuteConfigOf, defaultSettings, parseSettings } from "@/lib/appSettings";
 
 function fakeRoot() {
   const set = new Set<string>();
@@ -26,6 +26,39 @@ describe("parseSettings", () => {
     expect(s.largeText).toBe(true);
     expect(s.colorBlind).toBe(true);
     expect(s.voiceGuide).toBe(false);
+  });
+
+  it("6단계 이전에 저장된 설정(시간대 필드 없음)은 꺼짐·기본 시간대로 읽는다", () => {
+    const old = JSON.stringify({ darkMode: false, largeText: true, colorBlind: false, voiceGuide: false });
+    const s = parseSettings(old);
+    expect(s.largeText).toBe(true);
+    expect(s.commuteSwitch).toBe(false);
+    expect(s.commuteMorning).toEqual({ start: 5, end: 11 });
+    expect(s.commuteEvening).toEqual({ start: 15, end: 21 });
+    expect(commuteConfigOf(s)).toBeNull();
+  });
+
+  it("저장한 시간대 설정을 그대로 읽고, 켰을 때만 설정을 돌려준다", () => {
+    const s = parseSettings(
+      JSON.stringify({
+        commuteSwitch: true,
+        commuteMorning: { start: 6, end: 9 },
+        commuteEvening: { start: 17, end: 20 },
+      }),
+    );
+    expect(commuteConfigOf(s)).toEqual({
+      morning: { start: 6, end: 9 },
+      evening: { start: 17, end: 20 },
+    });
+  });
+
+  it("시간대 필드가 이상한 값이면 기본값으로 바로잡는다(앱이 깨지지 않는다)", () => {
+    const s = parseSettings(
+      JSON.stringify({ commuteSwitch: "yes", commuteMorning: { start: 99, end: 1 }, commuteEvening: 7 }),
+    );
+    expect(s.commuteSwitch).toBe(false);
+    expect(s.commuteMorning).toEqual({ start: 5, end: 11 });
+    expect(s.commuteEvening).toEqual({ start: 15, end: 21 });
   });
 
   it("다크 모드는 저장값이 켜져 있어도 끈다(토글을 숨긴 동안)", () => {

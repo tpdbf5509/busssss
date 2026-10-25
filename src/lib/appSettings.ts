@@ -8,6 +8,14 @@
  * 다시 붙인다.
  */
 
+import {
+  DEFAULT_EVENING,
+  DEFAULT_MORNING,
+  sanitizeWindow,
+  type CommuteConfig,
+  type HourWindow,
+} from "@/lib/commute";
+
 export const SETTINGS_KEY = "busssss_settings_v1";
 
 export interface AppSettings {
@@ -15,6 +23,14 @@ export interface AppSettings {
   largeText: boolean;
   colorBlind: boolean;
   voiceGuide: boolean;
+  /**
+   * 시간대별 "내 정류장"(6단계). 꺼 두면 5단계까지와 똑같이 고정 → 첫 번째
+   * stop_route다. 아래 두 시간대는 켠 때만 쓰인다. 6단계에서 생긴 필드라
+   * 예전 저장값에는 없고, 없으면 기본값(꺼짐, 출근 5~11시, 퇴근 15~21시)이 된다.
+   */
+  commuteSwitch: boolean;
+  commuteMorning: HourWindow;
+  commuteEvening: HourWindow;
 }
 
 export const defaultSettings: AppSettings = {
@@ -22,6 +38,9 @@ export const defaultSettings: AppSettings = {
   largeText: false,
   colorBlind: false,
   voiceGuide: false,
+  commuteSwitch: false,
+  commuteMorning: { ...DEFAULT_MORNING },
+  commuteEvening: { ...DEFAULT_EVENING },
 };
 
 /**
@@ -35,7 +54,20 @@ export function parseSettings(raw: string | null): AppSettings {
   // 객체가 아니면(null, 숫자 등) 쓸 값이 없다. 예전 코드는 펼쳐 넣어 기본값과
   // 같은 결과가 났는데, 그 동작을 그대로 둔다.
   const stored = parsed && typeof parsed === "object" ? (parsed as Partial<AppSettings>) : {};
-  return { ...defaultSettings, ...stored, darkMode: false };
+  return {
+    ...defaultSettings,
+    ...stored,
+    darkMode: false,
+    // 6단계 필드는 값이 이상해도 앱이 깨지지 않게 한 번 걸러서 쓴다.
+    commuteSwitch: stored.commuteSwitch === true,
+    commuteMorning: sanitizeWindow(stored.commuteMorning, DEFAULT_MORNING),
+    commuteEvening: sanitizeWindow(stored.commuteEvening, DEFAULT_EVENING),
+  };
+}
+
+/** 시간대 전환을 켰을 때만 설정을 돌려준다. null이면 5단계까지의 규칙이다. */
+export function commuteConfigOf(s: AppSettings): CommuteConfig | null {
+  return s.commuteSwitch ? { morning: s.commuteMorning, evening: s.commuteEvening } : null;
 }
 
 export function loadSettings(): AppSettings {

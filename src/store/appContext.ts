@@ -60,6 +60,8 @@ export type Action =
   | { type: "RENAME_FAVORITE"; id: string; label: string }
   /** "내 정류장" 고정/해제. 고정은 하나만 남고, stop_route만 고정된다. */
   | { type: "SET_FAVORITE_PIN"; id: string; pinned: boolean }
+  /** 시간대별 "내 정류장" 지정. slot이 null이면 지정을 푼다. 같은 시간대는 하나만 남는다. */
+  | { type: "SET_FAVORITE_COMMUTE"; id: string; slot: "morning" | "evening" | null }
   | { type: "SYNC_FAVORITE_ROUTE_ID"; id: string; tagoRouteId: string }
   | { type: "SYNC_FAVORITE_NODE_ID"; id: string; tagoNodeId: string }
   | { type: "CHARGE_CARD"; amount: number }

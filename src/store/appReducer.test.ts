@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { reducer } from "@/store/appReducer";
-import { pickHeroFavorite } from "@/lib/heroArrival";
+import { pickHeroFavorite, pickHeroFavoriteForSlot } from "@/lib/heroArrival";
 import type { AppState } from "@/store/appContext";
 import type { AlertSetting, Favorite } from "@/types";
 
@@ -188,5 +188,69 @@ describe("reducer — 하차 알림 차량 고정", () => {
       boundAt: 1000,
     });
     expect(s.storageError).toEqual(lock);
+  });
+});
+
+describe("reducer — SET_FAVORITE_COMMUTE (6단계)", () => {
+  const commuteIds = (s: AppState, slot: "morning" | "evening") =>
+    s.favorites.filter((f) => f.commute === slot).map((f) => f.id);
+
+  it("stop_route를 출근·퇴근으로 지정한다", () => {
+    let s = state([fav("a", "stop_route"), fav("b", "stop_route")]);
+    s = reducer(s, { type: "SET_FAVORITE_COMMUTE", id: "a", slot: "morning" });
+    s = reducer(s, { type: "SET_FAVORITE_COMMUTE", id: "b", slot: "evening" });
+    expect(commuteIds(s, "morning")).toEqual(["a"]);
+    expect(commuteIds(s, "evening")).toEqual(["b"]);
+  });
+
+  it("같은 시간대는 하나만 남는다 — 새로 지정하면 기존 지정이 풀린다", () => {
+    let s = state([fav("a", "stop_route"), fav("b", "stop_route")]);
+    s = reducer(s, { type: "SET_FAVORITE_COMMUTE", id: "a", slot: "morning" });
+    s = reducer(s, { type: "SET_FAVORITE_COMMUTE", id: "b", slot: "morning" });
+    expect(commuteIds(s, "morning")).toEqual(["b"]);
+    expect("commute" in s.favorites[0]).toBe(false);
+  });
+
+  it("한 즐겨찾기를 퇴근으로 바꾸면 출근 지정은 사라진다(키가 하나)", () => {
+    let s = state([fav("a", "stop_route")]);
+    s = reducer(s, { type: "SET_FAVORITE_COMMUTE", id: "a", slot: "morning" });
+    s = reducer(s, { type: "SET_FAVORITE_COMMUTE", id: "a", slot: "evening" });
+    expect(s.favorites[0].commute).toBe("evening");
+  });
+
+  it("null이면 지정을 풀고 키를 남기지 않는다(예전 저장 형식과 같은 모양)", () => {
+    let s = state([fav("a", "stop_route")]);
+    s = reducer(s, { type: "SET_FAVORITE_COMMUTE", id: "a", slot: "morning" });
+    s = reducer(s, { type: "SET_FAVORITE_COMMUTE", id: "a", slot: null });
+    expect("commute" in s.favorites[0]).toBe(false);
+    expect(JSON.stringify(s.favorites[0])).not.toContain("commute");
+  });
+
+  it("stop_route가 아니면 지정하지 않는다", () => {
+    const before = state([fav("r", "route"), fav("s", "station")]);
+    expect(reducer(before, { type: "SET_FAVORITE_COMMUTE", id: "r", slot: "morning" })).toBe(before);
+    expect(reducer(before, { type: "SET_FAVORITE_COMMUTE", id: "s", slot: "evening" })).toBe(before);
+  });
+
+  it("없는 id나 바뀔 게 없는 요청은 같은 상태를 돌려준다", () => {
+    const before = state([fav("a", "stop_route")]);
+    expect(reducer(before, { type: "SET_FAVORITE_COMMUTE", id: "zz", slot: "morning" })).toBe(before);
+    expect(reducer(before, { type: "SET_FAVORITE_COMMUTE", id: "a", slot: null })).toBe(before);
+    const set = reducer(before, { type: "SET_FAVORITE_COMMUTE", id: "a", slot: "morning" });
+    expect(reducer(set, { type: "SET_FAVORITE_COMMUTE", id: "a", slot: "morning" })).toBe(set);
+  });
+
+  it("고정(pinned)과 독립이다 — 지정해도 고정은 그대로", () => {
+    let s = state([fav("a", "stop_route", { pinned: true }), fav("b", "stop_route")]);
+    s = reducer(s, { type: "SET_FAVORITE_COMMUTE", id: "b", slot: "morning" });
+    expect(pinnedIds(s)).toEqual(["a"]);
+    s = reducer(s, { type: "SET_FAVORITE_PIN", id: "b", pinned: true });
+    expect(s.favorites.find((f) => f.id === "b")?.commute).toBe("morning");
+  });
+
+  it("지정한 즐겨찾기를 지우면 시간대 지정도 함께 사라져 고정 → 첫 번째로 돌아간다", () => {
+    let s = state([fav("a", "stop_route"), fav("b", "stop_route", { commute: "morning" })]);
+    s = reducer(s, { type: "REMOVE_FAVORITE", id: "b" });
+    expect(pickHeroFavoriteForSlot(s.favorites, "morning")?.id).toBe("a");
   });
 });

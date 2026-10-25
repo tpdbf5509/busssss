@@ -21,6 +21,13 @@ export interface Favorite {
    * 2단계에서 새로 생긴 선택 필드라, 예전 저장값에는 없다 — 없으면 고정 안 함.
    */
   pinned?: boolean;
+  /**
+   * 시간대별 "내 정류장"(6단계)에서 이 즐겨찾기를 어느 시간대에 올릴지.
+   * stop_route만 가질 수 있고, 출근·퇴근 각각 하나씩만 있다(reducer의
+   * SET_FAVORITE_COMMUTE가 보장). 6단계에서 생긴 선택 필드라 예전 저장값에는
+   * 없다 — 없으면 지정 안 함. 지정하지 않은 항목에는 키를 두지 않는다.
+   */
+  commute?: "morning" | "evening";
 }
 
 
