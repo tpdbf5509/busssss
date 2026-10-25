@@ -35,6 +35,7 @@
     --c-route-branch: 5 150 105; /* #059669 */
     --c-danger: 239 68 68; /* #EF4444 */
     --c-star: 251 191 36; /* #FBBF24 */
+    --c-body: 255 255 255; /* #FFFFFF 화면 맨 뒤(body) */
     --shadow-hero: 37 99 235; /* #2563EB */
     --shadow-float: 23 32 51; /* #172033 */
     --hero-from: 37 99 235; /* #2563EB */
@@ -57,7 +58,7 @@
   }
   body {
     font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background-color: rgb(var(--c-surface)); /* 라이트 #ffffff */
+    background-color: rgb(var(--c-body)); /* 라이트 #ffffff */
 
     /* 길게 눌렀을 때 글자가 드래그 선택되는 걸 막는다. 웹페이지에서는
        당연한 동작이지만 앱에서는 일어나지 않는다. 실제로 복사가 필요한
@@ -244,28 +245,35 @@ html.large-text {
   font-size: 112.5%;
 }
 
-/* 다크모드 (간단 버전) */
-html.dark body {
-  background-color: #0f172a;
-}
-html.dark .bg-slate-50 {
-  background-color: #0f172a !important;
-}
-html.dark .bg-white {
-  background-color: #1e293b !important;
-}
-html.dark .text-slate-900,
-html.dark .text-slate-800,
-html.dark .text-slate-700 {
-  color: #e2e8f0 !important;
-}
-html.dark .text-slate-500,
-html.dark .text-slate-400 {
-  color: #94a3b8 !important;
-}
-html.dark .border-slate-100,
-html.dark .border-slate-50 {
-  border-color: #334155 !important;
+/* 다크 모드 (7단계, DESIGN.md 4-7). 위 :root 변수만 바꾼다. 바탕은 짙은 남색 계열
+   (라이트의 먹색 ink와 같은 색 족)이고, 면은 바탕보다 한 단계 밝다. 값을 바꾸면
+   node scripts/contrast-check.mjs 로 대비를 다시 계산한다(스크립트가 이 블록을 읽는다).
+   예전에는 여기에 bg-white, text-slate-* 같은 옛 원시 색 클래스를 !important로 덮는
+   규칙이 있었다. 4단계에서 화면이 색 이름으로 바뀌어 걸리는 곳이 없어졌고, 색이
+   변수가 된 지금은 필요 없어 지웠다. */
+html.dark {
+  color-scheme: dark; /* 선택 상자 목록·스크롤바 등 기기 기본 부품도 어둡게 */
+  --c-canvas: 11 18 32; /* #0B1220 */
+  --c-surface: 19 28 46; /* #131C2E */
+  --c-line: 38 50 74; /* #26324A */
+  --c-ink: 232 237 245; /* #E8EDF5 */
+  --c-muted: 156 169 190; /* #9CA9BE */
+  --c-faint: 108 122 147; /* #6C7A93 */
+  --c-brand: 106 166 255; /* #6AA6FF 글자·아이콘·테두리용(어두운 면 위에서 읽히게 밝힘) */
+  --c-brand-soft: 27 43 79; /* #1B2B4F */
+  /* brand-fill(흰 글자가 올라가는 파란 면)과 히어로 그라데이션은 라이트와 같다. 흰 글자 대비가
+     그대로여야 한다. */
+  --c-live: 74 222 128; /* #4ADE80 */
+  --c-live-icon: 52 211 153; /* #34D399 */
+  --c-live-bright: 52 211 153; /* #34D399 */
+  --c-live-soft: 15 43 34; /* #0F2B22 */
+  --c-delay: 251 191 36; /* #FBBF24 */
+  --c-delay-soft: 43 32 8; /* #2B2008 */
+  --c-pending: 156 169 190; /* #9CA9BE */
+  --c-body: 11 18 32; /* #0B1220 */
+  /* 그림자는 어두운 바탕에서 보이지 않아 먹색이 아니라 검정으로 둔다. 파란 빛무리를 두르지 않는다. */
+  --shadow-hero: 0 0 0;
+  --shadow-float: 0 0 0;
 }
 
 /* 색약 모드 — 대비 강화 */
@@ -306,6 +314,18 @@ html.color-blind {
   --c-live-soft: 219 234 254; /* #dbeafe */
   --c-delay: 180 83 9; /* #b45309 */
   --c-delay-soft: 254 243 199; /* #fef3c7 */
+}
+
+/* 다크 + 색약. 라이트용 파랑(#1d4ed8)은 어두운 면 위에서 대비가 모자라, 한 단계 밝은 파랑을
+   쓴다. 주황 분선 배지는 흰 글자가 올라가는 면이라 그대로다. 위 html.dark(같은 크기의
+   선택자)보다 뒤에 있어 이긴다. */
+html.dark.color-blind {
+  --c-live: 147 197 253; /* #93c5fd */
+  --c-live-icon: 147 197 253;
+  --c-live-bright: 147 197 253;
+  --c-live-soft: 23 42 74; /* #172a4a */
+  --c-delay: 251 191 36; /* #fbbf24 */
+  --c-delay-soft: 58 42 8; /* #3a2a08 */
 }
 
 /* 기기 접근성 설정에서 "동작 줄이기"를 켠 사용자에게는 모든 전환을
