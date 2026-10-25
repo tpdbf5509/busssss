@@ -1479,7 +1479,7 @@ const handleStopClick = async (stop: BusStop) => {
                         {hasBus && (
                           <span
                             key={stopBuses[0].vehicleNo}
-                            className="flex items-center gap-1 bg-brand text-white text-micro px-1.5 rounded-full animate-stop-badge-in"
+                            className="flex items-center gap-1 bg-brand-fill text-white text-micro px-1.5 rounded-full animate-stop-badge-in"
                           >
                             <Navigation className="w-2.5 h-2.5" aria-hidden="true" />
                             {stopBuses[0].vehicleNo || "버스"}
@@ -1698,7 +1698,7 @@ function DispatchScheduleModal({
                 {markSchedule(realSchedule.times, intervalInfo?.min ?? 15).map(
                   ({ time, isPast, isNext }, i) => {
                   const cls = isNext
-                    ? "bg-brand text-white font-bold"
+                    ? "bg-brand-fill text-white font-bold"
                     : isPast
                     ? "bg-canvas text-faint"
                     : "bg-canvas text-ink";
@@ -1735,7 +1735,7 @@ function DispatchScheduleModal({
                   {markSchedule(timetable, intervalInfo?.min ?? 15).map(
                     ({ time, isPast, isNext }, i) => {
                     const cls = isNext
-                      ? "bg-brand text-white font-bold"
+                      ? "bg-brand-fill text-white font-bold"
                       : isPast
                       ? "bg-canvas text-faint"
                       : "bg-canvas text-ink";

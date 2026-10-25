@@ -767,7 +767,7 @@ export function HomeScreen({
             <button
               type="button"
               onClick={() => setRegionUnderDevOpen(false)}
-              className={`mt-6 w-full rounded-full bg-brand py-3.5 text-body font-semibold text-white ${PRESSABLE}`}
+              className={`mt-6 w-full rounded-full bg-brand-fill py-3.5 text-body font-semibold text-white ${PRESSABLE}`}
             >
               확인
             </button>

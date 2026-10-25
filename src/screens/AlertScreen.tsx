@@ -755,7 +755,7 @@ function AddAlertModal({
               <button
                 onClick={handleSave}
                 disabled={stopsBeforeDisabled}
-                className="select-none touch-manipulation flex-1 py-3 bg-brand text-white rounded-full text-body font-semibold active:scale-[0.98] transition-transform duration-100 disabled:opacity-40"
+                className="select-none touch-manipulation flex-1 py-3 bg-brand-fill text-white rounded-full text-body font-semibold active:scale-[0.98] transition-transform duration-100 disabled:opacity-40"
               >
                 설정 완료
               </button>

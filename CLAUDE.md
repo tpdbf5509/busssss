@@ -38,7 +38,7 @@ src/
   api/                 tago.ts, jeonju.ts, jeonjuBis.ts → 모두 Supabase 프록시 경유
   lib/                 formatArrival, reliability, stopPosition, arrivalPlausibility, heroArrival(히어로 상태·히어로 고르기), commute(출근·퇴근 시간대), serviceSchedule·heroSchedule(운행 전·종료·다음 출발 문구), appSettings(큰 글씨·색약·시간대), dropoffAlert(하차 알림 판정·탄 차량 고정) 등 순수 로직
   store/               AppContext + appReducer(즐겨찾기 고정 포함) + localStorage 저장
-scripts/contrast-check.mjs   DESIGN.md 4장 색 대비 계산 (node scripts/contrast-check.mjs --md)
+scripts/contrast-check.mjs   DESIGN.md 4장 색 대비 계산, 값은 src/index.css의 색 변수에서 읽음 (node scripts/contrast-check.mjs --md)
 supabase/functions/    tago-proxy, jeonju-proxy, bis-proxy, sync-bus-data
 public/                manifest.json, sw.js, icons/
 ```
@@ -67,11 +67,12 @@ public/                manifest.json, sw.js, icons/
 ## 5. 상태 저장
 
 - 사용자 데이터는 모두 localStorage에만 있습니다. 서버에 올라가는 사용자 데이터는 없습니다.
-  - `busssss_favorites_v1`, `busssss_alerts_v1`, `busssss_recent_routes_v1`, `busssss_alert_records_v1`(알림 센터), `busssss_settings_v1`(큰 글씨·색약·시간대별 내 정류장), `busssss_bis_times_v1`(오늘 날짜의 ITS 배차시간표, 노선별, 날짜가 다르면 버림)
+  - `busssss_favorites_v1`, `busssss_alerts_v1`, `busssss_recent_routes_v1`, `busssss_alert_records_v1`(알림 센터), `busssss_settings_v1`(큰 글씨·색약·시간대별 내 정류장·화면 모드), `busssss_bis_times_v1`(오늘 날짜의 ITS 배차시간표, 노선별, 날짜가 다르면 버림)
   - 하차 알림 감시용: `busssss_alert_fired_v1`(이미 울린 알림, 중복 방지), `busssss_alert_vehicle_seen_v1`(고정한 차량을 마지막으로 본 시각)
 - 저장 형식을 바꿀 때는 예전 데이터가 그대로 읽히게 합니다. 새 필드는 선택 필드(`?`)로 추가합니다.
 - 즐겨찾기 종류: `station`(정류장), `route`(노선), `stop_route`(정류장+노선, 도착 시간이 있는 유일한 종류)
 - 하차 알림 탄 차량 고정(`AlertSetting`, 선택 필드): `vehicleNo?`·`boundAt?`가 있으면 그 차량만 보고 울립니다. 고정은 이번 탑승 한 번이라, 울린 뒤·30분 안 보일 때·3시간 뒤에 풀리고 `awaitingVehicle?: true`(다시 고르기 대기, 울리지 않음)가 됩니다. 셋 다 없으면 예전처럼 모든 차량 기준이고 예전 저장값과 같은 모양입니다. 규칙은 `lib/dropoffAlert.ts`, 근거는 `DESIGN.md` 12장 "하차 알림 차량 고정".
+- 화면 모드(7단계): `AppSettings.themeMode: "light" | "dark" | "system"`(선택 필드, 기본 `"light"`). `darkMode`는 `themeMode === "dark"`의 거울이다. 예전 저장값은 `themeMode`가 없으면 끄기로 읽고 옛 `darkMode: true`는 읽지 않는다(`parseSettings`). `index.html`의 작은 스크립트와 `main.tsx`가 첫 화면 전에 `html.dark`를 붙인다(`applyAppearance`). 저장 키·값을 바꾸면 `index.html` 스크립트도 함께 고친다.
 - 시간대별 내 정류장(6단계): `Favorite.commute?: "morning" | "evening"`(선택 필드, `stop_route`만, 한 시간대에 하나, reducer `SET_FAVORITE_COMMUTE`). 설정 `commuteSwitch`(기본 꺼짐)·`commuteMorning`(기본 5~11시)·`commuteEvening`(기본 15~21시)은 `appSettings`가 읽고 이상한 값은 기본값으로 바로잡는다. 켜고 지금이 그 시간대면 지정한 것이 먼저, 아니면 고정 → 첫 번째(`pickHeroFavoriteForSlot`). 끄면 5단계까지와 같다.
 - 즐겨찾기 고정: `pinned?: boolean`(선택 필드). `stop_route` 하나만 고정되고(reducer `SET_FAVORITE_PIN`), 고정한 것이 홈 히어로에 올라갑니다. 없으면 첫 번째 `stop_route`입니다. 고정하지 않은 항목에는 `pinned` 키를 두지 않아 예전 저장 형식과 같습니다.
 
@@ -83,6 +84,7 @@ public/                manifest.json, sw.js, icons/
 - 히어로 "기점 대기" 상태: 시간이 없고 가장 가까운 버스가 기점에 서 있으면 "출발 전"(`ArrivalInfo.atOrigin`, 4장).
 - 히어로 시간표 문구(6단계): 정보 없음·기점 대기일 때만, 노선 목록의 첫차·막차(`serviceStatus`)로 "운행 전 / 운행 종료 · 내일 첫차"를, 운행 중이면 ITS 시간표(`fetchBisTimeInfo`)로 "다음 출발"을 보여 준다(`heroScheduleNote`, DESIGN.md 7-3). **ITS와 첫차·막차는 모두 기점 출발 시각이라 내 정류장 도착처럼 쓰지 않는다**(문구에 기점 이름과 "출발"을 밝힌다). ITS는 히어로 노선당 하루 한 번만 받고(`timetableService`) 20초 갱신에 넣지 않는다. 다른 즐겨찾기 행은 시간표를 부르지 않고 첫차·막차만 쓴다(`rowScheduleLabel`).
 - 알림(토스트)은 얇은 헤더 바로 아래(`top-safe-16`)에 뜹니다. 3초 동안 히어로 첫 줄을 덮습니다(사용자 결정).
+- 다크 모드: 마이 → 메뉴(≡) → "다크 모드" 끄기 / 켜기 / 기기 설정(기본 끄기). 색은 CSS 변수(`src/index.css`의 `:root`, `html.dark`)이고 값은 `DESIGN.md` 4-7. 상태바·주소창 색(`theme-color`)은 앱 설정에 맞춰 바뀌지만 iOS 홈 화면 앱은 홈 화면에 추가할 때 읽는다(8장).
 - 시간대별 내 정류장: 마이 → 메뉴(≡)에서 켜고 끄고 시간대를 고친다. 출근·퇴근 지정은 마이 → 즐겨찾기 관리의 알약(켠 때만 보임).
 - 큰 글씨·색약 모드: 마이 → 메뉴(≡) → 더보기. 설정(`lib/appSettings.ts`)은 앱을 열 때 `main.tsx`가 `html`에 붙이고, 마이에서 바꾸면 다시 붙입니다.
 - 탭 화면(홈·버스·길찾기·마이) 머리글의 검은 제목은 같은 높이입니다. 홈은 "전주시 ▾" 아래, 길찾기는 부제 아래, 버스·마이는 `TAB_TITLE_CLASS`(ui.tsx)로 맞춥니다. 새 탭 화면도 이 규칙을 따릅니다.
@@ -91,20 +93,20 @@ public/                manifest.json, sw.js, icons/
 
 - 로그인·회원가입: 꺼짐. 로그인 없이 앱이 바로 열립니다. `AuthScreen`과 supabase auth 코드는 남겨 둠
 - 교통카드(`CardScreen`): 하단 탭에서 숨김
-- 다크 모드: 토글 숨김 (`!important` 덮어쓰기 방식이라 미완성)
+- 숨겨 둔 화면(`CardScreen`, `RegionModal`, `AuthScreen`)은 옛 원시 색(`slate-*` 등)을 아직 쓴다. 다크 모드(7단계)에서 바꾸지 않았다 — 되살릴 때 색 이름으로 바꿔야 한다.
 - 지역 설정: "개발 중" 안내만 표시
 - 길찾기: 실제 경로 계산 없음. "준비 중" 안내와 예시 단계만 표시
 - 하차 알림: 앱이 열려 있을 때만 동작 (진동 + 탭 안 알림). 백그라운드 푸시 없음
 
 이 항목들은 사용자가 요청하기 전에 켜거나 고치지 않습니다.
 
-**앞으로의 계획**: 6단계(히어로 시간대 전환 + 다음 배차·운행 종료)는 구현을 마쳤고 사용자 폰 확인과 병합을 기다립니다(`design-stage-6`, 결정은 `DESIGN.md` 12장 "6단계"). 7단계(다크 모드를 색 이름 방식으로 다시 만들기), 8단계(길찾기 켜기)가 `DESIGN.md` 10장 "앞으로의 계획"에 있습니다. 사용자가 요청했으므로 해당 단계에서 켜거나 고칩니다. 단계마다 "먼저 사용자에게 확인할 것"의 답을 받은 뒤 시작하고, 끝나면 이 목록을 고칩니다.
+**앞으로의 계획**: 6단계(히어로 시간대 전환 + 다음 배차·운행 종료)와 7단계(다크 모드)는 구현을 마쳤고 사용자 폰 확인과 병합을 기다립니다(`design-stage-6`, `design-stage-7`. 7단계 브랜치는 6단계 위에서 시작했다. 결정은 `DESIGN.md` 12장 "6단계"·"7단계"). 8단계(길찾기 켜기)가 `DESIGN.md` 10장 "앞으로의 계획"에 있습니다. 사용자가 요청했으므로 해당 단계에서 켜거나 고칩니다. 단계마다 "먼저 사용자에게 확인할 것"의 답을 받은 뒤 시작하고, 끝나면 이 목록을 고칩니다.
 
 ## 7. 코드 규칙
 
 - **React 훅을 `map` 안에서 부르지 않습니다.** 목록 항목마다 훅이 필요하면 하위 컴포넌트로 뺍니다(예: `FavoriteArrivalInfo`).
 - **`setInterval`, 이벤트 리스너는 반드시 정리(cleanup)합니다.**
-- **색은 토큰만 씁니다**(`brand`, `canvas`, `surface`, `line`, `ink`, `muted`, `faint`, `pending`, `live`(글자)·`live-icon`(아이콘)·`live-bright`(점), `delay`, `route-main`, `route-branch`, `danger`, `star`, `DESIGN.md` 4장). `slate-*`, `blue-*` 같은 원시 색을 새로 쓰지 않습니다. 색약 모드 대체 색은 `index.css`의 토큰 클래스 규칙에 겁니다. 색을 바꾸면 `scripts/contrast-check.mjs`로 대비를 다시 계산합니다.
+- **색은 토큰만 씁니다**(7단계부터 모든 토큰이 CSS 변수라 다크 모드가 변수만 바꿔 동작한다. 새 색은 `index.css`의 `:root`와 `html.dark`에 함께 정하고 `node scripts/contrast-check.mjs`로 대비를 계산한다. **흰 글자가 올라가는 파란 면은 `bg-brand-fill`, 파란 글자·아이콘·테두리는 `brand`** — 다크에서 `brand`만 밝아진다)(`brand`, `brand-fill`, `canvas`, `surface`, `line`, `ink`, `muted`, `faint`, `pending`, `live`(글자)·`live-icon`(아이콘)·`live-bright`(점), `delay`, `route-main`, `route-branch`, `danger`, `star`, `DESIGN.md` 4장). `slate-*`, `blue-*` 같은 원시 색을 새로 쓰지 않습니다. 색약 모드 대체 색은 `index.css`의 토큰 클래스 규칙에 겁니다. 색을 바꾸면 `scripts/contrast-check.mjs`(라이트·다크·색약 네 조합, 값은 `index.css`에서 읽음)로 대비를 다시 계산합니다.
 - **모바일 기준입니다.** hover 스타일을 쓰지 않고 `active:`만 씁니다. 누르는 요소는 44×44px 이상입니다.
 - **화면이 흔들리지 않게 합니다.** 바뀌는 숫자에는 `tabular-nums`, 로딩·값·오류 상태는 같은 높이를 씁니다.
 - **새 글자 크기는 `rem`으로** 씁니다. px 값은 "큰 글씨" 설정을 따라가지 않습니다.

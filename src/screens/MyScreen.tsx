@@ -19,6 +19,7 @@ import {
   Sunrise,
   Sunset,
   Check,
+  Moon,
 } from "lucide-react";
 import { useApp } from "@/store/appContext";
 import { useAsync } from "@/hooks/useAsync";
@@ -32,9 +33,10 @@ import { supabase } from "@/lib/supabaseClient";
 import type { Favorite } from "@/types";
 import {
   SETTINGS_KEY,
-  applySettings,
+  applyAppearance,
   loadSettings,
   type AppSettings,
+  type ThemeMode,
 } from "@/lib/appSettings";
 
 /* 설정 읽기·붙이기는 lib/appSettings로 옮겼다. 앱을 열 때(main.tsx)도 같은
@@ -94,7 +96,7 @@ export function MyScreen() {
   }, []);
 
   useEffect(() => {
-    applySettings(document.documentElement, settings);
+    applyAppearance(settings);
     try {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     } catch (err) {
@@ -157,7 +159,7 @@ export function MyScreen() {
   return (
     <div className="h-full flex flex-col overflow-hidden bg-canvas">
       {/* 공통 얇은 헤더(DESIGN.md 8장): canvas 바탕, 안전영역 + 3.5rem, 제목
-          Title, 아래 선 없음. 예전에는 넓은 파란 머리(bg-brand, pt-safe-16 +
+          Title, 아래 선 없음. 예전에는 넓은 파란 머리(bg-brand-fill, pt-safe-16 +
           pb-9) 안에 프로필이 있었고 즐겨찾기 카드가 그 위로 겹쳐 올라왔다.
           4-6 "넓은 파랑 면은 히어로 하나뿐"에 맞춰 파란 면을 걷고, 프로필은
           아래 흰 카드로 옮겼다. */}
@@ -257,7 +259,7 @@ export function MyScreen() {
                             두 버튼은 높이 32px 알약 + 위아래 6px로 누르는 영역 44px. */}
                         <button
                           type="submit"
-                          className="relative select-none touch-manipulation shrink-0 h-8 px-3 rounded-full bg-brand text-white text-caption font-semibold active:bg-brand-deep before:content-[''] before:absolute before:inset-x-0 before:-inset-y-1.5"
+                          className="relative select-none touch-manipulation shrink-0 h-8 px-3 rounded-full bg-brand-fill text-white text-caption font-semibold active:bg-brand-fill-deep before:content-[''] before:absolute before:inset-x-0 before:-inset-y-1.5"
                         >
                           저장
                         </button>
@@ -386,7 +388,7 @@ export function MyScreen() {
                   쓰기로 해서 brand로 바꿨다. 로컬 데이터는 지워지지 않는 동작이다. */}
               <button
                 onClick={performLogout}
-                className="flex-1 py-3 bg-brand text-white rounded-full text-body font-semibold active:scale-[0.98] transition-transform duration-100"
+                className="flex-1 py-3 bg-brand-fill text-white rounded-full text-body font-semibold active:scale-[0.98] transition-transform duration-100"
               >
                 로그아웃
               </button>
@@ -417,7 +419,7 @@ export function MyScreen() {
             </ul>
             <button
               onClick={() => setHelpOpen(false)}
-              className="mt-5 w-full py-3 bg-brand text-white rounded-full text-body font-semibold active:scale-[0.98] transition-transform duration-100"
+              className="mt-5 w-full py-3 bg-brand-fill text-white rounded-full text-body font-semibold active:scale-[0.98] transition-transform duration-100"
             >
               확인
             </button>
@@ -494,6 +496,23 @@ export function MyScreen() {
               </div>
             )}
 
+            {/* 다크 모드(7단계): 끄기 / 켜기 / 기기 설정 따르기. 기본은 끄기다. 앱을 열 때
+                main.tsx와 index.html이 같은 저장값을 읽어 첫 화면부터 적용한다. */}
+            <ThemeModeRow
+              value={settings.themeMode}
+              onChange={(mode) => {
+                updateSetting("themeMode", mode);
+                updateSetting("darkMode", mode === "dark");
+                showToast(
+                  mode === "dark"
+                    ? "다크 모드를 켰어요"
+                    : mode === "system"
+                      ? "기기 설정에 맞춰요"
+                      : "다크 모드를 껐어요",
+                );
+              }}
+            />
+
             {/* settings.voiceGuide를 실제로 읽어서 동작하는 코드가 아직 없다.
                 켜지는 것처럼 보이면 안 되므로 "준비 중"으로 표시하고 잠근다. */}
             <SettingToggle
@@ -504,14 +523,6 @@ export function MyScreen() {
               disabled
               note="준비 중"
             />
-
-            {/* 다크모드 토글은 임시로 숨긴다. index.css의 대응이 흰 면, 가장
-                연한 회색 면과 일부 텍스트 색(모두 옛 원시 색 클래스)까지만이라,
-                실제로 켜면 그보다 진한 회색 면·테두리 등이 밝은 채로 남아 화면이
-                뒤섞인다. 4단계에서 화면 색을 토큰으로 바꾸면서 그 덮어쓰기는
-                거의 걸리지 않게 됐다 — 지금 켜면 더 크게 깨진다. 토큰 기반으로
-                다시 만든 뒤 노출한다(DESIGN.md 10장 "나중에", loadSettings에서
-                값도 꺼둔다). */}
 
             <SettingRow
               icon={MoreHorizontal}
@@ -561,6 +572,58 @@ export function MyScreen() {
             </div>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * 설정 서랍의 화면 모드 선택(7단계). 세 알약을 같은 폭으로 나란히 둔다. 선택은 색뿐 아니라
+ * 체크 아이콘으로도 보이고, 화면 읽기 프로그램에는 라디오 묶음으로 읽힌다.
+ * "켜기"일 때만 안내 한 줄: iOS 홈 화면 앱의 상태바 글자색은 앱이 정할 수 없고 기기 모드를
+ * 따라서, 기기가 라이트인데 앱만 다크이면 맨 위 시계 글자가 안 보일 수 있다(12장 "7단계").
+ */
+function ThemeModeRow({ value, onChange }: { value: ThemeMode; onChange: (mode: ThemeMode) => void }) {
+  const options: { mode: ThemeMode; label: string }[] = [
+    { mode: "light", label: "끄기" },
+    { mode: "dark", label: "켜기" },
+    { mode: "system", label: "기기 설정" },
+  ];
+  return (
+    <div className="px-4 py-3">
+      <span id="theme-mode-label" className="flex items-center gap-3 text-body text-ink">
+        <Moon className="w-4.5 h-4.5 shrink-0 text-muted" aria-hidden="true" />
+        다크 모드
+      </span>
+      <div role="radiogroup" aria-labelledby="theme-mode-label" className="mt-2 flex items-center gap-1.5">
+        {options.map(({ mode, label }) => {
+          const selected = value === mode;
+          return (
+            <button
+              key={mode}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => onChange(mode)}
+              className={`h-11 min-w-0 flex-1 rounded-tile border flex items-center justify-center gap-1 px-1 text-caption font-semibold whitespace-nowrap select-none touch-manipulation transition-colors ${
+                selected
+                  ? "bg-brand-soft border-brand text-brand"
+                  : "bg-surface border-line text-ink active:bg-canvas"
+              }`}
+            >
+              {selected && <Check className="w-3 h-3 shrink-0" aria-hidden="true" />}
+              {label}
+            </button>
+          );
+        })}
+      </div>
+      {value === "dark" && (
+        <p className="mt-2 text-caption text-muted">
+          기기가 라이트 모드이면 홈 화면 앱 맨 위 시계 글자가 잘 안 보일 수 있어요. 그럴 때는 "기기 설정"을 고르세요.
+        </p>
+      )}
+      {value === "system" && (
+        <p className="mt-2 text-caption text-muted">기기의 화면 모드를 그대로 따라요.</p>
       )}
     </div>
   );
