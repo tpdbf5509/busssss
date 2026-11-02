@@ -226,6 +226,39 @@ export async function getRouteIdsForStop(nodeId: string): Promise<string[]> {
 }
 
 /**
+ * 정류장 여러 개를 지나는 (노선, 정류장, 순번) 기록을 한 번에 조회합니다.
+ * 길찾기가 출발·도착 정류장을 모두 지나는 노선을 찾는 데 씁니다. 정류장마다
+ * 따로 부르면 요청이 정류장 수만큼 늘어서, `in.(...)` 한 번으로 묶습니다.
+ * 정적 캐시(bus_route_stops_cache) 조회라 실시간 API를 쓰지 않습니다.
+ *
+ * Supabase 기본 응답 상한이 1000행이다. 정류장 하나를 지나는 노선은 많아야
+ * 수십 개라 출발·도착 정류장 몇 개를 묶어도 상한 아래다.
+ */
+export async function getRoutePassesForNodes(
+  nodeIds: string[],
+): Promise<{ routeId: string; nodeId: string; order: number }[]> {
+  const ids = Array.from(new Set(nodeIds.filter(Boolean)));
+  if (ids.length === 0) return [];
+
+  const rows = await supabaseFetch<{
+    route_id: string;
+    node_id: string;
+    sequence_no: number | null;
+  }>(
+    "bus_route_stops_cache",
+    `select=route_id,node_id,sequence_no&node_id=in.(${ids.map(encodeURIComponent).join(",")})`
+  );
+
+  return rows
+    .filter((r) => r.route_id && r.node_id && r.sequence_no != null)
+    .map((r) => ({
+      routeId: r.route_id,
+      nodeId: r.node_id,
+      order: Number(r.sequence_no),
+    }));
+}
+
+/**
  * 정류장 이름으로 검색합니다. 예전에는 TAGO 실시간 검색 API를 입력마다
  * 호출했지만, 정류장번호(ARS ID)까지 포함한 이 데이터는 이미
  * bus_stations_cache 뷰(sync-bus-data가 3시간마다 채우는 bus_route_stops_cache를
