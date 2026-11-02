@@ -39,7 +39,7 @@ src/
   lib/                 formatArrival, reliability, stopPosition, arrivalPlausibility, heroArrival(히어로 상태·히어로 고르기), commute(출근·퇴근 시간대), serviceSchedule·heroSchedule(운행 전·종료·다음 출발 문구), appSettings(큰 글씨·색약·시간대), dropoffAlert(하차 알림 판정·탄 차량 고정) 등 순수 로직
   store/               AppContext + appReducer(즐겨찾기 고정 포함) + localStorage 저장
 scripts/contrast-check.mjs   DESIGN.md 4장 색 대비 계산, 값은 src/index.css의 색 변수에서 읽음 (node scripts/contrast-check.mjs --md)
-supabase/functions/    tago-proxy, jeonju-proxy, bis-proxy, sync-bus-data
+supabase/functions/    tago-proxy, jeonju-proxy, bis-proxy, sync-bus-data, sync-station-coords(정류장 좌표 → bus_station_coords)
 public/                manifest.json, sw.js, icons/
 ```
 
@@ -50,6 +50,7 @@ public/                manifest.json, sw.js, icons/
   - `jeonju-proxy`: 전주시 노선 API
   - `bis-proxy`: 전주 ITS 시간표
   - `sync-bus-data`: 정적 노선 데이터를 DB에 채우는 함수
+  - `sync-station-coords`: 정류장 좌표(`bus_station_coords`)를 TAGO에서 받아 채우는 함수. `?dryRun=1`이면 읽기만 합니다
 - 환경 변수: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
 - **정적 데이터와 실시간 데이터를 나눕니다.**
   - 노선 목록, 기점·종점, 정류장 순서 → Supabase DB(`bus_routes_cache`, `bus_route_stops_cache`)
@@ -87,7 +88,7 @@ public/                manifest.json, sw.js, icons/
 - 다크 모드: 마이 → 메뉴(≡) → "다크 모드" 끄기 / 켜기 / 기기 설정(기본 끄기). 색은 CSS 변수(`src/index.css`의 `:root`, `html.dark`)이고 값은 `DESIGN.md` 4-7. 상태바·주소창 색(`theme-color`)은 앱 설정에 맞춰 바뀌지만 iOS 홈 화면 앱은 홈 화면에 추가할 때 읽는다(8장).
 - 시간대별 내 정류장: 마이 → 메뉴(≡)에서 켜고 끄고 시간대를 고친다. 출근·퇴근 지정은 마이 → 즐겨찾기 관리의 알약(켠 때만 보임).
 - 큰 글씨·색약 모드: 마이 → 메뉴(≡) → 더보기. 설정(`lib/appSettings.ts`)은 앱을 열 때 `main.tsx`가 `html`에 붙이고, 마이에서 바꾸면 다시 붙입니다.
-- 길찾기(8단계): 출발·도착 정류장 두 칸에서 이름으로 고르면(같은 이름 정류장은 길 양쪽까지 한 묶음) 갈아타지 않고 갈 수 있는 노선을 정거장 수 순으로 보여 줍니다. 선택한 줄에는 단계(승차 정류장·탑승·정거장 수·하차)와 승차 정류장의 지금 도착 정보를 붙입니다. 규칙은 `lib/directRoutes.ts`(순수 함수, 시험 있음), 조회는 `services/directRouteService.ts`입니다. 검색 한 번의 요청: 노선-정류장 조회 1회(`in`으로 묶음) + 정류장 목록 최대 6회(5분 저장) + 도착 정보 최대 3회(순서대로). 정거장 수는 노선 상세와 같은 정류장 목록 위치로 세고(순번 차이 아님), 목록에서 못 찾으면 그 줄을 뺍니다. **걷는 시간, 버스 이동 시간은 보여 주지 않습니다**(좌표가 없어 지어낼 수 없음). 직행이 없으면 "직행 버스가 없어요"라고 말하고 가짜 경로를 만들지 않습니다.
+- 길찾기(8단계): 출발·도착 정류장 두 칸에서 이름으로 고르면(같은 이름 정류장은 길 양쪽까지 한 묶음) 갈아타지 않고 갈 수 있는 노선을 정거장 수 순으로 보여 줍니다. 선택한 줄에는 단계(승차 정류장·탑승·정거장 수·하차)와 승차 정류장의 지금 도착 정보를 붙입니다. 규칙은 `lib/directRoutes.ts`(순수 함수, 시험 있음), 조회는 `services/directRouteService.ts`입니다. 검색 한 번의 요청: 노선-정류장 조회 1회(`in`으로 묶음) + 정류장 목록 최대 6회(5분 저장) + 도착 정보 최대 3회(순서대로). 정거장 수는 노선 상세와 같은 정류장 목록 위치로 세고(순번 차이 아님), 목록에서 못 찾으면 그 줄을 뺍니다. **걷는 시간, 버스 이동 시간은 보여 주지 않습니다**(걷는 길·소요시간 데이터가 없어 지어낼 수 없음). 현재 위치 출발은 누른 순간의 위치를 한 번만 받아(`lib/geolocation.ts`) 좌표 표 `bus_station_coords`에서 500m 안 정류장을 찾고(`services/nearbyStationService.ts`, `lib/geo.ts`), 승차 정류장까지 **직선거리**만 보여 줍니다. 좌표 표는 `supabase/functions/sync-station-coords`(TAGO 정류소 목록)가 채우며, 표가 비어 있으면 "가까운 정류장을 찾지 못했어요"가 나옵니다. 직행이 없으면 "직행 버스가 없어요"라고 말하고 가짜 경로를 만들지 않습니다.
 - 탭 화면(홈·버스·길찾기·마이) 머리글의 검은 제목은 같은 높이입니다. 홈은 "전주시 ▾" 아래, 길찾기는 부제 아래, 버스·마이는 `TAB_TITLE_CLASS`(ui.tsx)로 맞춥니다. 새 탭 화면도 이 규칙을 따릅니다.
 
 ## 6. 현재 상태 (일부러 꺼 둔 것)
@@ -96,7 +97,7 @@ public/                manifest.json, sw.js, icons/
 - 교통카드(`CardScreen`): 하단 탭에서 숨김
 - 숨겨 둔 화면(`CardScreen`, `RegionModal`, `AuthScreen`)은 옛 원시 색(`slate-*` 등)을 아직 쓴다. 다크 모드(7단계)에서 바꾸지 않았다 — 되살릴 때 색 이름으로 바꿔야 한다.
 - 지역 설정: "개발 중" 안내만 표시
-- 길찾기: 직행만 계산합니다(갈아타는 경로 없음). 정류장 좌표가 DB에 없어 현재 위치 출발지와 걷는 시간은 아직 없습니다. 상세는 5-1장 "길찾기"
+- 길찾기: 직행만 계산합니다(갈아타는 경로 없음). 출발지는 정류장 이름이나 "현재 위치에서 출발"(근처 500m 안 정류장 5개까지, 직선거리)입니다. 걷는 시간은 없습니다. 상세는 5-1장 "길찾기"
 - 하차 알림: 앱이 열려 있을 때만 동작 (진동 + 탭 안 알림). 백그라운드 푸시 없음
 
 이 항목들은 사용자가 요청하기 전에 켜거나 고치지 않습니다.

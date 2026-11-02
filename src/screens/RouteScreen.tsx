@@ -7,9 +7,12 @@ import {
   Navigation,
   ArrowUpDown,
   SearchX,
+  LocateFixed,
+  Loader2,
 } from "lucide-react";
 import { useApp } from "@/store/appContext";
 import { searchStations } from "@/services/stationService";
+import { findNearbyGroup } from "@/services/nearbyStationService";
 import {
   directRouteKey,
   fetchLiveArrivals,
@@ -25,6 +28,8 @@ import {
   isSameGroup,
   type StationGroup,
 } from "@/lib/directRoutes";
+import { distanceMeters, formatDistance, type LatLng } from "@/lib/geo";
+import { getCurrentLocation, locationFailureMessage, LocationError } from "@/lib/geolocation";
 import { showToast } from "@/lib/toastStore";
 import { EmptyState, ErrorState, LoadingSkeleton } from "@/components/ui";
 
@@ -76,9 +81,10 @@ const STEP_ICON_BG = "bg-brand-soft";
  * 좌표가 없어 걷는 시간, 버스 이동 시간은 알 수 없으니 쓰지 않는다
  * (지어낸 시간은 안 된다. CLAUDE.md 4장).
  */
-function buildSteps(result: DirectRouteResult): RouteStep[] {
+function buildSteps(result: DirectRouteResult, walk: string): RouteStep[] {
   const { route, boardStation, alightStation, stopCount } = result;
   const boardDetail = [
+    walk,
     boardStation.arsId ? `정류장 번호 ${boardStation.arsId}` : "",
     route.end ? `${route.end} 방면` : "",
   ]
@@ -109,6 +115,17 @@ function buildSteps(result: DirectRouteResult): RouteStep[] {
   ];
 }
 
+/**
+ * 현재 위치에서 승차 정류장까지 직선거리 글. 걷는 길을 모르므로 시간으로 바꾸지
+ * 않는다(lib/geo.ts). 현재 위치로 출발하지 않았거나 좌표가 없으면 빈 글자다.
+ */
+function walkDistanceLabel(origin: LatLng | undefined, result: DirectRouteResult): string {
+  const { lat, lng } = result.boardStation;
+  if (!origin || lat == null || lng == null) return "";
+  const text = formatDistance(distanceMeters(origin, { lat, lng }));
+  return text ? `현재 위치에서 직선 약 ${text}` : "";
+}
+
 /** 승차 정류장 도착 정보를 한 줄 글로. 시간을 못 믿는 값도 정거장 수는 보여 준다. */
 function liveArrivalLabel(info: ArrivalInfo | null): string {
   if (!info) return "도착 정보 없음";
@@ -132,6 +149,7 @@ export function RouteScreen() {
   const [fromText, setFromText] = useState("");
   const [toText, setToText] = useState("");
   const [active, setActive] = useState<Field | null>(null);
+  const [locating, setLocating] = useState(false);
 
   const [suggestions, setSuggestions] = useState<StationGroup[]>([]);
   const [suggestStatus, setSuggestStatus] = useState<LoadStatus>("idle");
@@ -273,6 +291,44 @@ export function RouteScreen() {
     }
   };
 
+  // 누른 순간의 위치를 한 번만 받아 근처 정류장을 출발 후보로 삼는다.
+  const startFromCurrentLocation = async () => {
+    if (locating) return;
+    setLocating(true);
+    try {
+      const origin = await getCurrentLocation();
+      const group = await findNearbyGroup(origin);
+      if (group) pickGroup("from", group);
+      else showToast("가까운 정류장을 찾지 못했어요 (500m 안)");
+    } catch (error) {
+      showToast(
+        error instanceof LocationError
+          ? locationFailureMessage(error.reason)
+          : "근처 정류장을 불러오지 못했어요",
+      );
+    } finally {
+      setLocating(false);
+    }
+  };
+
+  const showLocationButton = active === "from" || (!fromGroup && active === null);
+
+  const locationButton = (
+    <button
+      type="button"
+      onClick={() => void startFromCurrentLocation()}
+      disabled={locating}
+      className="select-none touch-manipulation mb-3 w-full min-h-12 rounded-card border border-line bg-surface px-4 flex items-center gap-3 text-left text-body-strong text-ink active:bg-canvas disabled:opacity-60 transition-colors duration-75"
+    >
+      {locating ? (
+        <Loader2 className="w-5 h-5 text-brand animate-spin" aria-hidden="true" />
+      ) : (
+        <LocateFixed className="w-5 h-5 text-brand" aria-hidden="true" />
+      )}
+      {locating ? "현재 위치 찾는 중" : "현재 위치에서 출발"}
+    </button>
+  );
+
   const favoriteTarget: Field = active ?? (fromGroup ? "to" : "from");
 
   const pillClass =
@@ -317,7 +373,8 @@ export function RouteScreen() {
     );
   };
 
-  const hasText = fromText !== "" || toText !== "";
+  // "현재 위치" 묶음은 출발로만 쓴다. 바꾸면 도착 칸에 들어가 버리므로 바꾸기를 숨긴다.
+  const hasText = (fromText !== "" || toText !== "") && !fromGroup?.origin;
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-canvas">
@@ -361,6 +418,7 @@ export function RouteScreen() {
         {/* 1) 정류장 이름을 치는 중: 검색 결과에서 고른다 */}
         {typing && active && (
           <>
+            {active === "from" && locationButton}
             {suggestStatus === "loading" && (
               <div className="space-y-2" role="status" aria-label="정류장 검색 중">
                 <LoadingSkeleton className="h-14" />
@@ -446,7 +504,8 @@ export function RouteScreen() {
                       ? "도착 정보 확인 중"
                       : liveArrivalLabel(arrival)
                     : null;
-                const steps = selected ? buildSteps(result) : [];
+                const walk = walkDistanceLabel(fromGroup?.origin, result);
+                const steps = selected ? buildSteps(result, walk) : [];
 
                 return (
                   <li
@@ -491,7 +550,7 @@ export function RouteScreen() {
                       </div>
                       {live && (
                         <p className="mt-2 text-caption text-muted tabular-nums">
-                          승차 정류장 · {live}
+                          {walk ? `${walk.replace("현재 위치에서 ", "")} · ` : ""}승차 정류장 · {live}
                         </p>
                       )}
                     </button>
@@ -541,6 +600,7 @@ export function RouteScreen() {
         {/* 3) 아직 고르는 중: 즐겨찾기·인기 목적지 알약과 안내 */}
         {!typing && !sameStop && !ready && (
           <>
+            {showLocationButton && locationButton}
             {favoriteNames.length > 0 && (
               <>
                 <p className="text-body-strong text-ink mb-3">

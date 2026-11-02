@@ -148,3 +148,14 @@ describe("groupStationsByName", () => {
     expect(isSameGroup(a, c)).toBe(false);
   });
 });
+
+describe("현재 위치 묶음", () => {
+  const stn = (id: string, name: string): Station => ({ id, name, arsId: "", lat: null, lng: null });
+
+  it("origin이 있는 묶음은 어떤 이름과도 같다고 보지 않는다", () => {
+    const here = { name: "현재 위치", stations: [stn("1", "전주역")], origin: { lat: 35.8, lng: 127.1 } };
+    const named = { name: "전주역", stations: [stn("1", "전주역")] };
+    expect(isSameGroup(here, named)).toBe(false);
+    expect(isSameGroup(named, here)).toBe(false);
+  });
+});

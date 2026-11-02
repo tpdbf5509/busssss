@@ -112,6 +112,11 @@ export function countStopsBetween(
 export interface StationGroup {
   name: string;
   stations: Station[];
+  /**
+   * "현재 위치"에서 만든 묶음일 때 그때의 위치. 정류장까지 직선거리를 보여 주는
+   * 데 쓴다. 이름으로 찾은 묶음에는 없다.
+   */
+  origin?: { lat: number; lng: number };
 }
 
 /**
@@ -136,7 +141,11 @@ export function groupStationsByName(stations: Station[]): StationGroup[] {
   return [...groups.values()];
 }
 
-/** 두 묶음이 같은 정류장 이름인지. */
+/**
+ * 두 묶음이 같은 정류장 이름인지. "현재 위치" 묶음은 이름이 아니라 위치로 만든
+ * 것이라 어떤 정류장 이름과도 같다고 보지 않는다.
+ */
 export function isSameGroup(a: StationGroup, b: StationGroup): boolean {
+  if (a.origin || b.origin) return false;
   return (normalizeStopName(a.name) || a.name) === (normalizeStopName(b.name) || b.name);
 }
