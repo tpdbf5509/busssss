@@ -1,0 +1,18 @@
+# BUS STOP 백엔드(Cloudflare Worker). 설명과 배포 순서는 README.md에 있습니다.
+name = "busssss-api"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+
+[vars]
+# 이 주소에서 온 브라우저 요청만 프록시를 쓸 수 있습니다(쉼표로 구분).
+# 정적 데이터 파일은 공개 데이터라 이 제한을 받지 않습니다.
+ALLOWED_ORIGINS = "https://busssss-rouge.vercel.app,http://localhost:5173,http://localhost:4173"
+
+# 정적 노선·정류장 JSON(routes, stops, meta)을 보관하는 KV
+[[kv_namespaces]]
+binding = "STATIC"
+id = "0c2854a333274c0fa2bc76477c425395"
+
+# 비밀값은 파일에 적지 않고 wrangler secret put 으로 넣습니다.
+#   TAGO_API_KEY  공공데이터포털 서비스키 (TAGO·전주시 API 공용)
+#   ADMIN_TOKEN   /admin/import 호출용 비밀번호

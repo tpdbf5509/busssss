@@ -1,6 +1,8 @@
 // 전주시 교통정보센터(its.jeonju.go.kr)의 공식 배차시간표 API.
-// its.jeonju.go.kr은 CORS를 허용하지 않으므로 Supabase Edge Function 프록시를
-// 통해 서버 사이드에서 호출합니다.
+// its.jeonju.go.kr은 CORS를 허용하지 않으므로 프록시(Cloudflare Worker, 주소가
+// 없으면 Supabase Edge Function)를 통해 서버 사이드에서 호출합니다.
+
+import { buildProxyRequest, readBackendEnv, usesCloudflare } from "@/api/backend";
 
 export interface BisTimeInfo {
   times: string[];      // 실제 출발시각 목록 (예: ["05:50", "06:10", ...])
@@ -13,17 +15,13 @@ export async function fetchBisTimeInfo(routeId: string): Promise<BisTimeInfo | n
   if (!routeId) return null;
 
   try {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    if (!supabaseUrl || !anonKey) return null;
+    const env = readBackendEnv();
+    // 예전에는 키가 없으면 요청 자체를 하지 않았다. Cloudflare는 키가 필요 없으니
+    // Supabase 경로일 때만 같은 조건을 유지한다.
+    if (!usesCloudflare(env) && (!env.supabaseUrl || !env.supabaseAnonKey)) return null;
 
-    const url = `${supabaseUrl}/functions/v1/bis-proxy?routeId=${encodeURIComponent(routeId)}`;
-    const res = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${anonKey}`,
-        "Content-Type": "application/json",
-      },
-    });
+    const request = buildProxyRequest(env, "bis", { routeId });
+    const res = await fetch(request.url, { headers: request.headers });
 
     if (!res.ok) return null;
 

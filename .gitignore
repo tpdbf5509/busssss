@@ -24,3 +24,8 @@ dist-ssr
 
 # Claude Code agent worktrees (ephemeral per-agent checkouts, never project content)
 .claude/worktrees/
+
+# Cloudflare Worker 로컬 파일
+cloudflare/.dev.vars
+cloudflare/.wrangler/
+.wrangler/
