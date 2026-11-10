@@ -1,6 +1,19 @@
 import { parseXml } from "./xml";
+import { buildProxyRequest, readBackendEnv, usesCloudflare } from "@/api/backend";
+import { loadStaticRoutes, loadStaticStops } from "@/api/staticData";
+import {
+  buildRoutes,
+  routeIdsForStop,
+  searchStationsInPayload,
+  stopRowToRaw,
+  stopsForRoute,
+  type MasterRow,
+  type RawRouteField,
+  type RouteCacheRow,
+  type StopRow,
+} from "@/lib/staticData";
 
-export type RawRouteField = Record<string, string>;
+export type { RawRouteField };
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
@@ -57,18 +70,11 @@ function collectObjects(value: unknown, out: RawRouteField[] = []): RawRouteFiel
 /** 전주시 GW: 특정 노선의 현재 운행 버스 위치 */
 export async function getBusLocationsByRoute(brtStdid: string): Promise<RawRouteField[]> {
   if (!brtStdid) return [];
-  if (!SUPABASE_URL) throw new Error("VITE_SUPABASE_URL이 설정되지 않았습니다.");
-
-  const search = new URLSearchParams({
+  const request = buildProxyRequest(readBackendEnv(), "jeonju", {
     path: "/realtime/bus_location_bus_position_common",
     brtStdid,
   });
-  const url = `${SUPABASE_URL.replace(/\/$/, "")}/functions/v1/jeonju-proxy?${search.toString()}`;
-  const res = await fetch(url, {
-    headers: SUPABASE_ANON_KEY
-      ? { Authorization: `Bearer ${SUPABASE_ANON_KEY}`, apikey: SUPABASE_ANON_KEY }
-      : undefined,
-  });
+  const res = await fetch(request.url, { headers: request.headers });
   const text = await res.text().catch(() => "");
   if (!res.ok) throw new Error(text || `전주시 실시간 위치 요청 실패 (HTTP ${res.status})`);
 
@@ -92,37 +98,26 @@ export async function getBusLocationsByRoute(brtStdid: string): Promise<RawRoute
 }
 
 /**
- * 정적 노선 마스터는 Supabase를 단일 소스로 사용합니다.
- * 노선 목록을 만들기 위해 실시간 노선 탐색 API를 호출하지 않습니다.
+ * 정적 노선 목록.
  *
- * bus_routes_master가 "이 노선이 존재한다"는 확정 목록(454개)이고,
- * bus_routes_cache는 실시간 상세 조회로 채워지는 보강 데이터(brtClass,
- * 배차간격, 노선길이 등)입니다. master에는 있지만 아직 cache가 못 채운
- * 노선도 화면에서 빠지면 안 되므로 master를 기준으로 cache를 덧붙입니다.
+ * Cloudflare 주소(VITE_API_BASE_URL)가 있으면 Worker가 내려주는 routes.json을
+ * 하루에 한 번 받아 기기에 저장해 쓰고, 없으면 예전처럼 Supabase에서 읽는다.
+ * 합치는 규칙(master 기준, cache 덧붙이기)은 두 경로가 buildRoutes 하나를 쓴다.
+ * 노선 목록을 만들기 위해 실시간 노선 탐색 API는 부르지 않는다.
  */
 export async function getRoutes(): Promise<RawRouteField[]> {
+  if (usesCloudflare(readBackendEnv())) {
+    const routes = await loadStaticRoutes();
+    if (routes.length === 0) throw new Error("저장된 전주 버스 노선 데이터가 없습니다.");
+    return routes;
+  }
+
   const [masterRows, cacheRows] = await Promise.all([
-    supabaseFetch<{
-      brt_stdid: string;
-      route_no: string;
-      category: string | null;
-      start_node: string | null;
-      end_node: string | null;
-      start_time: string | null;
-      end_time: string | null;
-    }>(
+    supabaseFetch<MasterRow>(
       "bus_routes_master",
       "select=brt_stdid,route_no,category,start_node,end_node,start_time,end_time&order=route_no.asc"
     ),
-    supabaseFetch<{
-      brt_id: string | null;
-      brt_stdid: string | null;
-      brt_class: string | null;
-      brt_no: string | null;
-      start_name: string | null;
-      end_name: string | null;
-      raw: RawRouteField;
-    }>(
+    supabaseFetch<RouteCacheRow>(
       "bus_routes_cache",
       "select=brt_id,brt_stdid,brt_class,brt_no,start_name,end_name,raw"
     ),
@@ -132,80 +127,27 @@ export async function getRoutes(): Promise<RawRouteField[]> {
     throw new Error("Supabase에 저장된 전주 버스 노선 데이터가 없습니다.");
   }
 
-  const cacheByStdid = new Map(
-    cacheRows.filter((row) => row.brt_stdid).map((row) => [row.brt_stdid as string, row])
-  );
-
-  const fromMaster = masterRows.map((row) => {
-    const cached = cacheByStdid.get(row.brt_stdid);
-    return {
-      ...(cached?.raw ?? {}),
-      brtId: cached?.brt_id ?? "",
-      brtStdid: row.brt_stdid,
-      brtClass: cached?.brt_class ?? "",
-      brtNo: row.route_no,
-      brtStartNm: cached?.start_name || row.start_node || "",
-      brtEndNm: cached?.end_name || row.end_node || "",
-      brtFirsttime: row.start_time ?? "",
-      brtLasttime: row.end_time ?? "",
-      // master가 본선/분선의 정답(category)을 갖고 있다 — 프론트에서
-      // 하드코딩된 배열로 다시 추측하지 않도록 그대로 내려준다.
-      category: row.category ?? "",
-    };
-  });
-
-  const masterStdids = new Set(masterRows.map((row) => row.brt_stdid));
-  const cacheOnly = cacheRows
-    .filter((row) => row.brt_stdid && !masterStdids.has(row.brt_stdid))
-    .map((row) => ({
-      ...row.raw,
-      brtId: row.brt_id ?? "",
-      brtStdid: row.brt_stdid ?? "",
-      brtClass: row.brt_class ?? "",
-      brtNo: row.brt_no ?? row.brt_id ?? "",
-      brtStartNm: row.start_name ?? row.raw?.brtStartNm ?? "",
-      brtEndNm: row.end_name ?? row.raw?.brtEndNm ?? "",
-    }));
-
-  return [...fromMaster, ...cacheOnly];
+  return buildRoutes(masterRows, cacheRows);
 }
 
 /**
- * 정류장 순서도 Supabase 캐시를 단일 소스로 사용합니다.
- * 정류장 데이터가 없는 경우 앱에서 실시간 API를 대신 호출하지 않습니다.
- * 누락된 정류장 데이터는 sync-bus-data 유지보수 작업으로 채웁니다.
+ * 노선의 정류장 순서. Cloudflare 주소가 있으면 stops.json(하루 한 번 저장),
+ * 없으면 Supabase 캐시를 쓴다. 정류장 데이터가 없어도 실시간 API로 대신
+ * 채우지 않는다. 누락은 동기화 작업(sync)으로 채운다.
  */
 export async function getRouteStops(routeId: string): Promise<RawRouteField[]> {
   if (!routeId) return [];
 
-  const rows = await supabaseFetch<{
-    route_id: string;
-    sequence_no: number | null;
-    node_id: string | null;
-    node_name: string | null;
-    raw: RawRouteField;
-  }>(
+  if (usesCloudflare(readBackendEnv())) {
+    return stopsForRoute(await loadStaticStops(), routeId);
+  }
+
+  const rows = await supabaseFetch<StopRow>(
     "bus_route_stops_cache",
     `select=route_id,sequence_no,node_id,node_name,raw&route_id=eq.${encodeURIComponent(routeId)}&order=sequence_no.asc`
   );
 
-  return rows.map((row) => {
-    const nodeId = row.node_id ?? row.raw?.nodeid ?? row.raw?.stopStandardid ?? row.raw?.stopId ?? "";
-    const nodeName = row.node_name ?? row.raw?.nodenm ?? row.raw?.stopKname ?? "";
-    const seq = String(row.sequence_no ?? row.raw?.seq ?? row.raw?.brnSeqno ?? "");
-
-    return {
-      ...row.raw,
-      brtStdid: row.route_id,
-      nodeid: nodeId,
-      nodenm: nodeName,
-      seq,
-      stopStandardid: nodeId || row.raw?.stopStandardid || "",
-      stopId: nodeId || row.raw?.stopId || "",
-      stopKname: nodeName || row.raw?.stopKname || "",
-      brnSeqno: seq || row.raw?.brnSeqno || "",
-    };
-  });
+  return rows.map(stopRowToRaw);
 }
 
 /**
@@ -216,6 +158,10 @@ export async function getRouteStops(routeId: string): Promise<RawRouteField[]> {
  */
 export async function getRouteIdsForStop(nodeId: string): Promise<string[]> {
   if (!nodeId) return [];
+
+  if (usesCloudflare(readBackendEnv())) {
+    return routeIdsForStop(await loadStaticStops(), nodeId);
+  }
 
   const rows = await supabaseFetch<{ route_id: string }>(
     "bus_route_stops_cache",
@@ -238,6 +184,10 @@ export async function getRouteIdsForStop(nodeId: string): Promise<string[]> {
  * 크지 않다.
  */
 export async function searchStationsCache(query: string): Promise<RawRouteField[]> {
+  if (usesCloudflare(readBackendEnv())) {
+    return searchStationsInPayload(await loadStaticStops(), query);
+  }
+
   const q = query.trim();
   const params = q
     ? `select=node_id,node_name,ars_id&node_name=ilike.*${encodeURIComponent(q)}*&order=node_name.asc&limit=30`

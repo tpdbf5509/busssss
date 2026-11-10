@@ -151,8 +151,9 @@ function mapToBusStop(raw: RawRouteField, index: number): BusStop {
   return { id, name, order };
 }
 
-// Supabase를 정적 노선 데이터의 단일 소스로 사용합니다.
-// 브라우저 localStorage에 별도의 노선 목록을 저장하지 않아 DB 변경이 즉시 반영됩니다.
+// 정적 노선 데이터의 소스는 Cloudflare(VITE_API_BASE_URL이 있을 때) 또는 Supabase(예비)입니다.
+// 이 파일은 화면용으로 바꾼 결과를 메모리에만 둡니다. 하루 한 번 기기 저장은
+// 원본 JSON을 받는 쪽(api/staticData.ts)이 맡습니다.
 let routesCache: Route[] | null = null;
 let routesPromise: Promise<Route[]> | null = null;
 const stopsCache = new Map<string, BusStop[]>();
@@ -167,7 +168,7 @@ export async function fetchAllRoutes(): Promise<Route[]> {
           .filter((r) => firstValue(r, ["brtStdid", "brt_stdid", "brtStdId"]))
           .map(mapToRoute);
         routesCache = routes;
-        console.log(`[DB] Supabase에서 노선 ${routes.length}개 로드`);
+        console.log(`[DB] 노선 ${routes.length}개 로드`);
         return routes;
       })
       .catch((err) => {

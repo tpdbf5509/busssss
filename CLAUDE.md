@@ -10,7 +10,7 @@ UI를 만들거나 고치는 작업이면 `DESIGN.md`도 반드시 읽습니다.
 - 전주시 버스 앱입니다. 실시간 도착 정보, 노선과 정류장 검색, 즐겨찾기, 하차 알림을 제공합니다.
 - 핵심 목표: **앱을 열자마자 내 정류장에서 내 버스가 몇 분, 몇 정거장 남았는지 보이는 것.**
 - 스택: Vite + React 18 + TypeScript + Tailwind CSS 3 + lucide-react + Pretendard
-- 백엔드: Supabase (DB 캐시 + Edge Function 프록시)
+- 백엔드: Cloudflare Worker + KV로 이전 중(`cloudflare/`, 계획은 `docs/CLOUDFLARE_MIGRATION.md`). `VITE_API_BASE_URL`이 있으면 Cloudflare, 없으면 예전 Supabase(DB 캐시 + Edge Function 프록시)를 씁니다.
 - 배포: Vercel (`busssss-rouge.vercel.app`), iPhone 홈 화면 앱(PWA)으로도 씁니다.
 
 ## 2. 명령어
@@ -35,24 +35,25 @@ src/
                        ui.tsx(공통: 스켈레톤, 빈 상태, 신뢰도 칩, 토글, 뒤로 가기), RegionModal(미사용)
   hooks/               useArrivalInfo(20초 폴링), useBusLocations(15초), useDropoffAlertMonitor, useTodayTimetable(오늘 배차시간표, 폴링 없음)
   services/            arrivalService(캐시·검증), routeService, stationService, alertMonitorService(하차 알림 20초 감시·기록), timetableService(ITS 시간표 노선당 하루 한 번 저장)
-  api/                 tago.ts, jeonju.ts, jeonjuBis.ts → 모두 Supabase 프록시 경유
-  lib/                 formatArrival, reliability, stopPosition, arrivalPlausibility, heroArrival(히어로 상태·히어로 고르기), commute(출근·퇴근 시간대), serviceSchedule·heroSchedule(운행 전·종료·다음 출발 문구), appSettings(큰 글씨·색약·시간대), dropoffAlert(하차 알림 판정·탄 차량 고정) 등 순수 로직
+  api/                 tago.ts, jeonju.ts, jeonjuBis.ts → 모두 프록시 경유(backend.ts가 Cloudflare/Supabase 주소를 정함), staticData.ts는 정적 JSON 하루 한 번 받기
+  lib/                 staticData(노선·정류장 JSON 만들기·풀기, Worker와 공용이라 import 없음)·staticCache(하루 한 번 기기 저장 규칙), formatArrival, reliability, stopPosition, arrivalPlausibility, heroArrival(히어로 상태·히어로 고르기), commute(출근·퇴근 시간대), serviceSchedule·heroSchedule(운행 전·종료·다음 출발 문구), appSettings(큰 글씨·색약·시간대), dropoffAlert(하차 알림 판정·탄 차량 고정) 등 순수 로직
   store/               AppContext + appReducer(즐겨찾기 고정 포함) + localStorage 저장
 scripts/contrast-check.mjs   DESIGN.md 4장 색 대비 계산, 값은 src/index.css의 색 변수에서 읽음 (node scripts/contrast-check.mjs --md)
-supabase/functions/    tago-proxy, jeonju-proxy, bis-proxy, sync-bus-data
+cloudflare/            Worker(프록시 3개 + 정적 JSON + /admin/import), wrangler.toml, seed/ (README 참고)
+supabase/functions/    tago-proxy, jeonju-proxy, bis-proxy, sync-bus-data (예비·이전 중)
 public/                manifest.json, sw.js, icons/
 ```
 
 ## 4. 데이터와 API — 꼭 알아야 할 제약
 
-- **모든 외부 API는 Supabase Edge Function 프록시로 부릅니다.** 브라우저에서 공공 API를 직접 부르지 않습니다(CORS).
+- **모든 외부 API는 프록시(Cloudflare Worker `/api/*`, 주소가 없으면 Supabase Edge Function)로 부릅니다.** 브라우저에서 공공 API를 직접 부르지 않습니다(CORS). 아래 함수 이름은 Supabase 쪽 이름이고 Worker의 `/api/tago`, `/api/jeonju`, `/api/bis`가 같은 일을 합니다.
   - `tago-proxy`: TAGO 도착 정보, 버스 위치
   - `jeonju-proxy`: 전주시 노선 API
   - `bis-proxy`: 전주 ITS 시간표
   - `sync-bus-data`: 정적 노선 데이터를 DB에 채우는 함수
-- 환경 변수: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+- 환경 변수: `VITE_API_BASE_URL`(Cloudflare Worker 주소, 있으면 이쪽을 씀), `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`(예비 경로와 숨겨 둔 로그인 코드가 읽음. 지우면 앱 시작 때 오류)
 - **정적 데이터와 실시간 데이터를 나눕니다.**
-  - 노선 목록, 기점·종점, 정류장 순서 → Supabase DB(`bus_routes_cache`, `bus_route_stops_cache`)
+  - 노선 목록, 기점·종점, 정류장 순서 → Cloudflare KV의 JSON(`/static/routes.json`, `/static/stops.json`). 앱은 **하루(한국 날짜) 한 번만** 받아 localStorage에 둡니다(`lib/staticCache.ts`). 받기에 실패하면 예전 저장값을 씁니다. Cloudflare 주소가 없을 때만 Supabase DB(`bus_routes_master`, `bus_routes_cache`, `bus_route_stops_cache`)를 직접 읽습니다.
   - 버스 위치, 도착 시간 → API 실시간 호출
 - **TAGO 규칙**: 전주 cityCode `35010`, 노선·정류장 ID는 `JUB` 접두사
 - **요청 제한(403/429)**: 한꺼번에 많이 부르지 않습니다. 순서대로, 간격을 두고 부릅니다(`sync-bus-data`는 350ms 간격 + 백오프). 새 화면에서 API 호출을 늘리기 전에 기존 캐시와 훅을 먼저 씁니다.
@@ -68,6 +69,7 @@ public/                manifest.json, sw.js, icons/
 
 - 사용자 데이터는 모두 localStorage에만 있습니다. 서버에 올라가는 사용자 데이터는 없습니다.
   - `busssss_favorites_v1`, `busssss_alerts_v1`, `busssss_recent_routes_v1`, `busssss_alert_records_v1`(알림 센터), `busssss_settings_v1`(큰 글씨·색약·시간대별 내 정류장·화면 모드), `busssss_bis_times_v1`(오늘 날짜의 ITS 배차시간표, 노선별, 날짜가 다르면 버림)
+  - `busssss_static_v1:routes`, `busssss_static_v1:stops`(정적 노선·정류장 JSON, `{ fetchedOn, data }`, 날짜가 바뀌면 새로 받음)
   - 하차 알림 감시용: `busssss_alert_fired_v1`(이미 울린 알림, 중복 방지), `busssss_alert_vehicle_seen_v1`(고정한 차량을 마지막으로 본 시각)
 - 저장 형식을 바꿀 때는 예전 데이터가 그대로 읽히게 합니다. 새 필드는 선택 필드(`?`)로 추가합니다.
 - 즐겨찾기 종류: `station`(정류장), `route`(노선), `stop_route`(정류장+노선, 도착 시간이 있는 유일한 종류)

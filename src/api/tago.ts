@@ -1,4 +1,5 @@
 import { XMLParser } from "fast-xml-parser";
+import { buildProxyRequest, readBackendEnv } from "@/api/backend";
 
 const parser = new XMLParser({
   ignoreAttributes: true,
@@ -15,21 +16,12 @@ interface TagoEnvelope {
   OpenAPI_ServiceResponse?: { cmmMsgHeader?: { errMsg?: string; returnAuthMsg?: string; returnReasonCode?: string } };
 }
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
-
 async function callTagoApi(path: string, params: Record<string, string>): Promise<RawTagoField[]> {
-  if (!SUPABASE_URL) throw new Error("VITE_SUPABASE_URL이 설정되지 않았습니다.");
-
-  const url = `${SUPABASE_URL.replace(/\/$/, "")}/functions/v1/tago-proxy?${new URLSearchParams({ path, ...params })}`;
+  const request = buildProxyRequest(readBackendEnv(), "tago", { path, ...params });
   let res: Response;
 
   try {
-    res = await fetch(url, {
-      headers: SUPABASE_ANON_KEY
-        ? { Authorization: `Bearer ${SUPABASE_ANON_KEY}`, apikey: SUPABASE_ANON_KEY }
-        : undefined,
-    });
+    res = await fetch(request.url, { headers: request.headers });
   } catch {
     throw new Error("BUS STOP 서버에 연결하지 못했습니다.");
   }
