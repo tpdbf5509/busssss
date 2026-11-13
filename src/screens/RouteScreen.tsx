@@ -13,6 +13,7 @@ import {
 import { useApp } from "@/store/appContext";
 import { searchStations } from "@/services/stationService";
 import { findNearbyGroup } from "@/services/nearbyStationService";
+import { StationCoordsUnavailableError } from "@/api/jeonju";
 import {
   directRouteKey,
   fetchLiveArrivals,
@@ -299,12 +300,16 @@ export function RouteScreen() {
       const origin = await getCurrentLocation();
       const group = await findNearbyGroup(origin);
       if (group) pickGroup("from", group);
-      else showToast("가까운 정류장을 찾지 못했어요 (500m 안)");
+      else showToast("가까운 정류장을 찾지 못했어요 (500m 안)", "info");
     } catch (error) {
+      // 실패 알림이라 error 종류로 띄운다(기본값 success는 초록 체크가 붙는다).
       showToast(
         error instanceof LocationError
           ? locationFailureMessage(error.reason)
+          : error instanceof StationCoordsUnavailableError
+          ? "근처 정류장 데이터를 아직 준비하지 못했어요"
           : "근처 정류장을 불러오지 못했어요",
+        "error",
       );
     } finally {
       setLocating(false);
