@@ -378,6 +378,19 @@ export function RouteScreen() {
     );
   };
 
+  // 현재 위치로 출발을 정했을 때 안내 카드에 보여 줄 요약. 정류장 좌표는 이
+  // 묶음에만 있고, 가까운 순으로 담겨 있어 첫 정류장이 가장 가깝다.
+  const nearbyFrom = (() => {
+    const origin = fromGroup?.origin;
+    const first = fromGroup?.stations[0];
+    if (!fromGroup || !origin || !first || first.lat == null || first.lng == null) return null;
+    return {
+      count: fromGroup.stations.length,
+      name: first.name,
+      distance: formatDistance(distanceMeters(origin, { lat: first.lat, lng: first.lng })),
+    };
+  })();
+
   // "현재 위치" 묶음은 출발로만 쓴다. 바꾸면 도착 칸에 들어가 버리므로 바꾸기를 숨긴다.
   const hasText = (fromText !== "" || toText !== "") && !fromGroup?.origin;
 
@@ -649,14 +662,32 @@ export function RouteScreen() {
               <div className="mx-auto mb-4 h-14 w-14 rounded-full bg-canvas flex items-center justify-center">
                 <Navigation className="w-7 h-7 text-faint" aria-hidden="true" />
               </div>
-              <p className="text-body-strong text-ink mb-1">
-                출발과 도착 정류장을 골라 주세요
-              </p>
-              <p className="text-caption text-muted">
-                갈아타지 않고 갈 수 있는
-                <br />
-                버스와 정거장 수를 알려드려요
-              </p>
+              {nearbyFrom ? (
+                /* 출발칸이 "현재 위치"라고만 보이면 정류장을 찾았는지 알 수 없다.
+                   찾은 정류장 수와 가장 가까운 곳을 말하고, 남은 일(도착 고르기)을
+                   알려 준다. 거리는 직선거리다(걷는 시간은 말하지 않는다). */
+                <>
+                  <p className="text-body-strong text-ink mb-1">
+                    근처 정류장 {nearbyFrom.count}곳을 찾았어요
+                  </p>
+                  <p className="text-caption text-muted tabular-nums">
+                    가장 가까운 곳은 {nearbyFrom.name} · 직선 약 {nearbyFrom.distance}
+                    <br />
+                    이제 도착 정류장을 골라 주세요
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-body-strong text-ink mb-1">
+                    출발과 도착 정류장을 골라 주세요
+                  </p>
+                  <p className="text-caption text-muted">
+                    갈아타지 않고 갈 수 있는
+                    <br />
+                    버스와 정거장 수를 알려드려요
+                  </p>
+                </>
+              )}
             </div>
           </>
         )}
