@@ -27,6 +27,8 @@ export interface NearbyMapStation {
 interface Props {
   origin: UserLocation;
   stations: NearbyMapStation[];
+  /** 번호표를 눌렀을 때. 아래 목록의 줄을 누른 것과 같다. */
+  onSelect?: (id: string) => void;
 }
 
 const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
@@ -55,8 +57,13 @@ function stationIcon(rank: number): L.DivIcon {
   });
 }
 
-export default function NearbyMap({ origin, stations }: Props) {
+export default function NearbyMap({ origin, stations, onSelect }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // 부모가 다시 그릴 때마다 새 함수를 넘겨도 지도를 다시 만들지 않도록 ref로 들고 있는다.
+  const onSelectRef = useRef(onSelect);
+  useEffect(() => {
+    onSelectRef.current = onSelect;
+  });
   const stationKey = stations.map((s) => `${s.id}:${s.rank}`).join(",");
 
   useEffect(() => {
@@ -115,6 +122,7 @@ export default function NearbyMap({ origin, stations }: Props) {
     for (const s of drawable) {
       points.push([s.lat, s.lng]);
       L.marker([s.lat, s.lng], { icon: stationIcon(s.rank), keyboard: false })
+        .on("click", () => onSelectRef.current?.(s.id))
         .bindTooltip(s.name, { direction: "top", offset: [0, -12] })
         .addTo(map);
     }

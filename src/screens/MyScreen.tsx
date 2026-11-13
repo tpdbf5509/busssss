@@ -214,13 +214,13 @@ export function MyScreen() {
           <h2 className="text-body-strong text-ink">즐겨찾기 관리</h2>
           <p className="text-caption text-muted mt-0.5 mb-3">항목을 눌러 이름을 바꿀 수 있어요</p>
           {/* 카드 안에서 행마다 둥근 상자를 그리고 사이를 띄우면 항목이 따로
-              떠 있는 것처럼 보인다. 한 판 안에서 구분선으로만 나눈다
+              떠 있는 것처럼 보인다. 한 판 안에 쌓고 줄 사이 선은 긋지 않는다
               (홈 화면의 즐겨찾기와 같은 문법). */}
           <div className="bg-surface rounded-card border border-line overflow-hidden">
             {state.favorites.length === 0 ? (
               <p className="text-body text-muted text-center py-6">즐겨찾기가 없어요</p>
             ) : (
-              <div className="max-h-60 overflow-y-auto overscroll-contain divide-y divide-line">
+              <div className="max-h-60 overflow-y-auto overscroll-contain">
               {state.favorites.map((fav) => (
                   <div
                     key={fav.id}
@@ -433,9 +433,8 @@ export function MyScreen() {
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setMenuOpen(false)}
           />
-            {/* 설정 서랍: canvas 바탕 위에 설정 행을 흰 카드 한 장 + 1px 구분선으로
-                묶는다(8장 마이). 예전에는 서랍 전체가 흰 면이고 행마다 아래 선을
-                그었다. */}
+            {/* 설정 서랍: canvas 바탕 위에 설정 행을 흰 카드 한 장으로
+                묶는다(8장 마이). 줄 사이 선은 긋지 않는다. */}
             <div className="relative bg-canvas w-72 h-full shadow-sheet overflow-y-auto">
             <div className="pt-[15vh]" />
             <div className="px-4 pb-3 flex items-center justify-between">
@@ -450,7 +449,7 @@ export function MyScreen() {
               </button>
             </div>
 
-            <div className="mx-4 bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
+            <div className="mx-4 bg-surface rounded-card border border-line overflow-hidden">
 
 
             <SettingRow
@@ -735,8 +734,7 @@ function SettingRow({
   subtitleTone?: "ok" | "warn";
 }) {
   return (
-    /* 행 사이 선은 감싸는 카드의 divide-y가 긋는다. 예전에는 행마다 아래 선을
-       긋고 마지막 행만 빼느라 last 값을 따로 넘겼다. 행 높이는 6장 목록 행 최소
+    /* 행 사이에 선은 없다(앱 전체 구분선 제거). 행 높이는 6장 목록 행 최소
        64px. 글자는 Body ink(예전 muted는 흰 면 위 4.0:1). 빨강은 점과 아이콘에만
        쓰므로(4-2) 로그아웃은 아이콘만 danger다. */
     <button
@@ -784,7 +782,7 @@ function SettingToggle({
   note?: string;
 }) {
   return (
-    /* SettingRow와 같은 행(최소 64px, 선은 카드의 divide-y). 잠긴 행은
+    /* SettingRow와 같은 행(최소 64px, 줄 사이 선 없음). 잠긴 행은
        아이콘과 이름을 faint(비활성)로 내리고, "준비 중" 같은 상태 문구는
        정보라 muted로 둔다. */
     <div className="w-full min-h-16 flex items-center gap-3 px-4 py-3">
