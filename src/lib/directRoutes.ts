@@ -116,7 +116,12 @@ export interface StationGroup {
    * "현재 위치"에서 만든 묶음일 때 그때의 위치. 정류장까지 직선거리를 보여 주는
    * 데 쓴다. 이름으로 찾은 묶음에는 없다.
    */
-  origin?: { lat: number; lng: number };
+  origin?: { lat: number; lng: number; accuracy?: number };
+  /**
+   * 정류장 하나만 담은 묶음(검색 목록에서 번호까지 보고 고른 경우). 같은 이름의
+   * 두 정류장이 한 줄로 묶여 같은 정류장처럼 보이던 것을 나눈다.
+   */
+  single?: boolean;
 }
 
 /**
@@ -142,10 +147,40 @@ export function groupStationsByName(stations: Station[]): StationGroup[] {
 }
 
 /**
+ * 정류장 검색 결과를 정류장 하나씩 나눠 후보로 만든다. 입력 순서를 지키고 같은
+ * 정류장 ID는 한 번만 넣는다. 같은 이름이라도 번호(arsId)가 다르면 다른
+ * 후보라서, 사용자가 어느 정류장인지 보고 고른다.
+ */
+export function splitStationsOneByOne(stations: Station[]): StationGroup[] {
+  const seen = new Set<string>();
+  const groups: StationGroup[] = [];
+  for (const station of stations) {
+    if (!station.name || seen.has(station.id)) continue;
+    seen.add(station.id);
+    groups.push({ name: station.name, stations: [station], single: true });
+  }
+  return groups;
+}
+
+/**
+ * 칸에 보여 줄 글. 정류장 하나를 골랐으면 번호를 붙여 같은 이름의 다른
+ * 정류장과 구분한다. 번호가 없으면 이름만 쓴다.
+ */
+export function groupLabel(group: StationGroup): string {
+  const ars = group.single ? group.stations[0]?.arsId : "";
+  return ars ? `${group.name} (${ars})` : group.name;
+}
+
+/**
  * 두 묶음이 같은 정류장 이름인지. "현재 위치" 묶음은 이름이 아니라 위치로 만든
  * 것이라 어떤 정류장 이름과도 같다고 보지 않는다.
  */
 export function isSameGroup(a: StationGroup, b: StationGroup): boolean {
   if (a.origin || b.origin) return false;
+  // 정류장 하나로 고른 쪽이 있으면 이름이 아니라 정류장 ID가 겹치는지로 본다.
+  // 이름이 같아도 번호가 다른 정류장(길 건너편 등)은 다른 곳이다.
+  if (a.single || b.single) {
+    return a.stations.some((x) => b.stations.some((y) => y.id === x.id));
+  }
   return (normalizeStopName(a.name) || a.name) === (normalizeStopName(b.name) || b.name);
 }

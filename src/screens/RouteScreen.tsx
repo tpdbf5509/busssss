@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import {
   MapPin,
   Footprints,
@@ -9,10 +9,14 @@ import {
   SearchX,
   LocateFixed,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { useApp } from "@/store/appContext";
 import { searchStations } from "@/services/stationService";
 import { findNearbyGroup } from "@/services/nearbyStationService";
+import { StationCoordsUnavailableError } from "@/api/jeonju";
+import type { NearbyMapStation } from "@/components/NearbyMap";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import {
   directRouteKey,
   fetchLiveArrivals,
@@ -24,14 +28,21 @@ import type { ArrivalInfo } from "@/services/arrivalService";
 import { formatArrivalText } from "@/lib/formatArrival";
 import { getRouteCategory } from "@/lib/routeCategory";
 import {
+  groupLabel,
   groupStationsByName,
   isSameGroup,
+  splitStationsOneByOne,
   type StationGroup,
 } from "@/lib/directRoutes";
 import { distanceMeters, formatDistance, type LatLng } from "@/lib/geo";
-import { getCurrentLocation, locationFailureMessage, LocationError } from "@/lib/geolocation";
+import {
+  getCurrentLocation,
+  locationFailureMessage,
+  LocationError,
+  POOR_ACCURACY_M,
+} from "@/lib/geolocation";
 import { showToast } from "@/lib/toastStore";
-import { EmptyState, ErrorState, LoadingSkeleton } from "@/components/ui";
+import { EmptyState, ErrorState, LoadingSkeleton, TAB_TITLE_CLASS } from "@/components/ui";
 
 type Field = "from" | "to";
 type LoadStatus = "idle" | "loading" | "success" | "error";
@@ -134,9 +145,34 @@ function liveArrivalLabel(info: ArrivalInfo | null): string {
 }
 
 /** 묶음의 정류장 번호를 "12345 · 12346" 꼴로. 번호가 없으면 정류장 수로 대신한다. */
+// 지도는 "근처 정류장"을 찾은 뒤에만 쓰므로 그때 처음 불러온다(첫 화면 번들에
+// 넣지 않는다). 받기에 실패해도 화면 전체가 깨지지 않고 아래 목록만 남게 한다.
+// 실패 원인은 작은 글씨로 함께 보여 준다. 폰에서는 개발자 도구를 못 열어서, 화면
+// 캡처만으로 원인을 알 수 있게 하기 위해서다.
+function MapUnavailable({ error }: { error?: Error }) {
+  return (
+    <div className="h-[11.5rem] flex flex-col items-center justify-center gap-2 bg-canvas px-6 text-center">
+      <p className="text-caption text-muted">지도를 표시하지 못했어요</p>
+      {error && (
+        <p className="w-full break-words text-caption text-faint select-text">
+          {error.name}: {error.message}
+        </p>
+      )}
+    </div>
+  );
+}
+
+const NearbyMap = lazy(() =>
+  import("@/components/NearbyMap").catch((error: unknown) => ({
+    default: () => (
+      <MapUnavailable error={error instanceof Error ? error : new Error(String(error))} />
+    ),
+  })),
+);
+
 function groupCaption(group: StationGroup): string {
   const ars = group.stations.map((s) => s.arsId).filter(Boolean);
-  if (ars.length === 0) return `정류장 ${group.stations.length}곳`;
+  if (ars.length === 0) return group.single ? "정류장 번호 없음" : `정류장 ${group.stations.length}곳`;
   const shown = ars.slice(0, 3).join(" · ");
   return ars.length > 3 ? `정류장 번호 ${shown} 외 ${ars.length - 3}곳` : `정류장 번호 ${shown}`;
 }
@@ -167,7 +203,7 @@ export function RouteScreen() {
   const activeGroup = active === "from" ? fromGroup : toGroup;
   // 고른 정류장 이름이 그대로 들어 있는 칸은 "다시 고르는 중"이 아니다.
   // 글자를 고쳐 쓰기 시작해야 검색 목록을 띄운다.
-  const typing = active !== null && activeText.trim() !== "" && activeText !== activeGroup?.name;
+  const typing = active !== null && activeText.trim() !== "" && activeText !== (activeGroup ? groupLabel(activeGroup) : undefined);
 
   // 정류장 검색. 입력이 멈춘 뒤 300ms에 한 번만 부른다.
   useEffect(() => {
@@ -179,7 +215,7 @@ export function RouteScreen() {
       searchStations(q)
         .then((list) => {
           if (cancelled) return;
-          setSuggestions(groupStationsByName(list));
+          setSuggestions(splitStationsOneByOne(list));
           setSuggestStatus("success");
         })
         .catch(() => {
@@ -251,14 +287,14 @@ export function RouteScreen() {
 
   const pickGroup = (field: Field, group: StationGroup) => {
     setGroup(field, group);
-    setText(field, group.name);
+    setText(field, groupLabel(group));
     setActive(null);
   };
 
   const handleInput = (field: Field, value: string) => {
     setText(field, value);
     const current = field === "from" ? fromGroup : toGroup;
-    if (current && value !== current.name) setGroup(field, null);
+    if (current && value !== groupLabel(current)) setGroup(field, null);
   };
 
   const clearField = (field: Field) => {
@@ -299,12 +335,16 @@ export function RouteScreen() {
       const origin = await getCurrentLocation();
       const group = await findNearbyGroup(origin);
       if (group) pickGroup("from", group);
-      else showToast("가까운 정류장을 찾지 못했어요 (500m 안)");
+      else showToast("가까운 정류장을 찾지 못했어요 (500m 안)", "info");
     } catch (error) {
+      // 실패 알림이라 error 종류로 띄운다(기본값 success는 초록 체크가 붙는다).
       showToast(
         error instanceof LocationError
           ? locationFailureMessage(error.reason)
+          : error instanceof StationCoordsUnavailableError
+          ? "근처 정류장 데이터를 아직 준비하지 못했어요"
           : "근처 정류장을 불러오지 못했어요",
+        "error",
       );
     } finally {
       setLocating(false);
@@ -354,7 +394,7 @@ export function RouteScreen() {
           value={value}
           onChange={(e) => handleInput(field, e.target.value)}
           onFocus={() => setActive(field)}
-          placeholder={isFrom ? "출발 정류장" : "도착 정류장 (예: 전주한옥마을)"}
+          placeholder={isFrom ? "출발 정류장" : "도착 정류장"}
           aria-label={isFrom ? "출발 정류장" : "도착 정류장"}
           className="w-full h-12 bg-transparent pl-11 pr-24 text-base text-ink placeholder:text-faint focus:outline-none"
         />
@@ -373,6 +413,41 @@ export function RouteScreen() {
     );
   };
 
+  // 근처 정류장으로 출발을 정했을 때 안내 카드(지도 + 목록)에 보여 줄 요약.
+  // 정류장 좌표는 이 묶음에만 있고, 가까운 순으로 담겨 있어 첫 정류장이 가장
+  // 가깝다. 번호(rank)는 지도 번호표와 목록이 같다. 거리는 직선거리다.
+  const nearbyFrom = (() => {
+    const origin = fromGroup?.origin;
+    if (!fromGroup || !origin) return null;
+    const items = fromGroup.stations.flatMap((st, i) =>
+      st.lat == null || st.lng == null
+        ? []
+        : [
+            {
+              id: st.id,
+              name: st.name,
+              arsId: st.arsId,
+              rank: i + 1,
+              lat: st.lat,
+              lng: st.lng,
+              distance: formatDistance(distanceMeters(origin, { lat: st.lat, lng: st.lng })),
+            },
+          ],
+    );
+    if (items.length === 0) return null;
+    // 기기가 알려 준 오차 반경. 크면 내 위치가 아닐 수 있다는 안내를 붙인다.
+    const accuracy = origin.accuracy;
+    return {
+      origin,
+      items,
+      closest: items[0],
+      accuracyLabel: accuracy != null ? formatDistance(Math.ceil(accuracy / 10) * 10) : "",
+      poorAccuracy: accuracy != null && accuracy > POOR_ACCURACY_M,
+    };
+  })();
+
+  const showShortcuts = !nearbyFrom || active === "to";
+
   // "현재 위치" 묶음은 출발로만 쓴다. 바꾸면 도착 칸에 들어가 버리므로 바꾸기를 숨긴다.
   const hasText = (fromText !== "" || toText !== "") && !fromGroup?.origin;
 
@@ -384,11 +459,9 @@ export function RouteScreen() {
           사용자 확인). 결과 목록은 아래 별도 스크롤 상자라 헤더 밑으로 비치지
           않는다. */}
       <header className="bg-canvas px-5 pt-safe-0 pb-4 shrink-0">
-        <div className="h-14 flex flex-col justify-center">
-          <p className="text-caption text-muted">
-            목적지까지 버스 타는 방법
-          </p>
-          <h1 className="text-title text-ink">길찾기</h1>
+        <div className="h-14 flex items-center">
+          {/* 제목 높이는 버스·마이와 같다(ui.tsx TAB_TITLE_CLASS). */}
+          <h1 className={TAB_TITLE_CLASS}>길찾기</h1>
         </div>
 
         {/* 출발·도착 두 칸을 한 판(흰 면 + 1px line)에 묶고 칸 사이를 1px 선으로
@@ -441,7 +514,7 @@ export function RouteScreen() {
               <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
                 {suggestions.map((group) => (
                   <button
-                    key={group.name}
+                    key={group.stations[0]?.id ?? group.name}
                     type="button"
                     onClick={() => pickGroup(active, group)}
                     className="w-full min-h-14 px-4 py-3 text-left select-none touch-manipulation transition-colors duration-75 active:bg-canvas"
@@ -601,7 +674,9 @@ export function RouteScreen() {
         {!typing && !sameStop && !ready && (
           <>
             {showLocationButton && locationButton}
-            {favoriteNames.length > 0 && (
+            {/* 근처 정류장으로 출발을 정했으면 안내 카드(지도 + 목록)가 화면의
+                위쪽을 쓴다. 알약은 도착 칸을 눌렀을 때만 보여 준다. */}
+            {showShortcuts && favoriteNames.length > 0 && (
               <>
                 <p className="text-body-strong text-ink mb-3">
                   즐겨찾기 정류장
@@ -623,36 +698,119 @@ export function RouteScreen() {
               </>
             )}
 
-            <p className="text-body-strong text-ink mb-3">
-              인기 목적지
-            </p>
-            <div className="flex flex-wrap gap-2 mb-7">
-              {POPULAR_DESTINATIONS.map((dest) => (
-                <button
-                  key={dest}
-                  type="button"
-                  onClick={() => void selectByName(dest, "to")}
-                  className={pillClass}
-                >
-                  {dest}
-                </button>
-              ))}
-            </div>
+            {showShortcuts && (
+              <>
+                <p className="text-body-strong text-ink mb-3">
+                  인기 목적지
+                </p>
+                <div className="flex flex-wrap gap-2 mb-7">
+                  {POPULAR_DESTINATIONS.map((dest) => (
+                    <button
+                      key={dest}
+                      type="button"
+                      onClick={() => void selectByName(dest, "to")}
+                      className={pillClass}
+                    >
+                      {dest}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
 
-            {/* 알림 빈 상태와 비슷한 안내 카드 */}
-            <div className="bg-surface rounded-card border border-line p-8 text-center">
-              <div className="mx-auto mb-4 h-14 w-14 rounded-full bg-canvas flex items-center justify-center">
-                <Navigation className="w-7 h-7 text-faint" aria-hidden="true" />
+            {nearbyFrom ? (
+              /* 출발칸이 "근처 정류장"이라고만 보이면 어디를 찾았는지 알 수 없다.
+                 지도에 내 위치와 근처 정류장을 번호로 찍고, 아래에 같은 번호로
+                 이름·정류장 번호·직선거리를 말한 뒤 남은 일(도착 고르기)을 알린다.
+                 걷는 시간은 말하지 않는다(CLAUDE.md 5-1장). */
+              <div className="bg-surface rounded-card border border-line overflow-hidden">
+                {/* 지도에서 예외가 나도 안내 문구와 정류장 목록은 남긴다. */}
+                <ErrorBoundary fallback={(error) => <MapUnavailable error={error} />}>
+                <Suspense fallback={<LoadingSkeleton className="h-[11.5rem] rounded-none" />}>
+                  <NearbyMap
+                    origin={nearbyFrom.origin}
+                    stations={nearbyFrom.items.map(
+                      (it): NearbyMapStation => ({
+                        id: it.id,
+                        name: it.name,
+                        rank: it.rank,
+                        lat: it.lat,
+                        lng: it.lng,
+                      }),
+                    )}
+                  />
+                </Suspense>
+                </ErrorBoundary>
+                <div className="px-4 pt-4 pb-1">
+                  <p className="text-body-strong text-ink">
+                    근처 정류장 {nearbyFrom.items.length}곳을 찾았어요
+                  </p>
+                  <p className="mt-0.5 text-caption text-muted">
+                    가장 가까운 곳은 {nearbyFrom.closest.name}
+                  </p>
+                  <p className="text-caption text-muted tabular-nums">
+                    약 {nearbyFrom.closest.distance}
+                    {nearbyFrom.accuracyLabel && <> · 위치 오차 약 {nearbyFrom.accuracyLabel}</>}
+                  </p>
+                </div>
+                {nearbyFrom.poorAccuracy && (
+                  /* 오차가 크면 이 기기가 알려 준 위치가 실제 내 위치와 다를 수 있다.
+                     틀린 위치를 맞는 것처럼 보여 주지 않고, 다시 받아 보게 한다. */
+                  <div className="mx-4 mt-3 rounded-xl border border-line bg-canvas px-3 py-3 flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-delay" aria-hidden="true" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-caption text-ink">
+                        내 위치와 다를 수 있어요. 이 기기가 정확한 위치를 주지 못하고 있어요.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void startFromCurrentLocation()}
+                        disabled={locating}
+                        className="select-none touch-manipulation mt-1 min-h-11 text-body-strong text-brand disabled:opacity-60"
+                      >
+                        {locating ? "위치 찾는 중" : "위치 다시 찾기"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+                <ul className="mt-2 pb-1">
+                  {nearbyFrom.items.map((it) => (
+                    <li key={it.id} className="flex items-center gap-3 px-4 py-3">
+                      <span
+                        className="h-6 w-6 shrink-0 rounded-md bg-brand-fill text-caption font-bold tabular-nums text-white flex items-center justify-center"
+                        aria-hidden="true"
+                      >
+                        {it.rank}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-body font-semibold text-ink truncate">{it.name}</p>
+                        {it.arsId && (
+                          <p className="text-caption text-muted tabular-nums">{it.arsId}</p>
+                        )}
+                      </div>
+                      <span className="shrink-0 text-caption text-muted tabular-nums">
+                        약 {it.distance}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <p className="text-body-strong text-ink mb-1">
-                출발과 도착 정류장을 골라 주세요
-              </p>
-              <p className="text-caption text-muted">
-                갈아타지 않고 갈 수 있는
-                <br />
-                버스와 정거장 수를 알려드려요
-              </p>
-            </div>
+            ) : (
+              /* 알림 빈 상태와 비슷한 안내 카드 */
+              <div className="bg-surface rounded-card border border-line p-8 text-center">
+                <div className="mx-auto mb-4 h-14 w-14 rounded-full bg-canvas flex items-center justify-center">
+                  <Navigation className="w-7 h-7 text-faint" aria-hidden="true" />
+                </div>
+                <p className="text-body-strong text-ink mb-1">
+                  출발과 도착 정류장을 골라 주세요
+                </p>
+                <p className="text-caption text-muted">
+                  갈아타지 않고 갈 수 있는
+                  <br />
+                  버스와 정거장 수를 알려드려요
+                </p>
+              </div>
+            )}
           </>
         )}
       </div>

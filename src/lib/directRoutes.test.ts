@@ -3,8 +3,10 @@ import type { BusStop, Station } from "@/types/route";
 import {
   countStopsBetween,
   findDirectCandidates,
+  groupLabel,
   groupStationsByName,
   isSameGroup,
+  splitStationsOneByOne,
   type RouteStopPass,
 } from "./directRoutes";
 
@@ -157,5 +159,55 @@ describe("현재 위치 묶음", () => {
     const named = { name: "전주역", stations: [stn("1", "전주역")] };
     expect(isSameGroup(here, named)).toBe(false);
     expect(isSameGroup(named, here)).toBe(false);
+  });
+});
+
+describe("정류장 하나씩 나누기", () => {
+  const st = (id: string, name: string, arsId = ""): Station => ({
+    id,
+    name,
+    arsId,
+    lat: null,
+    lng: null,
+  });
+
+  it("같은 이름이어도 정류장마다 후보를 따로 만들고 순서를 지킨다", () => {
+    const groups = splitStationsOneByOne([
+      st("1", "영생고 전주대사대부고", "30609"),
+      st("2", "시청", "22222"),
+      st("3", "영생고 전주대사대부고", "30630"),
+    ]);
+    expect(groups.map((g) => g.stations[0].id)).toEqual(["1", "2", "3"]);
+    expect(groups.every((g) => g.single && g.stations.length === 1)).toBe(true);
+  });
+
+  it("같은 정류장 ID는 한 번만 넣는다", () => {
+    expect(splitStationsOneByOne([st("1", "전주역"), st("1", "전주역")])).toHaveLength(1);
+  });
+
+  it("칸 글에는 번호를 붙이고 번호가 없으면 이름만 쓴다", () => {
+    const [a, b] = splitStationsOneByOne([st("1", "전주역", "30609"), st("2", "시청")]);
+    expect(groupLabel(a)).toBe("전주역 (30609)");
+    expect(groupLabel(b)).toBe("시청");
+    expect(groupLabel({ name: "근처 정류장", stations: [st("1", "전주역", "30609")] })).toBe("근처 정류장");
+  });
+
+  it("이름이 같아도 번호가 다른 두 정류장은 같은 곳이 아니다", () => {
+    const [a, b, a2] = splitStationsOneByOne([
+      st("1", "전주역", "30609"),
+      st("2", "전주역", "30630"),
+      st("1", "전주역", "30609"),
+    ]);
+    expect(a2).toBeUndefined();
+    expect(isSameGroup(a, b)).toBe(false);
+    expect(isSameGroup(a, a)).toBe(true);
+  });
+
+  it("이름 묶음(인기 목적지 알약)과 비교해도 정류장 ID가 겹칠 때만 같다", () => {
+    const [one] = splitStationsOneByOne([st("1", "전주역", "30609")]);
+    const byName = { name: "전주역", stations: [st("1", "전주역"), st("2", "전주역")] };
+    const other = { name: "전주역", stations: [st("9", "전주역")] };
+    expect(isSameGroup(one, byName)).toBe(true);
+    expect(isSameGroup(one, other)).toBe(false);
   });
 });

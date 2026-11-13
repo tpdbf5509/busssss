@@ -5,6 +5,22 @@ export type RawRouteField = Record<string, string>;
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
+/** Supabase REST가 돌려준 HTTP 상태를 호출부가 가려 볼 수 있게 담는다. */
+export class SupabaseHttpError extends Error {
+  constructor(readonly status: number) {
+    super(`Supabase 데이터 조회 실패 (HTTP ${status})`);
+    this.name = "SupabaseHttpError";
+  }
+}
+
+/** 정류장 좌표 표가 아직 없거나 비어 있어 "근처 정류장"을 만들 수 없다. */
+export class StationCoordsUnavailableError extends Error {
+  constructor() {
+    super("정류장 좌표 데이터가 아직 준비되지 않았습니다.");
+    this.name = "StationCoordsUnavailableError";
+  }
+}
+
 async function supabaseFetch<T>(table: string, query = ""): Promise<T[]> {
   if (!SUPABASE_URL) throw new Error("VITE_SUPABASE_URL이 설정되지 않았습니다.");
   const url = `${SUPABASE_URL.replace(/\/$/, "")}/rest/v1/${table}?${query}`;
@@ -15,7 +31,7 @@ async function supabaseFetch<T>(table: string, query = ""): Promise<T[]> {
       Accept: "application/json",
     },
   });
-  if (!res.ok) throw new Error(`Supabase 데이터 조회 실패 (HTTP ${res.status})`);
+  if (!res.ok) throw new SupabaseHttpError(res.status);
   return res.json() as Promise<T[]>;
 }
 
@@ -271,18 +287,28 @@ export async function getStationCoordsInBox(box: {
   minLng: number;
   maxLng: number;
 }): Promise<{ nodeId: string; name: string; arsId: string; lat: number; lng: number }[]> {
-  const rows = await supabaseFetch<{
-    node_id: string;
-    node_name: string;
-    ars_id: string | null;
-    lat: number;
-    lng: number;
-  }>(
-    "bus_station_coords",
-    `select=node_id,node_name,ars_id,lat,lng` +
-      `&lat=gte.${box.minLat}&lat=lte.${box.maxLat}` +
-      `&lng=gte.${box.minLng}&lng=lte.${box.maxLng}&limit=200`
-  );
+  let rows;
+  try {
+    rows = await supabaseFetch<{
+      node_id: string;
+      node_name: string;
+      ars_id: string | null;
+      lat: number;
+      lng: number;
+    }>(
+      "bus_station_coords",
+      `select=node_id,node_name,ars_id,lat,lng` +
+        `&lat=gte.${box.minLat}&lat=lte.${box.maxLat}` +
+        `&lng=gte.${box.minLng}&lng=lte.${box.maxLng}&limit=200`
+    );
+  } catch (error) {
+    // 404는 표 자체가 아직 만들어지지 않았다는 뜻이다(마이그레이션 전). 통신
+    // 오류와 구분해야 "다시 시도하세요"가 아니라 사실대로 안내할 수 있다.
+    if (error instanceof SupabaseHttpError && error.status === 404) {
+      throw new StationCoordsUnavailableError();
+    }
+    throw error;
+  }
 
   return rows.map((r) => ({
     nodeId: r.node_id,
