@@ -63,6 +63,11 @@ export default function NearbyMap({ origin, stations }: Props) {
     const el = containerRef.current;
     if (!el) return;
 
+    // 좌표가 숫자가 아니면(DB 값 이상 등) Leaflet이 예외를 던져 화면이 죽는다.
+    // 그리지 않고 건너뛴다.
+    if (!Number.isFinite(origin.lat) || !Number.isFinite(origin.lng)) return;
+    const drawable = stations.filter((s) => Number.isFinite(s.lat) && Number.isFinite(s.lng));
+
     const map = L.map(el, {
       // 가운데 정렬·핀치는 지도가 맡는다. 마우스 휠은 화면 스크롤을 가로채지 않게 끈다.
       scrollWheelZoom: false,
@@ -102,7 +107,7 @@ export default function NearbyMap({ origin, stations }: Props) {
       zIndexOffset: -1000,
     }).addTo(map);
 
-    for (const s of stations) {
+    for (const s of drawable) {
       points.push([s.lat, s.lng]);
       L.marker([s.lat, s.lng], { icon: stationIcon(s.rank), keyboard: false })
         .bindTooltip(s.name, { direction: "top", offset: [0, -12] })

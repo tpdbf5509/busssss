@@ -16,6 +16,7 @@ import { searchStations } from "@/services/stationService";
 import { findNearbyGroup } from "@/services/nearbyStationService";
 import { StationCoordsUnavailableError } from "@/api/jeonju";
 import type { NearbyMapStation } from "@/components/NearbyMap";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import {
   directRouteKey,
   fetchLiveArrivals,
@@ -146,14 +147,16 @@ function liveArrivalLabel(info: ArrivalInfo | null): string {
 /** 묶음의 정류장 번호를 "12345 · 12346" 꼴로. 번호가 없으면 정류장 수로 대신한다. */
 // 지도는 "근처 정류장"을 찾은 뒤에만 쓰므로 그때 처음 불러온다(첫 화면 번들에
 // 넣지 않는다). 받기에 실패해도 화면 전체가 깨지지 않고 아래 목록만 남게 한다.
+function MapUnavailable() {
+  return (
+    <div className="h-56 flex items-center justify-center bg-canvas text-caption text-muted">
+      지도를 표시하지 못했어요
+    </div>
+  );
+}
+
 const NearbyMap = lazy(() =>
-  import("@/components/NearbyMap").catch(() => ({
-    default: () => (
-      <div className="h-56 flex items-center justify-center bg-canvas text-caption text-muted">
-        지도를 불러오지 못했어요
-      </div>
-    ),
-  })),
+  import("@/components/NearbyMap").catch(() => ({ default: MapUnavailable })),
 );
 
 function groupCaption(group: StationGroup): string {
@@ -704,6 +707,8 @@ export function RouteScreen() {
                  이름·정류장 번호·직선거리를 말한 뒤 남은 일(도착 고르기)을 알린다.
                  걷는 시간은 말하지 않는다(CLAUDE.md 5-1장). */
               <div className="bg-surface rounded-card border border-line overflow-hidden">
+                {/* 지도에서 예외가 나도 안내 문구와 정류장 목록은 남긴다. */}
+                <ErrorBoundary fallback={() => <MapUnavailable />}>
                 <Suspense fallback={<LoadingSkeleton className="h-56 rounded-none" />}>
                   <NearbyMap
                     origin={nearbyFrom.origin}
@@ -718,6 +723,7 @@ export function RouteScreen() {
                     )}
                   />
                 </Suspense>
+                </ErrorBoundary>
                 <div className="px-4 pt-4 pb-1">
                   <p className="text-body-strong text-ink">
                     근처 정류장 {nearbyFrom.items.length}곳을 찾았어요
