@@ -13,6 +13,11 @@ export interface LatLng {
   lng: number;
 }
 
+/** 기기가 알려 준 위치. accuracy는 오차 반경(미터)이고, 기기가 안 주면 없다. */
+export interface UserLocation extends LatLng {
+  accuracy?: number;
+}
+
 export interface BoundingBox {
   minLat: number;
   maxLat: number;

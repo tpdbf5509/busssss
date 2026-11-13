@@ -9,6 +9,7 @@ import {
   SearchX,
   LocateFixed,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { useApp } from "@/store/appContext";
 import { searchStations } from "@/services/stationService";
@@ -33,7 +34,12 @@ import {
   type StationGroup,
 } from "@/lib/directRoutes";
 import { distanceMeters, formatDistance, type LatLng } from "@/lib/geo";
-import { getCurrentLocation, locationFailureMessage, LocationError } from "@/lib/geolocation";
+import {
+  getCurrentLocation,
+  locationFailureMessage,
+  LocationError,
+  POOR_ACCURACY_M,
+} from "@/lib/geolocation";
 import { showToast } from "@/lib/toastStore";
 import { EmptyState, ErrorState, LoadingSkeleton } from "@/components/ui";
 
@@ -415,7 +421,15 @@ export function RouteScreen() {
           ],
     );
     if (items.length === 0) return null;
-    return { origin, items, closest: items[0] };
+    // 기기가 알려 준 오차 반경. 크면 내 위치가 아닐 수 있다는 안내를 붙인다.
+    const accuracy = origin.accuracy;
+    return {
+      origin,
+      items,
+      closest: items[0],
+      accuracyLabel: accuracy != null ? formatDistance(Math.ceil(accuracy / 10) * 10) : "",
+      poorAccuracy: accuracy != null && accuracy > POOR_ACCURACY_M,
+    };
   })();
 
   // "현재 위치" 묶음은 출발로만 쓴다. 바꾸면 도착 칸에 들어가 버리므로 바꾸기를 숨긴다.
@@ -715,6 +729,31 @@ export function RouteScreen() {
                     이제 도착 정류장을 골라 주세요
                   </p>
                 </div>
+                {nearbyFrom.accuracyLabel && (
+                  <p className="px-4 mt-2 text-caption text-muted">
+                    위치 오차 약 <span className="tabular-nums">{nearbyFrom.accuracyLabel}</span>
+                  </p>
+                )}
+                {nearbyFrom.poorAccuracy && (
+                  /* 오차가 크면 이 기기가 알려 준 위치가 실제 내 위치와 다를 수 있다.
+                     틀린 위치를 맞는 것처럼 보여 주지 않고, 다시 받아 보게 한다. */
+                  <div className="mx-4 mt-3 rounded-xl border border-line bg-canvas px-3 py-3 flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-delay" aria-hidden="true" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-caption text-ink">
+                        내 위치와 다를 수 있어요. 이 기기가 정확한 위치를 주지 못하고 있어요.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void startFromCurrentLocation()}
+                        disabled={locating}
+                        className="select-none touch-manipulation mt-1 min-h-11 text-body-strong text-brand disabled:opacity-60"
+                      >
+                        {locating ? "위치 찾는 중" : "위치 다시 찾기"}
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <ul className="mt-3 divide-y divide-line border-t border-line">
                   {nearbyFrom.items.map((it) => (
                     <li key={it.id} className="flex items-center gap-3 px-4 py-3">

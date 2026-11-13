@@ -116,7 +116,7 @@ export interface StationGroup {
    * "현재 위치"에서 만든 묶음일 때 그때의 위치. 정류장까지 직선거리를 보여 주는
    * 데 쓴다. 이름으로 찾은 묶음에는 없다.
    */
-  origin?: { lat: number; lng: number };
+  origin?: { lat: number; lng: number; accuracy?: number };
   /**
    * 정류장 하나만 담은 묶음(검색 목록에서 번호까지 보고 고른 경우). 같은 이름의
    * 두 정류장이 한 줄로 묶여 같은 정류장처럼 보이던 것을 나눈다.

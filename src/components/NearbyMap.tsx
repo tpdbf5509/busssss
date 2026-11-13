@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import type { LatLng } from "@/lib/geo";
+import type { UserLocation } from "@/lib/geo";
 
 /**
  * 길찾기 "근처 정류장" 지도. 내 위치 한 점과 근처 정류장(가까운 순 번호)을 찍는다.
@@ -25,7 +25,7 @@ export interface NearbyMapStation {
 }
 
 interface Props {
-  origin: LatLng;
+  origin: UserLocation;
   stations: NearbyMapStation[];
 }
 
@@ -77,6 +77,24 @@ export default function NearbyMap({ origin, stations }: Props) {
     }).addTo(map);
 
     const points: L.LatLngTuple[] = [[origin.lat, origin.lng]];
+
+    // 기기가 알려 준 오차 반경. 이 원 안 어딘가가 내 위치라는 뜻이라, 위치가 틀려
+    // 보일 때 "얼마나 믿을 수 있는지"를 지도에서 바로 볼 수 있다. 너무 큰 원(PC·IP
+    // 위치)은 화면을 덮지 않게 5km로 자르고, 화면 맞춤에는 1km 이하일 때만 넣는다.
+    if (origin.accuracy != null && origin.accuracy > 0) {
+      const circle = L.circle([origin.lat, origin.lng], {
+        radius: Math.min(origin.accuracy, 5000),
+        interactive: false,
+        color: "#2563EB",
+        weight: 1,
+        fillColor: "#2563EB",
+        fillOpacity: 0.08,
+      }).addTo(map);
+      if (origin.accuracy <= 1000) {
+        const b = circle.getBounds();
+        points.push([b.getSouth(), b.getWest()], [b.getNorth(), b.getEast()]);
+      }
+    }
     L.marker([origin.lat, origin.lng], {
       icon: ME_ICON,
       keyboard: false,
@@ -102,7 +120,7 @@ export default function NearbyMap({ origin, stations }: Props) {
     };
     // stations 배열 자체가 아니라 내용(stationKey)이 바뀔 때만 다시 그린다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [origin.lat, origin.lng, stationKey]);
+  }, [origin.lat, origin.lng, origin.accuracy, stationKey]);
 
   return (
     // isolate: Leaflet 안쪽 z-index(최대 1000)가 하단 탭·알림 위로 올라오지 않게

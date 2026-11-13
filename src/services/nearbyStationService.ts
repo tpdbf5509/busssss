@@ -1,5 +1,5 @@
 import { getStationCoordsInBox } from "@/api/jeonju";
-import { boundingBox, nearestStations, type LatLng } from "@/lib/geo";
+import { boundingBox, nearestStations, type UserLocation } from "@/lib/geo";
 import type { StationGroup } from "@/lib/directRoutes";
 import type { Station } from "@/types/route";
 
@@ -18,7 +18,7 @@ export type NearbyFetcher = typeof getStationCoordsInBox;
  * 아직 비어 있는 경우도 같다 — 호출부가 안내 문구를 정한다).
  */
 export async function findNearbyGroup(
-  origin: LatLng,
+  origin: UserLocation,
   fetchBox: NearbyFetcher = getStationCoordsInBox,
 ): Promise<StationGroup | null> {
   const rows = await fetchBox(boundingBox(origin, NEARBY_RADIUS_M));
