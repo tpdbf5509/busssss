@@ -25,8 +25,10 @@ import type { ArrivalInfo } from "@/services/arrivalService";
 import { formatArrivalText } from "@/lib/formatArrival";
 import { getRouteCategory } from "@/lib/routeCategory";
 import {
+  groupLabel,
   groupStationsByName,
   isSameGroup,
+  splitStationsOneByOne,
   type StationGroup,
 } from "@/lib/directRoutes";
 import { distanceMeters, formatDistance, type LatLng } from "@/lib/geo";
@@ -137,7 +139,7 @@ function liveArrivalLabel(info: ArrivalInfo | null): string {
 /** 묶음의 정류장 번호를 "12345 · 12346" 꼴로. 번호가 없으면 정류장 수로 대신한다. */
 function groupCaption(group: StationGroup): string {
   const ars = group.stations.map((s) => s.arsId).filter(Boolean);
-  if (ars.length === 0) return `정류장 ${group.stations.length}곳`;
+  if (ars.length === 0) return group.single ? "정류장 번호 없음" : `정류장 ${group.stations.length}곳`;
   const shown = ars.slice(0, 3).join(" · ");
   return ars.length > 3 ? `정류장 번호 ${shown} 외 ${ars.length - 3}곳` : `정류장 번호 ${shown}`;
 }
@@ -168,7 +170,7 @@ export function RouteScreen() {
   const activeGroup = active === "from" ? fromGroup : toGroup;
   // 고른 정류장 이름이 그대로 들어 있는 칸은 "다시 고르는 중"이 아니다.
   // 글자를 고쳐 쓰기 시작해야 검색 목록을 띄운다.
-  const typing = active !== null && activeText.trim() !== "" && activeText !== activeGroup?.name;
+  const typing = active !== null && activeText.trim() !== "" && activeText !== (activeGroup ? groupLabel(activeGroup) : undefined);
 
   // 정류장 검색. 입력이 멈춘 뒤 300ms에 한 번만 부른다.
   useEffect(() => {
@@ -180,7 +182,7 @@ export function RouteScreen() {
       searchStations(q)
         .then((list) => {
           if (cancelled) return;
-          setSuggestions(groupStationsByName(list));
+          setSuggestions(splitStationsOneByOne(list));
           setSuggestStatus("success");
         })
         .catch(() => {
@@ -252,14 +254,14 @@ export function RouteScreen() {
 
   const pickGroup = (field: Field, group: StationGroup) => {
     setGroup(field, group);
-    setText(field, group.name);
+    setText(field, groupLabel(group));
     setActive(null);
   };
 
   const handleInput = (field: Field, value: string) => {
     setText(field, value);
     const current = field === "from" ? fromGroup : toGroup;
-    if (current && value !== current.name) setGroup(field, null);
+    if (current && value !== groupLabel(current)) setGroup(field, null);
   };
 
   const clearField = (field: Field) => {
@@ -459,7 +461,7 @@ export function RouteScreen() {
               <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
                 {suggestions.map((group) => (
                   <button
-                    key={group.name}
+                    key={group.stations[0]?.id ?? group.name}
                     type="button"
                     onClick={() => pickGroup(active, group)}
                     className="w-full min-h-14 px-4 py-3 text-left select-none touch-manipulation transition-colors duration-75 active:bg-canvas"
@@ -663,7 +665,7 @@ export function RouteScreen() {
                 <Navigation className="w-7 h-7 text-faint" aria-hidden="true" />
               </div>
               {nearbyFrom ? (
-                /* 출발칸이 "현재 위치"라고만 보이면 정류장을 찾았는지 알 수 없다.
+                /* 출발칸이 "근처 정류장"이라고만 보이면 몇 곳을 찾았는지 알 수 없다.
                    찾은 정류장 수와 가장 가까운 곳을 말하고, 남은 일(도착 고르기)을
                    알려 준다. 거리는 직선거리다(걷는 시간은 말하지 않는다). */
                 <>
