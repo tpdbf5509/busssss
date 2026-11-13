@@ -186,6 +186,10 @@ export function RouteScreen() {
   const [toText, setToText] = useState("");
   const [active, setActive] = useState<Field | null>(null);
   const [locating, setLocating] = useState(false);
+  // 근처 정류장 목록·지도에서 정류장 하나를 골랐을 때, 고르기 전의 "근처 정류장"
+  // 묶음. 출발 칸의 X를 누르면 칸을 비우는 대신 이 묶음으로 돌아가 다른 정류장을
+  // 다시 고를 수 있다. 고른 정류장까지 직선거리(내 위치 기준)에도 쓴다.
+  const [nearbyRestore, setNearbyRestore] = useState<StationGroup | null>(null);
 
   const [suggestions, setSuggestions] = useState<StationGroup[]>([]);
   const [suggestStatus, setSuggestStatus] = useState<LoadStatus>("idle");
@@ -286,6 +290,7 @@ export function RouteScreen() {
     field === "from" ? setFromText(text) : setToText(text);
 
   const pickGroup = (field: Field, group: StationGroup) => {
+    if (field === "from") setNearbyRestore(null);
     setGroup(field, group);
     setText(field, groupLabel(group));
     setActive(null);
@@ -294,16 +299,41 @@ export function RouteScreen() {
   const handleInput = (field: Field, value: string) => {
     setText(field, value);
     const current = field === "from" ? fromGroup : toGroup;
-    if (current && value !== groupLabel(current)) setGroup(field, null);
+    if (current && value !== groupLabel(current)) {
+      setGroup(field, null);
+      if (field === "from") setNearbyRestore(null);
+    }
   };
 
   const clearField = (field: Field) => {
+    if (field === "from" && nearbyRestore) {
+      const base = nearbyRestore;
+      setNearbyRestore(null);
+      setFromGroup(base);
+      setFromText(groupLabel(base));
+      setActive(null);
+      return;
+    }
     setGroup(field, null);
     setText(field, "");
     setActive(field);
   };
 
+  // 근처 정류장 목록 줄이나 지도 번호표를 눌렀을 때: 출발을 그 정류장 한 곳(번호
+  // 포함)으로 좁힌다. 같은 이름의 반대편 정류장과 섞이지 않는다.
+  const selectNearbyStation = (id: string) => {
+    if (!fromGroup?.origin) return;
+    const station = fromGroup.stations.find((st) => st.id === id);
+    if (!station) return;
+    const single: StationGroup = { name: station.name, stations: [station], single: true };
+    setNearbyRestore(fromGroup);
+    setFromGroup(single);
+    setFromText(groupLabel(single));
+    setActive(null);
+  };
+
   const swap = () => {
+    setNearbyRestore(null);
     setFromGroup(toGroup);
     setToGroup(fromGroup);
     setFromText(toText);
@@ -469,7 +499,6 @@ export function RouteScreen() {
             바꾸기 버튼은 두 칸 사이 선 위, 지우기(X)에서 떨어진 자리에 둔다. */}
         <div className="relative mt-2 bg-surface border border-line rounded-card focus-within:ring-2 focus-within:ring-brand transition-shadow">
           {renderField("from")}
-          <div className="h-px bg-line ml-11 mr-4" aria-hidden="true" />
           {renderField("to")}
 
           {hasText && (
@@ -510,8 +539,8 @@ export function RouteScreen() {
               />
             )}
             {suggestStatus === "success" && suggestions.length > 0 && (
-              /* 버스 탭 검색 결과와 같은 문법: 한 판 + 구분선. */
-              <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
+              /* 버스 탭 검색 결과와 같은 문법: 한 판, 줄 사이 선 없음. */
+              <div className="bg-surface rounded-card border border-line overflow-hidden">
                 {suggestions.map((group) => (
                   <button
                     key={group.stations[0]?.id ?? group.name}
@@ -577,7 +606,7 @@ export function RouteScreen() {
                       ? "도착 정보 확인 중"
                       : liveArrivalLabel(arrival)
                     : null;
-                const walk = walkDistanceLabel(fromGroup?.origin, result);
+                const walk = walkDistanceLabel(fromGroup?.origin ?? nearbyRestore?.origin, result);
                 const steps = selected ? buildSteps(result, walk) : [];
 
                 return (
@@ -629,9 +658,8 @@ export function RouteScreen() {
                     </button>
 
                     {selected && (
-                      /* 행마다 아래 선을 그리고 마지막만 지우는 방식이었다. divide-y는
-                         첫 행 위와 마지막 행 아래에 선을 넣지 않아 그 예외가 필요 없다. */
-                      <ol className="divide-y divide-line border-t border-line">
+                      /* 단계 사이 선은 긋지 않는다(앱 전체 구분선 제거). */
+                      <ol>
                         {steps.map((step, idx) => (
                           <li key={idx} className="flex gap-3 px-4 py-3.5">
                             <div className="flex flex-col items-center">
@@ -729,6 +757,7 @@ export function RouteScreen() {
                 <Suspense fallback={<LoadingSkeleton className="h-[11.5rem] rounded-none" />}>
                   <NearbyMap
                     origin={nearbyFrom.origin}
+                    onSelect={selectNearbyStation}
                     stations={nearbyFrom.items.map(
                       (it): NearbyMapStation => ({
                         id: it.id,
@@ -775,22 +804,29 @@ export function RouteScreen() {
                 )}
                 <ul className="mt-2 pb-1">
                   {nearbyFrom.items.map((it) => (
-                    <li key={it.id} className="flex items-center gap-3 px-4 py-3">
-                      <span
-                        className="h-6 w-6 shrink-0 rounded-md bg-brand-fill text-caption font-bold tabular-nums text-white flex items-center justify-center"
-                        aria-hidden="true"
+                    <li key={it.id}>
+                      {/* 줄을 누르면 출발이 이 정류장 한 곳으로 정해진다. */}
+                      <button
+                        type="button"
+                        onClick={() => selectNearbyStation(it.id)}
+                        className="select-none touch-manipulation w-full min-h-14 flex items-center gap-3 px-4 py-3 text-left transition-colors duration-75 active:bg-canvas"
                       >
-                        {it.rank}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-body font-semibold text-ink truncate">{it.name}</p>
-                        {it.arsId && (
-                          <p className="text-caption text-muted tabular-nums">{it.arsId}</p>
-                        )}
-                      </div>
-                      <span className="shrink-0 text-caption text-muted tabular-nums">
-                        약 {it.distance}
-                      </span>
+                        <span
+                          className="h-6 w-6 shrink-0 rounded-md bg-brand-fill text-caption font-bold tabular-nums text-white flex items-center justify-center"
+                          aria-hidden="true"
+                        >
+                          {it.rank}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-body font-semibold text-ink truncate">{it.name}</span>
+                          {it.arsId && (
+                            <span className="block text-caption text-muted tabular-nums">{it.arsId}</span>
+                          )}
+                        </span>
+                        <span className="shrink-0 text-caption text-muted tabular-nums">
+                          약 {it.distance}
+                        </span>
+                      </button>
                     </li>
                   ))}
                 </ul>

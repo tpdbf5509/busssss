@@ -483,14 +483,14 @@ export function HomeScreen({
                 </div>
               </div>
 
-              {/* 흰 카드 하나 안에 행을 쌓고 1px 선으로 나눈다(7-5).
+              {/* 흰 카드 하나 안에 행을 쌓는다(7-5). 줄 사이 선은 긋지 않는다.
                   예전에는 즐겨찾기마다 독립 카드로 띄웠다 — 한 판 안에서
                   구분선으로 나누면 설정 목록처럼 읽혀 어느 행의 도착시간인지
                   눈에 안 들어온다는 이유였다. 이제 "지금 버스가 언제 오는지"의
                   주인공은 히어로가 맡고, 이 목록은 나머지를 훑어보는 자리라
                   7-5에 따라 한 카드로 묶는다. 도착 시간은 오른쪽 고정 열에
                   모아 행끼리 세로로 줄 맞춰 비교할 수 있게 한다. */}
-              <ul className="bg-surface rounded-card border border-line divide-y divide-line overflow-hidden">
+              <ul className="bg-surface rounded-card border border-line overflow-hidden">
                 {listFavorites.map((fav) => {
                   const isRoute = fav.type === "route";
                   const isStopRoute = fav.type === "stop_route";
@@ -695,7 +695,7 @@ export function HomeScreen({
       {state.recentRoutes.length > 0 && (
         <section className="px-5 mt-7 shrink-0">
           <h2 className="text-body-strong text-ink mb-3">최근 본 노선</h2>
-          <ul className="bg-surface rounded-card border border-line divide-y divide-line overflow-hidden">
+          <ul className="bg-surface rounded-card border border-line overflow-hidden">
             {state.recentRoutes.map((recent) => (
               <li key={recent.id}>
                 <button

@@ -156,9 +156,9 @@ export function AlertScreen({ onBack }: { onBack?: () => void }) {
           </div>
         ) : (
           /* 카드마다 테두리를 두르고 쌓으면 목록이 문서처럼 보인다. 한 판
-             안에서 구분선으로만 나눈다(홈 화면과 같은 문법). 4단계에서 홈처럼
+             안에 쌓고 줄 사이 선은 긋지 않는다(홈 화면과 같은 문법). 4단계에서 홈처럼
              판 바깥에도 1px line을 두르고 모서리를 20px로 맞췄다. */
-          <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
+          <div className="bg-surface rounded-card border border-line overflow-hidden">
             {state.alerts.map((alert) => (
               <AlertCard
                 key={alert.id}
@@ -187,10 +187,8 @@ export function AlertScreen({ onBack }: { onBack?: () => void }) {
             <p className="text-body-strong text-ink">알림이 없어요</p>
           </div>
         ) : (
-          /* 행마다 "마지막이면 아래 선을 빼라"를 직접 계산하고 있었다.
-             divide-y는 첫 행 위와 마지막 행 아래에 선을 넣지 않으므로
-             그 계산이 필요 없다. */
-          <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
+          /* 행 사이에 선은 없다(앱 전체 구분선 제거). */
+          <div className="bg-surface rounded-card border border-line overflow-hidden">
             {records.map((r) => {
               /* 아이콘이 알림 종류를 말하게 한다. 예전에는 종류와 무관하게 같은
                  종 모양이 회색 타일(흰 판 대비 1.06:1)에 담겨 보이지 않는 박스가
@@ -377,7 +375,7 @@ function AlertCard({
         </div>
       )}
 
-      <div className="flex items-center gap-3 mt-3 pt-3 border-t border-line">
+      <div className="flex items-center gap-3 mt-4">
         <span className="flex items-center gap-1 text-caption text-muted">
           <MapPin className="w-3.5 h-3.5 text-brand" aria-hidden="true" />
           <span className="tabular-nums">{alert.stopsBefore}정거장 전</span>
@@ -488,7 +486,7 @@ function AddAlertModal({
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       {/* 바텀시트: 모서리 28px(hero), sheet 그림자(6장). */}
       <div className="relative bg-surface rounded-t-hero sm:rounded-hero w-full max-w-md max-h-[85vh] overflow-y-auto shadow-sheet">
-        <div className="px-5 py-4 border-b border-line sticky top-0 bg-surface z-10 flex items-center gap-2">
+        <div className="px-5 py-4 sticky top-0 bg-surface z-10 flex items-center gap-2">
           {step !== "route" && (
             <button
               onClick={() => {
@@ -540,7 +538,7 @@ function AddAlertModal({
             </div>
             {routesStatus === "loading" && (
               /* 값이 들어올 때 목록이 튀지 않도록 완성된 모양과 같게 깔아 둔다. */
-              <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
+              <div className="bg-surface rounded-card border border-line overflow-hidden">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="min-h-16 px-3 py-3 flex items-center gap-3">
                     <LoadingSkeleton className="w-12 h-9 rounded-tile shrink-0" />
@@ -550,7 +548,7 @@ function AddAlertModal({
               </div>
             )}
             {routesStatus === "success" && (
-              <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line max-h-[50vh] overflow-y-auto">
+              <div className="bg-surface rounded-card border border-line overflow-hidden max-h-[50vh] overflow-y-auto">
                 {filteredRoutes.map((route) => {
                   const isMain = isMainRoute(route.name);
                   return (
@@ -599,7 +597,7 @@ function AddAlertModal({
               {selectedRoute?.name || selectedRoute?.number} · 내릴 정류장을 고르세요
             </p>
             {stopsStatus === "loading" && (
-              <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
+              <div className="bg-surface rounded-card border border-line overflow-hidden">
                 {[1, 2, 3, 4].map((i) => (
                   <div key={i} className="min-h-12 px-3 py-3 flex items-center gap-3">
                     <LoadingSkeleton className="w-7 h-7 shrink-0 rounded-full" />
@@ -609,7 +607,7 @@ function AddAlertModal({
               </div>
             )}
             {stopsStatus === "success" && stops && (
-              <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line max-h-[55vh] overflow-y-auto">
+              <div className="bg-surface rounded-card border border-line overflow-hidden max-h-[55vh] overflow-y-auto">
                 {stops.map((stop) => (
                   <button
                     key={`${stop.order}-${stop.id}`}
@@ -816,7 +814,7 @@ function VehicleChoices({
   // 전 한 순간이라 같은 모양을 깔아 둔다.
   if (status === "idle" || status === "loading" || (unavailable && onUnavailable)) {
     return (
-      <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
+      <div className="bg-surface rounded-card border border-line overflow-hidden">
         {[1, 2, 3].map((i) => (
           <div key={i} className="min-h-16 px-3 py-3 flex items-center gap-3">
             <LoadingSkeleton className="w-9 h-9 rounded-tile shrink-0" />
@@ -856,7 +854,7 @@ function VehicleChoices({
       ) : (
         pickable && (
           <>
-            <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line max-h-[45vh] overflow-y-auto">
+            <div className="bg-surface rounded-card border border-line overflow-hidden max-h-[45vh] overflow-y-auto">
               {pickable.vehicles.map((v) => {
                 const isCurrent =
                   currentVehicleNo != null &&
@@ -947,7 +945,7 @@ function VehiclePickSheet({
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-surface rounded-t-hero sm:rounded-hero w-full max-w-md max-h-[85vh] overflow-y-auto shadow-sheet">
-        <div className="px-5 py-4 border-b border-line sticky top-0 bg-surface z-10">
+        <div className="px-5 py-4 sticky top-0 bg-surface z-10">
           <h2 className="text-title text-ink">탄 버스 선택</h2>
           <p className="text-caption text-muted mt-0.5 truncate">
             {alert.routeNumber ? `${alert.routeNumber}번` : alert.routeName} · {alert.targetStation} 하차
@@ -977,7 +975,7 @@ function VehiclePickSheet({
               onPick={onPick}
             />
           ) : (
-            <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
+            <div className="bg-surface rounded-card border border-line overflow-hidden">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="min-h-16 px-3 py-3 flex items-center gap-3">
                   <LoadingSkeleton className="w-9 h-9 rounded-tile shrink-0" />

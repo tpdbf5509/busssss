@@ -320,9 +320,9 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
         {searchTab === "route" && (
           <>
             {status === "loading" && (
-              /* 결과 목록과 같은 모양(한 판 + 구분선, 같은 행 높이)으로 깔아야
+              /* 결과 목록과 같은 모양(한 판, 줄 사이 선 없음, 같은 행 높이)으로 깔아야
                  값이 들어올 때 목록이 튀지 않는다. */
-              <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
+              <div className="bg-surface rounded-card border border-line overflow-hidden">
                 {[1, 2, 3, 4].map((i) => (
                   <div key={i} className="min-h-16 px-4 py-3 flex items-center gap-3">
                     <LoadingSkeleton className="w-12 h-9 rounded-tile shrink-0" />
@@ -342,10 +342,10 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
             {status === "success" && filtered && filtered.length > 0 && (
               /* 검색 결과는 수백 개를 스크롤하며 비교하는 목록이다. 항목마다
                  테두리 카드를 띄우고 8px씩 벌리면 한 화면에 들어오는 개수가
-                 줄고 문서처럼 보인다. 정류장 상세와 같은 문법(한 판 + 구분선)
+                 줄고 문서처럼 보인다. 정류장 상세와 같은 문법(한 판, 줄 사이 선 없음)
                  으로 맞춘다 — 홈의 독립 카드는 개수가 적고 각각이 목적지라서
                  다른 문법을 쓴다. */
-              <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
+              <div className="bg-surface rounded-card border border-line overflow-hidden">
                 {filtered.map((route) => (
                   <div
                     key={`${route.id}-${route.number}`}
@@ -424,7 +424,7 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
         {searchTab === "station" && (
           <>
             {(stationStatus === "idle" || stationStatus === "loading") && (
-              <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
+              <div className="bg-surface rounded-card border border-line overflow-hidden">
                 {[1, 2, 3, 4].map((i) => (
                   <div key={i} className="min-h-16 px-4 py-3 flex items-center gap-3">
                     <LoadingSkeleton className="w-9 h-9 rounded-tile shrink-0" />
@@ -448,7 +448,7 @@ const toggleStationFavorite = (station: Station, e: React.MouseEvent) => {
               />
             )}
             {stationStatus === "success" && stations.length > 0 && (
-              <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
+              <div className="bg-surface rounded-card border border-line overflow-hidden">
                 {stations.map((station) => (
                   <div
                     key={station.id}
@@ -982,7 +982,7 @@ const isAllRouteFavorited = (route: Route) =>
         {detailTab === "arrival" && (
           <>
             {status === "loading" && (
-              /* 완성된 목록과 같은 모양(한 판 + 구분선, 같은 행 높이)으로 깔아야
+              /* 완성된 목록과 같은 모양(한 판, 줄 사이 선 없음, 같은 행 높이)으로 깔아야
                  값이 들어올 때 목록이 튀지 않는다. */
               /* 줄마다 실제 카드와 같은 높이의 자리를 잡는다: 방향 줄(Body-strong
                  한 줄 = 1.5em), 도착 줄(h-6), 칩 줄(h-5). 예전에는 막대 높이를
@@ -1026,7 +1026,7 @@ const isAllRouteFavorited = (route: Route) =>
 
             {status === "success" && routesWithInfo.length > 0 && (
               /* 버스 한 대 한 대가 "언제 오는가"를 담은 독립된 정보 단위다.
-                 한 판 안에 구분선으로 나누면 설정 목록처럼 읽혀서 어느 카드의
+                 한 판 안에 줄로 나누면 설정 목록처럼 읽혀서 어느 카드의
                  도착 시간인지가 눈에 안 들어온다. 카드를 띄우고 사이를 벌린다
                  (홈 즐겨찾기와 같은 문법). */
               <div className="space-y-2.5">
@@ -1099,9 +1099,9 @@ const isAllRouteFavorited = (route: Route) =>
         {detailTab === "all" && (
           <>
             {allStatus === "loading" && (
-              /* 완성된 목록과 같은 모양(한 판 + 구분선, 같은 행 높이)으로 깔아야
+              /* 완성된 목록과 같은 모양(한 판, 줄 사이 선 없음, 같은 행 높이)으로 깔아야
                  값이 들어올 때 목록이 튀지 않는다. */
-              <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
+              <div className="bg-surface rounded-card border border-line overflow-hidden">
                 {[1, 2, 3, 4].map((i) => (
                   <div key={i} className="min-h-16 px-4 py-3 flex items-center gap-3">
                     <LoadingSkeleton className="w-12 h-9 rounded-tile shrink-0" />
@@ -1129,7 +1129,7 @@ const isAllRouteFavorited = (route: Route) =>
 
             {allStatus === "success" &&
               allViaRoutes.length > 0 && (
-                <div className="bg-surface rounded-card border border-line overflow-hidden divide-y divide-line">
+                <div className="bg-surface rounded-card border border-line overflow-hidden">
                   {allViaRoutes.map((route) => {
                     const isMain = isMainRoute(route.name);
                     return (
@@ -1622,7 +1622,7 @@ function DispatchScheduleModal({
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-surface rounded-t-hero sm:rounded-hero w-full max-w-md max-h-[80vh] flex flex-col shadow-sheet animate-slide-up">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-line">
+        <div className="flex items-center justify-between px-5 py-4">
           <div className="flex items-center gap-2">
             <Clock className="w-5 h-5 text-brand" aria-hidden="true" />
             <h2 className="text-title text-ink">배차시간</h2>
@@ -1636,7 +1636,7 @@ function DispatchScheduleModal({
           </button>
         </div>
 
-        <div className="px-5 py-4 border-b border-line">
+        <div className="px-5 py-4">
           <div className="flex items-center gap-2 mb-3">
             {/* route.name은 "본선104"라 그대로 쓰면 번호가 두 번 나오고
                 분류와 번호가 한 단어로 붙는다. 노선 상세 제목과 같은 표기로

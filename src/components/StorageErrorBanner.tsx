@@ -25,7 +25,7 @@ export function StorageErrorBanner() {
        delay-soft, 아이콘 delay). 글자는 바탕 위 대비를 위해 ink로 쓴다.
        아이콘 타일은 6장 아이콘 타일(40px, 12px)에 흰 면. 색약 모드에서는
        delay-soft가 4-2 대체 색(연한 노랑)으로 바뀐다. */
-    <div className="shrink-0 bg-delay-soft border-b border-line px-5 py-3">
+    <div className="shrink-0 bg-delay-soft px-5 py-3">
       <div className="max-w-md mx-auto flex items-start gap-3">
         <div className="w-10 h-10 rounded-tile bg-surface flex items-center justify-center shrink-0">
           <AlertTriangle className="w-5 h-5 text-delay" aria-hidden="true" />
