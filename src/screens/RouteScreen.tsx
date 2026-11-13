@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import {
   MapPin,
   Footprints,
@@ -14,6 +14,7 @@ import { useApp } from "@/store/appContext";
 import { searchStations } from "@/services/stationService";
 import { findNearbyGroup } from "@/services/nearbyStationService";
 import { StationCoordsUnavailableError } from "@/api/jeonju";
+import type { NearbyMapStation } from "@/components/NearbyMap";
 import {
   directRouteKey,
   fetchLiveArrivals,
@@ -137,6 +138,18 @@ function liveArrivalLabel(info: ArrivalInfo | null): string {
 }
 
 /** 묶음의 정류장 번호를 "12345 · 12346" 꼴로. 번호가 없으면 정류장 수로 대신한다. */
+// 지도는 "근처 정류장"을 찾은 뒤에만 쓰므로 그때 처음 불러온다(첫 화면 번들에
+// 넣지 않는다). 받기에 실패해도 화면 전체가 깨지지 않고 아래 목록만 남게 한다.
+const NearbyMap = lazy(() =>
+  import("@/components/NearbyMap").catch(() => ({
+    default: () => (
+      <div className="h-56 flex items-center justify-center bg-canvas text-caption text-muted">
+        지도를 불러오지 못했어요
+      </div>
+    ),
+  })),
+);
+
 function groupCaption(group: StationGroup): string {
   const ars = group.stations.map((s) => s.arsId).filter(Boolean);
   if (ars.length === 0) return group.single ? "정류장 번호 없음" : `정류장 ${group.stations.length}곳`;
@@ -380,17 +393,29 @@ export function RouteScreen() {
     );
   };
 
-  // 현재 위치로 출발을 정했을 때 안내 카드에 보여 줄 요약. 정류장 좌표는 이
-  // 묶음에만 있고, 가까운 순으로 담겨 있어 첫 정류장이 가장 가깝다.
+  // 근처 정류장으로 출발을 정했을 때 안내 카드(지도 + 목록)에 보여 줄 요약.
+  // 정류장 좌표는 이 묶음에만 있고, 가까운 순으로 담겨 있어 첫 정류장이 가장
+  // 가깝다. 번호(rank)는 지도 번호표와 목록이 같다. 거리는 직선거리다.
   const nearbyFrom = (() => {
     const origin = fromGroup?.origin;
-    const first = fromGroup?.stations[0];
-    if (!fromGroup || !origin || !first || first.lat == null || first.lng == null) return null;
-    return {
-      count: fromGroup.stations.length,
-      name: first.name,
-      distance: formatDistance(distanceMeters(origin, { lat: first.lat, lng: first.lng })),
-    };
+    if (!fromGroup || !origin) return null;
+    const items = fromGroup.stations.flatMap((st, i) =>
+      st.lat == null || st.lng == null
+        ? []
+        : [
+            {
+              id: st.id,
+              name: st.name,
+              arsId: st.arsId,
+              rank: i + 1,
+              lat: st.lat,
+              lng: st.lng,
+              distance: formatDistance(distanceMeters(origin, { lat: st.lat, lng: st.lng })),
+            },
+          ],
+    );
+    if (items.length === 0) return null;
+    return { origin, items, closest: items[0] };
   })();
 
   // "현재 위치" 묶음은 출발로만 쓴다. 바꾸면 도착 칸에 들어가 버리므로 바꾸기를 숨긴다.
@@ -659,38 +684,77 @@ export function RouteScreen() {
               ))}
             </div>
 
-            {/* 알림 빈 상태와 비슷한 안내 카드 */}
-            <div className="bg-surface rounded-card border border-line p-8 text-center">
-              <div className="mx-auto mb-4 h-14 w-14 rounded-full bg-canvas flex items-center justify-center">
-                <Navigation className="w-7 h-7 text-faint" aria-hidden="true" />
-              </div>
-              {nearbyFrom ? (
-                /* 출발칸이 "근처 정류장"이라고만 보이면 몇 곳을 찾았는지 알 수 없다.
-                   찾은 정류장 수와 가장 가까운 곳을 말하고, 남은 일(도착 고르기)을
-                   알려 준다. 거리는 직선거리다(걷는 시간은 말하지 않는다). */
-                <>
-                  <p className="text-body-strong text-ink mb-1">
-                    근처 정류장 {nearbyFrom.count}곳을 찾았어요
+            {nearbyFrom ? (
+              /* 출발칸이 "근처 정류장"이라고만 보이면 어디를 찾았는지 알 수 없다.
+                 지도에 내 위치와 근처 정류장을 번호로 찍고, 아래에 같은 번호로
+                 이름·정류장 번호·직선거리를 말한 뒤 남은 일(도착 고르기)을 알린다.
+                 걷는 시간은 말하지 않는다(CLAUDE.md 5-1장). */
+              <div className="bg-surface rounded-card border border-line overflow-hidden">
+                <Suspense fallback={<LoadingSkeleton className="h-56 rounded-none" />}>
+                  <NearbyMap
+                    origin={nearbyFrom.origin}
+                    stations={nearbyFrom.items.map(
+                      (it): NearbyMapStation => ({
+                        id: it.id,
+                        name: it.name,
+                        rank: it.rank,
+                        lat: it.lat,
+                        lng: it.lng,
+                      }),
+                    )}
+                  />
+                </Suspense>
+                <div className="px-4 pt-4 pb-1">
+                  <p className="text-body-strong text-ink">
+                    근처 정류장 {nearbyFrom.items.length}곳을 찾았어요
                   </p>
-                  <p className="text-caption text-muted tabular-nums">
-                    가장 가까운 곳은 {nearbyFrom.name} · 직선 약 {nearbyFrom.distance}
+                  <p className="mt-0.5 text-caption text-muted">
+                    가장 가까운 곳은 {nearbyFrom.closest.name} · 직선 약{" "}
+                    <span className="tabular-nums">{nearbyFrom.closest.distance}</span>
                     <br />
                     이제 도착 정류장을 골라 주세요
                   </p>
-                </>
-              ) : (
-                <>
-                  <p className="text-body-strong text-ink mb-1">
-                    출발과 도착 정류장을 골라 주세요
-                  </p>
-                  <p className="text-caption text-muted">
-                    갈아타지 않고 갈 수 있는
-                    <br />
-                    버스와 정거장 수를 알려드려요
-                  </p>
-                </>
-              )}
-            </div>
+                </div>
+                <ul className="mt-3 divide-y divide-line border-t border-line">
+                  {nearbyFrom.items.map((it) => (
+                    <li key={it.id} className="flex items-center gap-3 px-4 py-3">
+                      <span
+                        className="h-6 w-6 shrink-0 rounded-md bg-brand-fill text-caption font-bold tabular-nums text-white flex items-center justify-center"
+                        aria-hidden="true"
+                      >
+                        {it.rank}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-body-strong text-ink truncate">{it.name}</p>
+                        {it.arsId && (
+                          <p className="text-caption text-muted tabular-nums">
+                            정류장 번호 {it.arsId}
+                          </p>
+                        )}
+                      </div>
+                      <span className="shrink-0 text-caption text-muted tabular-nums">
+                        직선 약 {it.distance}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              /* 알림 빈 상태와 비슷한 안내 카드 */
+              <div className="bg-surface rounded-card border border-line p-8 text-center">
+                <div className="mx-auto mb-4 h-14 w-14 rounded-full bg-canvas flex items-center justify-center">
+                  <Navigation className="w-7 h-7 text-faint" aria-hidden="true" />
+                </div>
+                <p className="text-body-strong text-ink mb-1">
+                  출발과 도착 정류장을 골라 주세요
+                </p>
+                <p className="text-caption text-muted">
+                  갈아타지 않고 갈 수 있는
+                  <br />
+                  버스와 정거장 수를 알려드려요
+                </p>
+              </div>
+            )}
           </>
         )}
       </div>

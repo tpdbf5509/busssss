@@ -1,0 +1,117 @@
+import { useEffect, useRef } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import type { LatLng } from "@/lib/geo";
+
+/**
+ * 길찾기 "근처 정류장" 지도. 내 위치 한 점과 근처 정류장(가까운 순 번호)을 찍는다.
+ *
+ * - 지도 라이브러리는 Leaflet + OpenStreetMap 타일이다. 열쇠(API 키)나 도메인 등록이
+ *   필요 없고, 번들이 작다. 이 파일은 RouteScreen이 지연 불러오기(lazy)로 불러서
+ *   지도를 쓰지 않는 화면의 첫 로딩에는 들어가지 않는다.
+ * - 전주 실시간 API는 정류장 단위 위치만 준다(CLAUDE.md 4장). 여기 찍는 것은 DB에
+ *   저장한 정류장 좌표뿐이고, 버스 위치는 그리지 않는다.
+ * - 지도 아래 목록이 같은 번호로 정류장 이름을 말한다. 지도는 색·그림이라 글자
+ *   정보를 대신하지 않는다(접근성).
+ */
+
+export interface NearbyMapStation {
+  id: string;
+  name: string;
+  /** 지도 위 번호표. 목록의 번호와 같다. */
+  rank: number;
+  lat: number;
+  lng: number;
+}
+
+interface Props {
+  origin: LatLng;
+  stations: NearbyMapStation[];
+}
+
+const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+
+// 내 위치: 가운데 점과 파란 테두리 원. 가장 가까운 정류장이 10m 안쪽이면 번호표가
+// 점을 덮을 수 있어서(번호표가 위), 번호표 밖으로 보이는 테두리 원으로도 알아보게
+// 한다. 번호표(모서리 둥근 네모+숫자)와 모양이 달라 색만으로 구분하지 않는다.
+const ME_ICON = L.divIcon({
+  className: "",
+  iconSize: [44, 44],
+  iconAnchor: [22, 22],
+  html:
+    '<span class="flex h-11 w-11 items-center justify-center rounded-full border-2 border-brand-fill bg-brand-fill/20">' +
+    '<span class="h-3 w-3 rounded-full border-2 border-white bg-brand-fill"></span>' +
+    "</span>",
+});
+
+function stationIcon(rank: number): L.DivIcon {
+  return L.divIcon({
+    className: "",
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+    html:
+      '<span class="flex h-[1.625rem] w-[1.625rem] items-center justify-center rounded-lg border-2 border-white bg-brand-fill text-caption font-bold tabular-nums text-white shadow-float">' +
+      `${rank}</span>`,
+  });
+}
+
+export default function NearbyMap({ origin, stations }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const stationKey = stations.map((s) => `${s.id}:${s.rank}`).join(",");
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const map = L.map(el, {
+      // 가운데 정렬·핀치는 지도가 맡는다. 마우스 휠은 화면 스크롤을 가로채지 않게 끈다.
+      scrollWheelZoom: false,
+      attributionControl: true,
+    });
+    map.attributionControl.setPrefix(false);
+
+    L.tileLayer(TILE_URL, {
+      maxZoom: 19,
+      detectRetina: true,
+      attribution: "© OpenStreetMap",
+    }).addTo(map);
+
+    const points: L.LatLngTuple[] = [[origin.lat, origin.lng]];
+    L.marker([origin.lat, origin.lng], {
+      icon: ME_ICON,
+      keyboard: false,
+      interactive: false,
+      zIndexOffset: -1000,
+    }).addTo(map);
+
+    for (const s of stations) {
+      points.push([s.lat, s.lng]);
+      L.marker([s.lat, s.lng], { icon: stationIcon(s.rank), keyboard: false })
+        .bindTooltip(s.name, { direction: "top", offset: [0, -12] })
+        .addTo(map);
+    }
+
+    map.fitBounds(L.latLngBounds(points), { padding: [32, 32], maxZoom: 18 });
+
+    // 안내 카드가 나타난 직후 크기가 정해지는 경우가 있어 한 번 다시 잰다.
+    const timer = setTimeout(() => map.invalidateSize(), 0);
+
+    return () => {
+      clearTimeout(timer);
+      map.remove();
+    };
+    // stations 배열 자체가 아니라 내용(stationKey)이 바뀔 때만 다시 그린다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [origin.lat, origin.lng, stationKey]);
+
+  return (
+    // isolate: Leaflet 안쪽 z-index(최대 1000)가 하단 탭·알림 위로 올라오지 않게
+    // 이 상자 안에 가둔다.
+    <div
+      ref={containerRef}
+      role="img"
+      aria-label={`내 위치와 근처 정류장 ${stations.length}곳을 표시한 지도`}
+      className="nearby-map isolate h-56 w-full bg-canvas"
+    />
+  );
+}

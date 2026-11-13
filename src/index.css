@@ -339,3 +339,21 @@ html.dark.color-blind {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* 길찾기 근처 정류장 지도(components/NearbyMap.tsx) */
+.nearby-map {
+  font-family: inherit;
+}
+/* 확대·축소 버튼을 누르는 영역 44px로 키운다(CLAUDE.md 7장). */
+.nearby-map .leaflet-bar a {
+  width: 2.75rem;
+  height: 2.75rem;
+  line-height: 2.75rem;
+}
+.nearby-map .leaflet-control-attribution {
+  font-size: 0.625rem;
+}
+/* 다크 모드: 밝은 타일을 뒤집어 어둡게 한다. 마커·글자는 건드리지 않는다. */
+html.dark .nearby-map .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9);
+}
