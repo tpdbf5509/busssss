@@ -87,7 +87,7 @@ export default function NearbyMap({ origin, stations }: Props) {
     // 보일 때 "얼마나 믿을 수 있는지"를 지도에서 바로 볼 수 있다. 너무 큰 원(PC·IP
     // 위치)은 화면을 덮지 않게 5km로 자르고, 화면 맞춤에는 1km 이하일 때만 넣는다.
     if (origin.accuracy != null && origin.accuracy > 0) {
-      const circle = L.circle([origin.lat, origin.lng], {
+      L.circle([origin.lat, origin.lng], {
         radius: Math.min(origin.accuracy, 5000),
         interactive: false,
         color: "#2563EB",
@@ -96,7 +96,10 @@ export default function NearbyMap({ origin, stations }: Props) {
         fillOpacity: 0.08,
       }).addTo(map);
       if (origin.accuracy <= 1000) {
-        const b = circle.getBounds();
+        // circle.getBounds()는 지도 중심이 정해지기 전에는 쓸 수 없어 예외를 던진다
+        // (실기기에서 오차가 작을 때 지도가 통째로 실패한 원인). 위치에서 오차 반경만큼
+        // 떨어진 네모를 직접 구한다.
+        const b = L.latLng(origin.lat, origin.lng).toBounds(origin.accuracy * 2);
         points.push([b.getSouth(), b.getWest()], [b.getNorth(), b.getEast()]);
       }
     }

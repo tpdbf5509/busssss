@@ -147,16 +147,27 @@ function liveArrivalLabel(info: ArrivalInfo | null): string {
 /** 묶음의 정류장 번호를 "12345 · 12346" 꼴로. 번호가 없으면 정류장 수로 대신한다. */
 // 지도는 "근처 정류장"을 찾은 뒤에만 쓰므로 그때 처음 불러온다(첫 화면 번들에
 // 넣지 않는다). 받기에 실패해도 화면 전체가 깨지지 않고 아래 목록만 남게 한다.
-function MapUnavailable() {
+// 실패 원인은 작은 글씨로 함께 보여 준다. 폰에서는 개발자 도구를 못 열어서, 화면
+// 캡처만으로 원인을 알 수 있게 하기 위해서다.
+function MapUnavailable({ error }: { error?: Error }) {
   return (
-    <div className="h-56 flex items-center justify-center bg-canvas text-caption text-muted">
-      지도를 표시하지 못했어요
+    <div className="h-56 flex flex-col items-center justify-center gap-2 bg-canvas px-6 text-center">
+      <p className="text-caption text-muted">지도를 표시하지 못했어요</p>
+      {error && (
+        <p className="w-full break-words text-caption text-faint select-text">
+          {error.name}: {error.message}
+        </p>
+      )}
     </div>
   );
 }
 
 const NearbyMap = lazy(() =>
-  import("@/components/NearbyMap").catch(() => ({ default: MapUnavailable })),
+  import("@/components/NearbyMap").catch((error: unknown) => ({
+    default: () => (
+      <MapUnavailable error={error instanceof Error ? error : new Error(String(error))} />
+    ),
+  })),
 );
 
 function groupCaption(group: StationGroup): string {
@@ -708,7 +719,7 @@ export function RouteScreen() {
                  걷는 시간은 말하지 않는다(CLAUDE.md 5-1장). */
               <div className="bg-surface rounded-card border border-line overflow-hidden">
                 {/* 지도에서 예외가 나도 안내 문구와 정류장 목록은 남긴다. */}
-                <ErrorBoundary fallback={() => <MapUnavailable />}>
+                <ErrorBoundary fallback={(error) => <MapUnavailable error={error} />}>
                 <Suspense fallback={<LoadingSkeleton className="h-56 rounded-none" />}>
                   <NearbyMap
                     origin={nearbyFrom.origin}
