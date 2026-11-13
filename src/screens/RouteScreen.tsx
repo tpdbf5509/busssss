@@ -42,7 +42,7 @@ import {
   POOR_ACCURACY_M,
 } from "@/lib/geolocation";
 import { showToast } from "@/lib/toastStore";
-import { EmptyState, ErrorState, LoadingSkeleton } from "@/components/ui";
+import { EmptyState, ErrorState, LoadingSkeleton, TAB_TITLE_CLASS } from "@/components/ui";
 
 type Field = "from" | "to";
 type LoadStatus = "idle" | "loading" | "success" | "error";
@@ -151,7 +151,7 @@ function liveArrivalLabel(info: ArrivalInfo | null): string {
 // 캡처만으로 원인을 알 수 있게 하기 위해서다.
 function MapUnavailable({ error }: { error?: Error }) {
   return (
-    <div className="h-56 flex flex-col items-center justify-center gap-2 bg-canvas px-6 text-center">
+    <div className="h-[11.5rem] flex flex-col items-center justify-center gap-2 bg-canvas px-6 text-center">
       <p className="text-caption text-muted">지도를 표시하지 못했어요</p>
       {error && (
         <p className="w-full break-words text-caption text-faint select-text">
@@ -394,7 +394,7 @@ export function RouteScreen() {
           value={value}
           onChange={(e) => handleInput(field, e.target.value)}
           onFocus={() => setActive(field)}
-          placeholder={isFrom ? "출발 정류장" : "도착 정류장 (예: 전주한옥마을)"}
+          placeholder={isFrom ? "출발 정류장" : "도착 정류장"}
           aria-label={isFrom ? "출발 정류장" : "도착 정류장"}
           className="w-full h-12 bg-transparent pl-11 pr-24 text-base text-ink placeholder:text-faint focus:outline-none"
         />
@@ -446,6 +446,8 @@ export function RouteScreen() {
     };
   })();
 
+  const showShortcuts = !nearbyFrom || active === "to";
+
   // "현재 위치" 묶음은 출발로만 쓴다. 바꾸면 도착 칸에 들어가 버리므로 바꾸기를 숨긴다.
   const hasText = (fromText !== "" || toText !== "") && !fromGroup?.origin;
 
@@ -457,11 +459,9 @@ export function RouteScreen() {
           사용자 확인). 결과 목록은 아래 별도 스크롤 상자라 헤더 밑으로 비치지
           않는다. */}
       <header className="bg-canvas px-5 pt-safe-0 pb-4 shrink-0">
-        <div className="h-14 flex flex-col justify-center">
-          <p className="text-caption text-muted">
-            목적지까지 버스 타는 방법
-          </p>
-          <h1 className="text-title text-ink">길찾기</h1>
+        <div className="h-14 flex items-center">
+          {/* 제목 높이는 버스·마이와 같다(ui.tsx TAB_TITLE_CLASS). */}
+          <h1 className={TAB_TITLE_CLASS}>길찾기</h1>
         </div>
 
         {/* 출발·도착 두 칸을 한 판(흰 면 + 1px line)에 묶고 칸 사이를 1px 선으로
@@ -674,7 +674,9 @@ export function RouteScreen() {
         {!typing && !sameStop && !ready && (
           <>
             {showLocationButton && locationButton}
-            {favoriteNames.length > 0 && (
+            {/* 근처 정류장으로 출발을 정했으면 안내 카드(지도 + 목록)가 화면의
+                위쪽을 쓴다. 알약은 도착 칸을 눌렀을 때만 보여 준다. */}
+            {showShortcuts && favoriteNames.length > 0 && (
               <>
                 <p className="text-body-strong text-ink mb-3">
                   즐겨찾기 정류장
@@ -696,21 +698,25 @@ export function RouteScreen() {
               </>
             )}
 
-            <p className="text-body-strong text-ink mb-3">
-              인기 목적지
-            </p>
-            <div className="flex flex-wrap gap-2 mb-7">
-              {POPULAR_DESTINATIONS.map((dest) => (
-                <button
-                  key={dest}
-                  type="button"
-                  onClick={() => void selectByName(dest, "to")}
-                  className={pillClass}
-                >
-                  {dest}
-                </button>
-              ))}
-            </div>
+            {showShortcuts && (
+              <>
+                <p className="text-body-strong text-ink mb-3">
+                  인기 목적지
+                </p>
+                <div className="flex flex-wrap gap-2 mb-7">
+                  {POPULAR_DESTINATIONS.map((dest) => (
+                    <button
+                      key={dest}
+                      type="button"
+                      onClick={() => void selectByName(dest, "to")}
+                      className={pillClass}
+                    >
+                      {dest}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
 
             {nearbyFrom ? (
               /* 출발칸이 "근처 정류장"이라고만 보이면 어디를 찾았는지 알 수 없다.
@@ -720,7 +726,7 @@ export function RouteScreen() {
               <div className="bg-surface rounded-card border border-line overflow-hidden">
                 {/* 지도에서 예외가 나도 안내 문구와 정류장 목록은 남긴다. */}
                 <ErrorBoundary fallback={(error) => <MapUnavailable error={error} />}>
-                <Suspense fallback={<LoadingSkeleton className="h-56 rounded-none" />}>
+                <Suspense fallback={<LoadingSkeleton className="h-[11.5rem] rounded-none" />}>
                   <NearbyMap
                     origin={nearbyFrom.origin}
                     stations={nearbyFrom.items.map(
@@ -740,17 +746,13 @@ export function RouteScreen() {
                     근처 정류장 {nearbyFrom.items.length}곳을 찾았어요
                   </p>
                   <p className="mt-0.5 text-caption text-muted">
-                    가장 가까운 곳은 {nearbyFrom.closest.name} · 직선 약{" "}
-                    <span className="tabular-nums">{nearbyFrom.closest.distance}</span>
-                    <br />
-                    이제 도착 정류장을 골라 주세요
+                    가장 가까운 곳은 {nearbyFrom.closest.name}
+                  </p>
+                  <p className="text-caption text-muted tabular-nums">
+                    약 {nearbyFrom.closest.distance}
+                    {nearbyFrom.accuracyLabel && <> · 위치 오차 약 {nearbyFrom.accuracyLabel}</>}
                   </p>
                 </div>
-                {nearbyFrom.accuracyLabel && (
-                  <p className="px-4 mt-2 text-caption text-muted">
-                    위치 오차 약 <span className="tabular-nums">{nearbyFrom.accuracyLabel}</span>
-                  </p>
-                )}
                 {nearbyFrom.poorAccuracy && (
                   /* 오차가 크면 이 기기가 알려 준 위치가 실제 내 위치와 다를 수 있다.
                      틀린 위치를 맞는 것처럼 보여 주지 않고, 다시 받아 보게 한다. */
@@ -771,7 +773,7 @@ export function RouteScreen() {
                     </div>
                   </div>
                 )}
-                <ul className="mt-3 divide-y divide-line border-t border-line">
+                <ul className="mt-2 pb-1">
                   {nearbyFrom.items.map((it) => (
                     <li key={it.id} className="flex items-center gap-3 px-4 py-3">
                       <span
@@ -781,15 +783,13 @@ export function RouteScreen() {
                         {it.rank}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-body-strong text-ink truncate">{it.name}</p>
+                        <p className="text-body font-semibold text-ink truncate">{it.name}</p>
                         {it.arsId && (
-                          <p className="text-caption text-muted tabular-nums">
-                            정류장 번호 {it.arsId}
-                          </p>
+                          <p className="text-caption text-muted tabular-nums">{it.arsId}</p>
                         )}
                       </div>
                       <span className="shrink-0 text-caption text-muted tabular-nums">
-                        직선 약 {it.distance}
+                        약 {it.distance}
                       </span>
                     </li>
                   ))}

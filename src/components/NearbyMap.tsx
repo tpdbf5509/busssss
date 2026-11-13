@@ -47,10 +47,10 @@ const ME_ICON = L.divIcon({
 function stationIcon(rank: number): L.DivIcon {
   return L.divIcon({
     className: "",
-    iconSize: [26, 26],
-    iconAnchor: [13, 13],
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
     html:
-      '<span class="flex h-[1.625rem] w-[1.625rem] items-center justify-center rounded-lg border-2 border-white bg-brand-fill text-caption font-bold tabular-nums text-white shadow-float">' +
+      '<span class="flex h-[1.875rem] w-[1.875rem] items-center justify-center rounded-lg border-2 border-white bg-brand-fill text-caption font-bold tabular-nums text-white shadow-float">' +
       `${rank}</span>`,
   });
 }
@@ -71,6 +71,8 @@ export default function NearbyMap({ origin, stations }: Props) {
     const map = L.map(el, {
       // 가운데 정렬·핀치는 지도가 맡는다. 마우스 휠은 화면 스크롤을 가로채지 않게 끈다.
       scrollWheelZoom: false,
+      // 디자인(길찾기 · 근처 정류장)에는 확대 버튼이 없다. 휴대폰은 두 손가락으로 확대한다.
+      zoomControl: false,
       attributionControl: true,
     });
     map.attributionControl.setPrefix(false);
@@ -137,7 +139,7 @@ export default function NearbyMap({ origin, stations }: Props) {
       ref={containerRef}
       role="img"
       aria-label={`내 위치와 근처 정류장 ${stations.length}곳을 표시한 지도`}
-      className="nearby-map isolate h-56 w-full bg-canvas"
+      className="nearby-map isolate h-[11.5rem] w-full bg-canvas"
     />
   );
 }
